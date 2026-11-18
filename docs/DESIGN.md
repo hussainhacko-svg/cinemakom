@@ -96,5 +96,29 @@ Use it sparingly. It is never a divider between every section.
 - **Lists:** horizontal rows use `ListView.builder` with a fixed `itemExtent` where possible. Use `const` widgets wherever possible.
 - **Fonts:** bundled in the app (no runtime downloads). Variable fonts where available; for IBM Plex Sans Arabic, only Regular, Medium and SemiBold.
 
-## 7. Logo (sketch: to be finalised)
-The wordmark is **CINEMAKOM** (Big Shoulders Display 900, tracked +0.04 em) with **سينماكم** (Reem Kufi 700, `bulb`). The mark is a **ticket stub** (notched sides, a perforation, three bulb dots) carrying **ك**, the "your" in سينماكم: *your* ticket, *your* cinema.
+## 7. Logo (final: mark 1, "Ticket")
+
+**The mark** is a solid `bulb` ticket stub with **ك** knocked out of it. ك is the "your" in سينماكم: *your* ticket, *your* cinema. The letter is traced from Reem Kufi Bold, so the logo never depends on a font. It has three levels of detail, chosen by size (`CinemakomMark.detailFor`):
+
+| Detail | Size | Shows |
+|---|---|---|
+| `full` | ≥ 48 px | ticket, ك, perforation |
+| `small` | 24–47 px | ticket, larger ك |
+| `tiny` | < 24 px | the ticket silhouette (bolder notches) |
+
+**The lockup** is the mark next to **CINEMAKOM** (Big Shoulders Display, cream) over **سينماكم** (Reem Kufi, `bulb`). In the Arabic UI the order flips, with سينماكم leading. Widget: `CinemakomLogo`.
+
+**In the app**, draw it with `CinemakomMark` (`lib/app/brand/`). It's a `CustomPaint` over generated paths: sharp at any size, with no SVG package and no image decoding.
+
+**One source for everything.** Run `python3 tool/brand/generate.py` (needs fontTools, rsvg-convert and ImageMagick) and it regenerates every output. **Never edit these by hand:**
+
+| Platform | Output |
+|---|---|
+| Masters | `branding/*.svg`, `branding/store/play-store-512.png` |
+| Android | adaptive icon (Night background, ticket scaled into the 66 dp safe zone), **monochrome** layer (themed icons), legacy mipmaps, Android 12+ splash (`values-v31`) and the older launch background. There is one theme only, so no `values-night` |
+| iOS | the full AppIcon set (opaque, square: iOS rounds it) and LaunchImage on a Night launch screen |
+| Windows | `windows/runner/resources/app_icon.ico`: 16, 24, 32, 48, 64, 128 and 256 px, transparent, no tile |
+| Linux | `linux/packaging/icons/hicolor/**` (16–512 px + scalable SVG), `linux/packaging/io.github.sharon_xa.cinemakom.desktop`, and the window icon `assets/brand/app_icon_256.png` (set in `linux/runner/my_application.cc`) |
+| Flutter | `lib/app/brand/brand_paths.g.dart` |
+
+To change the logo, edit the geometry in `tool/brand/generate.py`, then run it.
