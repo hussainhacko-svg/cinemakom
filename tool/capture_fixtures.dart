@@ -63,17 +63,15 @@ Future<void> main(List<String> args) async {
     'latest_series',
     ApiEndpoints.latestSeries(),
   );
-  await capture('latest_videos_items', ApiEndpoints.latestVideosItems());
   await capture('newly_added', ApiEndpoints.newlyAdded());
   await capture(
-    'catalog_movies_top_rated',
-    ApiEndpoints.catalog(kind: VideoKind.movies, sort: SortOrder.topRated),
+    'catalog_movies_most_viewed',
+    ApiEndpoints.catalog(kind: VideoKind.movies, sort: SortOrder.mostViewed),
   );
   await capture(
     'catalog_series_newest',
-    ApiEndpoints.catalog(kind: VideoKind.series, sort: SortOrder.newest),
+    ApiEndpoints.catalog(kind: VideoKind.series, sort: SortOrder.recentlyAdded),
   );
-  await capture('popular_films', ApiEndpoints.popularFilms());
 
   // Categories and languages.
   await capture('categories', ApiEndpoints.categories());
@@ -127,9 +125,13 @@ Future<void> main(List<String> args) async {
       'related_movie',
       ApiEndpoints.related(movieId, VideoKind.movies),
     );
-    await capture('skip_durations', ApiEndpoints.skipDurations(movieId));
-    await capture('thumbnails', ApiEndpoints.thumbnails(movieId));
-    await capture('parental_level', ApiEndpoints.parentalLevel(movieId));
+    final movieTitle = latestMovies is List && latestMovies.first is Map
+        ? '${(latestMovies.first as Map)['en_title']}'
+        : null;
+    await capture(
+      'recommendations',
+      ApiEndpoints.recommendations(movieId, title: movieTitle),
+    );
 
     final staffId = info is Map
         ? _firstValue(info['actorsInfo'], ['nb', 'id']) ??
@@ -146,21 +148,16 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  // Comments: most titles have none, so look for one that does.
-  final topRated = await client.fetch(
-    ApiEndpoints.catalog(kind: VideoKind.movies, sort: SortOrder.topRated),
+  // Seek previews exist mostly for popular titles.
+  final mostViewed = await client.fetch(
+    ApiEndpoints.catalog(kind: VideoKind.movies, sort: SortOrder.mostViewed),
   );
-  for (final id in [..._ids(topRated), ..._ids(latestMovies)].take(10)) {
-    final comments = await client.fetch(ApiEndpoints.comments(id, limit: 5));
-    if (comments is List && comments.isNotEmpty) {
-      await capture('comments', ApiEndpoints.comments(id, limit: 5));
-      break;
-    }
+  final popularId = _firstValue(mostViewed, ['nb']);
+  if (popularId != null) {
+    await capture('thumbnails', ApiEndpoints.thumbnails(popularId));
   }
-  if (!File('${outDir.path}/comments.json').existsSync()) {
-    stdout.writeln(
-      '- comments                           no title with comments found',
-    );
+  if (movieId != null) {
+    await capture('thumbnails_none', ApiEndpoints.thumbnails(movieId));
   }
 
   // Details and playback, for a series. A series is identified by its first
@@ -193,7 +190,6 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  await capture('collection_ids', ApiEndpoints.collectionIds());
   await capture('faq', ApiEndpoints.faq());
 
   stdout.writeln(

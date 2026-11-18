@@ -26,8 +26,11 @@ class OffsetPage {
 
   final List<MediaItem> items;
 
-  /// The `offset` to request next, when the server sent one.
+  /// The `offset` to request next, or `null` at the end. The server keeps
+  /// returning larger offsets past the end, so a short page ends paging.
   final int? nextOffset;
+
+  bool get hasMore => nextOffset != null;
 }
 
 /// A genre or category.

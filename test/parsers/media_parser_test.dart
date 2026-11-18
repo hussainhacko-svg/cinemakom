@@ -1,5 +1,4 @@
 import 'package:cinemakom/core/network/api_endpoints.dart';
-import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/parsers/media_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,12 +12,13 @@ void main() {
       'latest_movies',
       'latest_series',
       'newly_added',
-      'catalog_movies_top_rated',
+      'catalog_movies_most_viewed',
       'catalog_series_newest',
       'title_search',
       'advanced_search_series',
       'related_movie',
       'videos_by_ids',
+      'recommendations',
       'video_group_page',
     ]) {
       test(name, () {
@@ -44,16 +44,16 @@ void main() {
       }
     });
 
-    test('latest_movies items are movies with years and ratings', () {
+    test('latest_movies items are movies with years', () {
       final items = parseMediaItems(fixture('latest_movies'));
       expect(items.every((i) => i.kind == VideoKind.movies), isTrue);
       expect(items.any((i) => i.year != null), isTrue);
-      expect(items.any((i) => i.rating != null), isTrue);
     });
 
-    test('empty endpoints give empty lists', () {
-      expect(parseMediaItems(fixture('latest_videos_items')), isEmpty);
-      expect(parseMediaItems(fixture('popular_films')), isEmpty);
+    test('recommendations fixture (other service, other wrapper key)', () {
+      final items = parseMediaItems(fixture('recommendations'));
+      expect(items, isNotEmpty);
+      expect(items.every((i) => i.kind != null), isTrue);
     });
   });
 
@@ -73,7 +73,6 @@ void main() {
       expect(item.title.ar, 'فيلم');
       expect(item.hdPosterUrl, 'https://img.example.com/p.jpg');
       expect(item.posterUrl, item.hdPosterUrl);
-      expect(item.rating, 7.5);
       expect(item.kind, VideoKind.movies);
     });
 
@@ -130,6 +129,34 @@ void main() {
       }, fallbackKind: VideoKind.series)!;
       expect(item.title.en, 'Original');
       expect(item.kind, VideoKind.series);
+    });
+
+    test('banners: wide cover as backdrop, relative path as poster', () {
+      final banners = parseBanners(fixture('banners'));
+      expect(banners, isNotEmpty);
+      for (final b in banners) {
+        expect(
+          b.posterUrl,
+          startsWith(
+            '$imageHost'
+            'vascin-',
+          ),
+        );
+        expect(b.backdropUrl, startsWith('https://'));
+        expect(b.backdropUrl, isNot(b.posterUrl));
+        expect(b.hdPosterUrl, isNull);
+      }
+    });
+
+    test('resolveImageUrl', () {
+      expect(
+        resolveImageUrl('vascin-poster-images/a.jpg'),
+        '${imageHost}vascin-poster-images/a.jpg',
+      );
+      expect(resolveImageUrl('/vascin-x/b.png'), '${imageHost}vascin-x/b.png');
+      expect(resolveImageUrl('ABC_poster.jpg'), isNull);
+      expect(resolveImageUrl('defaultImages/loading.gif'), isNull);
+      expect(resolveImageUrl('https://x/y.jpg'), 'https://x/y.jpg');
     });
 
     test('ignores placeholder image paths', () {
@@ -191,10 +218,10 @@ void main() {
   });
 
   group('offset pages', () {
-    test('videos_by_category fixture', () {
+    test('videos_by_category fixture (trimmed to a short page)', () {
       final page = parseOffsetPage(fixture('videos_by_category'));
       expect(page.items, isNotEmpty);
-      expect(page.nextOffset, isNotNull);
+      expect(page.hasMore, isFalse);
     });
 
     test('videos_by_category_and_language fixture', () {
@@ -205,6 +232,31 @@ void main() {
       expect(page.items, isNotEmpty);
     });
 
+    test(
+      'a short or empty page ends paging even if the server sends an offset',
+      () {
+        final full = parseOffsetPage({
+          'info': [
+            for (var i = 1; i <= 30; i++) {'nb': '$i', 'title': 'T'},
+          ],
+          'offset': 30,
+        });
+        expect(full.nextOffset, 30);
+        expect(full.hasMore, isTrue);
+        final short = parseOffsetPage({
+          'info': [
+            {'nb': '1', 'title': 'T'},
+          ],
+          'offset': 60,
+        });
+        expect(short.hasMore, isFalse);
+        expect(
+          parseOffsetPage({'info': [], 'offset': 1000029}).hasMore,
+          isFalse,
+        );
+      },
+    );
+
     test('bare list has no next offset', () {
       final page = parseOffsetPage([
         {'nb': '1', 'title': 'A'},
@@ -212,13 +264,5 @@ void main() {
       expect(page.items, hasLength(1));
       expect(page.nextOffset, isNull);
     });
-  });
-
-  test('sortAndFilterTopRated keeps the Kotlin behavior', () {
-    MediaItem m(String id, double r) => MediaItem(id: id, rating: r);
-    final many = [m('a', 6), m('b', 8), m('c', 7.5), m('d', 9), m('e', 7)];
-    expect(sortAndFilterTopRated(many).map((i) => i.id), ['d', 'b', 'c', 'e']);
-    final few = [m('a', 6), m('b', 8), m('c', 5)];
-    expect(sortAndFilterTopRated(few).map((i) => i.id), ['b', 'a', 'c']);
   });
 }

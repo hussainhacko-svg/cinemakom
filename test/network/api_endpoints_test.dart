@@ -16,6 +16,17 @@ void main() {
     );
   });
 
+  test(
+    'title search percent-encodes the base64 (= and + break the server)',
+    () {
+      final path = ApiEndpoints.titleSearch('the dark knight').path;
+      final segment = path.split('/')[6];
+      expect(segment, endsWith('%3D%3D'));
+      expect(segment, isNot(contains('=')));
+      expect(ApiEndpoints.titleSearch('aa~').path, contains('YWF%2B'));
+    },
+  );
+
   test('advanced search computes the year range instead of hardcoding it', () {
     final q = ApiEndpoints.advancedSearch(
       videoTitle: 'x',
@@ -23,7 +34,6 @@ void main() {
     ).query;
     expect(q['year'], '1900,2031');
     expect(q.containsKey('type'), isFalse);
-    expect(q.containsKey('star'), isFalse);
     expect(q.containsKey('staffTitle'), isFalse);
   });
 
@@ -31,7 +41,6 @@ void main() {
     final q = ApiEndpoints.advancedSearch(
       staffTitle: 'Nolan',
       kind: VideoKind.series,
-      minStars: 7,
       yearFrom: 2000,
       yearTo: 2010,
       page: 2,
@@ -41,7 +50,6 @@ void main() {
       'staffTitle': 'Nolan',
       'type': 'series',
       'year': '2000,2010',
-      'star': 7,
       'page': 2,
     });
   });
@@ -53,10 +61,42 @@ void main() {
     );
   });
 
-  test('kind and sort codes', () {
+  test('kind and sort codes match the live API', () {
     expect(VideoKind.series.code, 2);
-    expect(VideoKind.movies.other, VideoKind.series);
-    expect(SortOrder.topRated.code, 'r_desc');
-    expect(SortOrder.newest.other, SortOrder.topRated);
+    expect(VideoKind.movies.searchType, 'movies');
+    expect(
+      {for (final s in SortOrder.values) s.name: s.code},
+      {
+        'recentlyAdded': 'desc',
+        'oldestAdded': 'asc',
+        'newestRelease': 'r_desc',
+        'mostViewed': 'views_desc',
+      },
+    );
+  });
+
+  test('recommendations POST JSON to the recommendation service', () {
+    final r = ApiEndpoints.recommendations('191463', title: ' Avengers ');
+    expect(r.path, startsWith('https://recommend.shabakaty.com/'));
+    expect(r.method, HttpMethod.post);
+    expect(r.json, {
+      'MovieId': '191463',
+      'MovieName': 'Avengers',
+      'ReProcessIfExpired': true,
+    });
+    expect(
+      ApiEndpoints.recommendations('1').json!.containsKey('MovieName'),
+      isFalse,
+    );
+  });
+
+  test('always the unrestricted parental level', () {
+    expect(ApiEndpoints.level, 0);
+    expect(ApiEndpoints.banners().path, 'banner/level/0');
+  });
+
+  test('no rating filter or rating sort exists', () {
+    expect(SortOrder.values.map((s) => s.code), isNot(contains('stars_desc')));
+    expect(ApiEndpoints.advancedSearch().query.containsKey('star'), isFalse);
   });
 }

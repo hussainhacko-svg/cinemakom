@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/api_providers.dart';
 import '../models/media_details.dart';
 import '../models/media_item.dart';
@@ -19,9 +20,6 @@ class MediaRepository {
   MediaRepository(this._api);
 
   final ApiClient _api;
-
-  /// `getVideosByIds` is sent in chunks of this size.
-  static const int idsPerRequest = 50;
 
   /// `null` when the server has no usable record for [id].
   Future<MediaDetails?> details(String id) async =>
@@ -43,34 +41,54 @@ class MediaRepository {
   Future<List<SubtitleTrack>> subtitles(String id) async =>
       parseSubtitles(await _api.fetch(ApiEndpoints.subtitles(id)));
 
-  /// "More like this".
-  Future<List<MediaItem>> related(String id, VideoKind kind) async =>
-      parseMediaItems(
-        await _api.fetch(ApiEndpoints.related(id, kind)),
-        fallbackKind: kind,
-      );
+  /// "More like this" from the recommendation service (what the website
+  /// uses). Pass [MediaItem.seriesId] for a series. Falls back to the older
+  /// `relatedVideos` endpoint when the service fails or returns nothing.
+  Future<List<MediaItem>> recommendations(MediaItem item) async {
+    try {
+      final recs = parseMediaItems(
+        await _api.fetch(
+          ApiEndpoints.recommendations(item.seriesId, title: item.title.en),
+        ),
+      ).where((r) => r.id != item.seriesId).toList();
+      if (recs.isNotEmpty) return recs;
+    } on ApiException {
+      // Fall through to relatedVideos.
+    }
+    return parseMediaItems(
+      await _api.fetch(
+        ApiEndpoints.related(item.seriesId, item.kind ?? VideoKind.movies),
+      ),
+      fallbackKind: item.kind,
+    );
+  }
 
-  /// Scenes the parental filter skips (not intros: those are in
-  /// [MediaDetails.introRanges]).
-  Future<List<SkipRange>> parentalSkipRanges(String id) async =>
-      parseParentalSkipRanges(await _api.fetch(ApiEndpoints.skipDurations(id)));
+  /// Seek-bar previews, or `null` when the title has none.
+  Future<SeekPreview?> seekPreview(String id) async =>
+      parseSeekPreview(await _api.fetch(ApiEndpoints.thumbnails(id)));
 
   /// Fresh metadata for many titles at once, e.g. to refresh favorites and
-  /// history. Order follows the server's response.
-  Future<List<MediaItem>> byIds(List<String> ids) async {
-    final unique = ids.toSet().toList();
+  /// history, in request order. Non-numeric IDs are dropped (one would empty
+  /// the whole response), duplicates removed, and requests sent in chunks of
+  /// [ApiEndpoints.maxIdsPerRequest]. Unknown IDs are simply missing.
+  Future<List<MediaItem>> byIds(Iterable<String> ids) async {
+    final valid = <String>{
+      for (final raw in ids)
+        if (_numericId.hasMatch(raw.trim())) raw.trim(),
+    }.toList();
     final out = <MediaItem>[];
-    for (var i = 0; i < unique.length; i += idsPerRequest) {
-      final chunk = unique.sublist(
-        i,
-        (i + idsPerRequest).clamp(0, unique.length),
-      );
+    for (var i = 0; i < valid.length; i += ApiEndpoints.maxIdsPerRequest) {
+      final end = (i + ApiEndpoints.maxIdsPerRequest).clamp(0, valid.length);
       out.addAll(
-        parseMediaItems(await _api.fetch(ApiEndpoints.videosByIds(chunk))),
+        parseMediaItems(
+          await _api.fetch(ApiEndpoints.videosByIds(valid.sublist(i, end))),
+        ),
       );
     }
     return out;
   }
+
+  static final _numericId = RegExp(r'^[1-9]\d*$');
 
   /// An actor or director page. `null` when the server has no such person.
   Future<StaffPage?> staff(String staffId, ApiLanguage lang) async =>

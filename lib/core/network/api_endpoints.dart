@@ -1,20 +1,23 @@
 /// Every Cinemana endpoint the app uses, as request builders.
 ///
 /// This file (with `api_client.dart`) is the only place that knows URL paths.
-/// Document any new endpoint in `docs/API.md` in the same change.
+/// Document any new endpoint in `docs/API.md` in the same change. Behavior
+/// notes below were verified against the live API on 2026-11-19.
 library;
 
 import 'dart:convert';
 
 enum HttpMethod { get, post }
 
-/// A request relative to [ApiClient.baseUrl].
+/// A request relative to [ApiClient.baseUrl], or an absolute URL for the
+/// other Shabakaty services.
 class ApiRequest {
   const ApiRequest(
     this.path, {
     this.query = const {},
     this.method = HttpMethod.get,
     this.form,
+    this.json,
   });
 
   final String path;
@@ -24,6 +27,9 @@ class ApiRequest {
   /// `application/x-www-form-urlencoded` body for POST requests.
   final Map<String, String>? form;
 
+  /// JSON body for POST requests.
+  final Map<String, Object?>? json;
+
   @override
   String toString() {
     if (query.isEmpty) return '${method.name.toUpperCase()} $path';
@@ -32,7 +38,7 @@ class ApiRequest {
   }
 }
 
-/// `videoKind` / `kind` / `type` values.
+/// `videoKind` / `kind` / `type` values. Any other code is treated as movies.
 enum VideoKind {
   movies(1, 'movies'),
   series(2, 'series');
@@ -44,30 +50,44 @@ enum VideoKind {
 
   /// String used by `AdvancedSearch?type=`.
   final String searchType;
-
-  VideoKind get other => this == movies ? series : movies;
 }
 
-/// `sortParam` / `orderby` values.
+/// `sortParam` (catalog) and `orderby` (videosByCategory…) values. Unknown
+/// codes silently fall back to [recentlyAdded]. `AdvancedSearch` ignores
+/// sorting entirely. Rating-based sorts (`stars_desc`) exist but are not used:
+/// the app has no ratings (AGENTS.md).
 enum SortOrder {
-  newest('desc'),
-  topRated('r_desc');
+  /// Most recently uploaded first (`desc`). The server default.
+  recentlyAdded('desc'),
+
+  /// Oldest uploads first (`asc`).
+  oldestAdded('asc'),
+
+  /// Newest release year first (`r_desc`). This is *not* "top rated".
+  newestRelease('r_desc'),
+
+  /// Most watched first (`views_desc`).
+  mostViewed('views_desc');
 
   const SortOrder(this.code);
   final String code;
-
-  SortOrder get other => this == newest ? topRated : newest;
 }
 
-/// Language of titles in endpoints that take `lang`.
+/// Language of titles in endpoints that take `lang`. Anything else is
+/// treated as English.
 enum ApiLanguage { ar, en }
 
 abstract final class ApiEndpoints {
-  /// Parental level. Always 0 (public content).
+  /// Parental level. Always 0: the unrestricted level (zero censorship, see
+  /// AGENTS.md). Levels 2 and 3 hide titles.
   static const int level = 0;
+
+  static const String recommendationUrl =
+      'https://recommend.shabakaty.com/api/recommendation/recommend';
 
   // ---- Home and catalog -----------------------------------------------------
 
+  /// Hero banners. Their `imgObjUrl` is a wide image (~2.7:1).
   static ApiRequest banners() => const ApiRequest('banner/level/$level');
 
   static ApiRequest videoGroups(ApiLanguage lang) =>
@@ -98,14 +118,13 @@ abstract final class ApiEndpoints {
         'latestSeries/level/$level/itemsPerPage/$itemsPerPage/page/$page/',
       );
 
-  /// Returned `[]` when tested. Kept for completeness, not used in the UI.
-  static ApiRequest latestVideosItems({int offset = 0}) =>
-      ApiRequest('latestVideosItems/level/$level/offset/$offset/');
+  /// The 12 newest uploads. The `offset` segment is really a count, capped
+  /// at 12.
+  static ApiRequest newlyAdded() =>
+      const ApiRequest('newlyVideosItems/level/$level/offset/12/');
 
-  static ApiRequest newlyAdded({int offset = 12}) =>
-      ApiRequest('newlyVideosItems/level/$level/offset/$offset/');
-
-  /// Main catalog by kind and sort. [page] is 0-based.
+  /// Main catalog by kind and sort. [page] is 0-based. The server caps
+  /// [itemsPerPage] at 99.
   static ApiRequest catalog({
     required VideoKind kind,
     required SortOrder sort,
@@ -115,10 +134,6 @@ abstract final class ApiEndpoints {
     'video/V/2/itemsPerPage/$itemsPerPage/level/$level'
     '/videoKind/${kind.code}/sortParam/${sort.code}/pageNumber/$page',
   );
-
-  /// Returned `[]` for every period when tested. Not used in the UI.
-  static ApiRequest popularFilms({String period = 'M', int page = 0}) =>
-      ApiRequest('popularFilms/kind/$period/level/$level/page/$page');
 
   // ---- Categories and languages ---------------------------------------------
 
@@ -134,9 +149,14 @@ abstract final class ApiEndpoints {
   static ApiRequest categoryLanguages() =>
       const ApiRequest('categoryLangFreqVideo');
 
+  /// Items per page for `videosByCategory…`.
+  static const int categoryPageSize = 30;
+
+  /// [categoryPageSize] items per page. [offset] is an item offset; the
+  /// response's `offset` is the next one (it keeps growing past the end).
   static ApiRequest videosByCategory({
     required String categoryId,
-    SortOrder sort = SortOrder.topRated,
+    SortOrder sort = SortOrder.recentlyAdded,
     VideoKind kind = VideoKind.movies,
     int offset = 0,
   }) => ApiRequest(
@@ -153,7 +173,7 @@ abstract final class ApiEndpoints {
   static ApiRequest videosByCategoryAndLanguage({
     required String categoryId,
     required String languageId,
-    SortOrder sort = SortOrder.topRated,
+    SortOrder sort = SortOrder.recentlyAdded,
     VideoKind kind = VideoKind.movies,
     int offset = 0,
   }) => ApiRequest(
@@ -170,26 +190,26 @@ abstract final class ApiEndpoints {
 
   // ---- Search ---------------------------------------------------------------
 
-  /// Title search. The query is URL-encoded (spaces as `%20`), then base64'd.
+  /// Title search across movies and series.
   static ApiRequest titleSearch(
     String query, {
     int page = 0,
     int itemsPerPage = 30,
-  }) {
-    final b64 = encodeTitleQuery(query);
-    return ApiRequest(
-      'video/V/2/itemsPerPage/$itemsPerPage/video_title_search/$b64'
-      '/itemsPerPage/$itemsPerPage/pageNumber/$page/level/$level',
-    );
-  }
+  }) => ApiRequest(
+    'video/V/2/itemsPerPage/$itemsPerPage'
+    '/video_title_search/${Uri.encodeComponent(encodeTitleQuery(query))}'
+    '/itemsPerPage/$itemsPerPage/pageNumber/$page/level/$level',
+  );
 
-  /// Same encoding as the Kotlin app: `URLEncoder` (with `+` → `%20`), then
-  /// standard base64 without line wrapping.
+  /// URL-encode (spaces as `%20`), then standard base64. The caller must
+  /// percent-encode the result: a raw `=` or `+` in the path makes the server
+  /// answer 400 ("the dark knight", "spider-man").
   static String encodeTitleQuery(String query) =>
       base64.encode(utf8.encode(Uri.encodeComponent(query.trim())));
 
-  /// `AdvancedSearch`. Every filter is optional. The year range defaults to
-  /// 1900 through the current year (computed, never hardcoded).
+  /// `AdvancedSearch`, 12 results per page. Every filter is optional. The
+  /// year range defaults to 1900 through the current year (computed, never
+  /// hardcoded). The server ignores `sort`, so it isn't offered.
   static ApiRequest advancedSearch({
     String? videoTitle,
     String? staffTitle,
@@ -197,8 +217,6 @@ abstract final class ApiEndpoints {
     String? categoryId,
     int? yearFrom,
     int? yearTo,
-    num? minStars,
-    String? sort,
     int page = 0,
     DateTime? now,
   }) {
@@ -212,8 +230,6 @@ abstract final class ApiEndpoints {
         if (kind != null) 'type': kind.searchType,
         if (_has(categoryId)) 'category_id': categoryId!,
         'year': '${yearFrom ?? 1900},$toYear',
-        'star': ?minStars,
-        if (_has(sort)) 'sort': sort!,
         'page': page,
       },
     );
@@ -231,7 +247,7 @@ abstract final class ApiEndpoints {
   static ApiRequest subtitles(String id) =>
       ApiRequest('translationFiles/id/${_seg(id)}');
 
-  /// Every episode of a series.
+  /// Every episode of a series, unsorted.
   static ApiRequest seriesEpisodes(String seriesId) =>
       ApiRequest('videoSeason/id/${_seg(seriesId)}');
 
@@ -239,19 +255,33 @@ abstract final class ApiEndpoints {
   static ApiRequest seriesSeasons(String seriesId) =>
       ApiRequest('videoSeasonNumber/id/${_seg(seriesId)}');
 
+  /// "More like this" from the recommendation service (what the website
+  /// uses): same collection first, then shared cast. No login needed.
+  static ApiRequest recommendations(String id, {String? title}) => ApiRequest(
+    recommendationUrl,
+    method: HttpMethod.post,
+    json: {
+      'MovieId': id,
+      if (_has(title)) 'MovieName': title!.trim(),
+      'ReProcessIfExpired': true,
+    },
+  );
+
+  /// Older "similar titles" endpoint. The website no longer calls it.
   static ApiRequest related(String id, VideoKind kind) =>
       ApiRequest('relatedVideos/id/${_seg(id)}/kind/${kind.code}/level/$level');
 
-  static ApiRequest skipDurations(String id) =>
-      ApiRequest('skippingDurations/id/${_seg(id)}');
-
+  /// Seek-bar preview sprite sheets (not every title has them).
   static ApiRequest thumbnails(String id) =>
       ApiRequest('video_thumbnails/video_id/${_seg(id)}');
 
-  static ApiRequest parentalLevel(String id) =>
-      ApiRequest('checkVideoParentalLevel/id/${_seg(id)}');
+  /// Most IDs `getVideosByIds` accepts; 41 or more answer 400.
+  static const int maxIdsPerRequest = 40;
 
-  /// Several items at once. Body: `ids=[id1, id2, …]`.
+  /// Several items at once. Body: `ids=[id1, id2, …]`. The response keeps
+  /// the request order; unknown numeric IDs are skipped, but a single
+  /// non-numeric ID makes the whole response empty. Send at most
+  /// [maxIdsPerRequest] numeric IDs.
   static ApiRequest videosByIds(List<String> ids) => ApiRequest(
     'getVideosByIds',
     method: HttpMethod.post,
@@ -261,12 +291,6 @@ abstract final class ApiEndpoints {
   static ApiRequest staff(String staffId, ApiLanguage lang) => ApiRequest(
     'staff/actorID/${_seg(staffId)}/lang/${lang.name}/level/$level',
   );
-
-  static ApiRequest comments(String id, {int limit = 20, int offset = 0}) =>
-      ApiRequest('videoComment/id/${_seg(id)}/limit/$limit/offset/$offset');
-
-  /// Returned `[]` when tested. Not used in the UI.
-  static ApiRequest collectionIds() => const ApiRequest('collectionsId/');
 
   static ApiRequest faq() => const ApiRequest('faqQuestion');
 

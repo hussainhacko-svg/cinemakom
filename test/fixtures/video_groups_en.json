@@ -1364,6 +1364,52 @@
       "title": "Featured Series",
       "content": [
         {
+          "nb": "3132824",
+          "ar_title": "الكرامة",
+          "en_title": "Haysiyet",
+          "other_title": "",
+          "stars": "5.2",
+          "mDate": "2026-09-08",
+          "year": "2026",
+          "kind": "2",
+          "season": "1",
+          "img": "345AF3A4-64B8-B303-4F13-7E48C0059321_poster.png",
+          "imgThumb": "A8BFF0A2-B58D-0226-A58F-7EFECB2D529D_poster_thumb.png",
+          "imgMediumThumb": "22997DCF-B37E-9000-E9D8-F83AFB06145D_poster_medium_thumb.png",
+          "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/345AF3A4-64B8-B303-4F13-7E48C0059321_poster.png",
+          "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/A8BFF0A2-B58D-0226-A58F-7EFECB2D529D_poster_thumb.png",
+          "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/22997DCF-B37E-9000-E9D8-F83AFB06145D_poster_medium_thumb.png",
+          "filmRating": "1",
+          "seriesRating": "4",
+          "episodeNummer": "1",
+          "rate": "0",
+          "isSpecial": "1",
+          "itemDate": "2026-09-10 12:30:32",
+          "videoUploadDate": "2026-09-10 09:56:16",
+          "language_lighttigerNb": "7",
+          "trailterFile": null,
+          "imdbUrlRef": "https://www.imdb.com/title/tt44733941",
+          "rootSeries": "0",
+          "arTranslationFile": "",
+          "enTranslationFile": "",
+          "useParentImg": "0",
+          "showComments": "0",
+          "episode_flag": "0000",
+          "trailer": "https://www.youtube.com/watch?v=40MqFXRTFeI",
+          "parent_skipping": "0",
+          "duration": "9469.08",
+          "audioStreamNumber": "0",
+          "replacement": "0",
+          "collectionID": "0",
+          "objectUrlExpiration": "2026-12-09",
+          "categories": [
+            {
+              "en_title": "Drama",
+              "ar_title": "دراما"
+            }
+          ]
+        },
+        {
           "nb": "509668",
           "ar_title": "Hacks",
           "en_title": "Hacks",
@@ -1630,56 +1676,6 @@
             {
               "en_title": "Comedy",
               "ar_title": "كوميدي"
-            }
-          ]
-        },
-        {
-          "nb": "842593",
-          "ar_title": "ملك تولسا",
-          "en_title": "Tulsa King",
-          "other_title": "Kansas City",
-          "stars": "8.1",
-          "mDate": "2022-11-13",
-          "year": "2022",
-          "kind": "2",
-          "season": "1",
-          "img": "C0DD5AB0-A03F-CD38-F9FB-F78F1854A111_poster.jpg",
-          "imgThumb": "D54783D9-66A3-8D2A-6157-4C7DBFB32603_poster_thumb.jpg",
-          "imgMediumThumb": "8E0C3061-9B3E-B13E-FCA4-A6BCFAE12238_poster_medium_thumb.jpg",
-          "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/C0DD5AB0-A03F-CD38-F9FB-F78F1854A111_poster.jpg",
-          "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/D54783D9-66A3-8D2A-6157-4C7DBFB32603_poster_thumb.jpg",
-          "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/8E0C3061-9B3E-B13E-FCA4-A6BCFAE12238_poster_medium_thumb.jpg",
-          "filmRating": "1",
-          "seriesRating": "6",
-          "episodeNummer": "1",
-          "rate": "0",
-          "isSpecial": "1",
-          "itemDate": "2022-11-13 18:34:14",
-          "videoUploadDate": "2024-09-12 09:27:41",
-          "language_lighttigerNb": "7",
-          "trailterFile": null,
-          "imdbUrlRef": "https://www.imdb.com/title/tt16358384/",
-          "rootSeries": "0",
-          "arTranslationFile": "A6E93759-A1DD-3B5A-4AD6-A0BC0BAA704F.srt",
-          "enTranslationFile": "5762F372-DF1F-58A6-FC88-18CC4573B434_en_transfile.srt",
-          "useParentImg": "0",
-          "showComments": "0",
-          "episode_flag": "0000",
-          "trailer": "https://www.youtube.com/watch?v=aaQSScwZPbA&ab_channel=ParamountPlus",
-          "parent_skipping": "1",
-          "duration": "2501.02",
-          "audioStreamNumber": "0",
-          "replacement": "0",
-          "collectionID": "0",
-          "objectUrlExpiration": "2026-11-22",
-          "categories": [
-            {
-              "en_title": "Crime",
-              "ar_title": "جريمة"
-            },
-            {
-              "en_title": "Drama",
-              "ar_title": "دراما"
             }
           ]
         }

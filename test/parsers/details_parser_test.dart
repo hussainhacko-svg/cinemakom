@@ -50,9 +50,6 @@ void main() {
       expect(d.introRanges, [
         const SkipRange(Duration.zero, Duration(milliseconds: 27120)),
       ]);
-      expect(d.parentalSkipRanges, isEmpty);
-      expect(d.commentCount, 0);
-      expect(d.likes, 10);
       expect(d.castable, isTrue);
     });
 
@@ -61,18 +58,6 @@ void main() {
       expect(parseMediaDetails([1, 2]), isNull);
       expect(parseMediaDetails({'en_title': 'no id'}), isNull);
     });
-  });
-
-  test('parental skip ranges pair start/end and drop placeholders', () {
-    expect(
-      parseParentalSkipRanges(fixture('skip_durations')),
-      isA<List<SkipRange>>(),
-    );
-    final ranges = parseParentalSkipRanges({
-      'start': ['828.1', '42.2', '0', 'x'],
-      'end': ['938.1', '43.0', '0.1'],
-    });
-    expect(ranges.map((r) => r.start.inSeconds), [42, 828]);
   });
 
   test('staff credits skip entries without ID or name', () {

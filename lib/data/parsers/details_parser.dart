@@ -20,11 +20,6 @@ MediaDetails? parseMediaDetails(Object? json) {
       trailerUrl: _http(readUrl(map, ['trailer', 'trailerUrl'])),
       imdbUrl: _http(readUrl(map, ['imdbUrlRef', 'imdbUrl'])),
       introRanges: parseIntroRanges(map['introSkipping']),
-      parentalSkipRanges: parseParentalSkipRanges(map['skippingDurations']),
-      views: parseIntLoose(map['videoViewsNumber']),
-      likes: parseIntLoose(map['videoLikesNumber'] ?? map['Likes']),
-      dislikes: parseIntLoose(map['videoDisLikesNumber'] ?? map['DisLikes']),
-      commentCount: parseIntLoose(map['videoCommentsNumber']),
       castable: parseBoolLoose(map['castable']) ?? false,
       subtitles: parseSubtitles(map),
     );
@@ -69,22 +64,6 @@ List<SkipRange> parseIntroRanges(Object? json) {
     final m = asMap(entry);
     if (m == null) continue;
     final r = _range(m['start'], m['end'], minSeconds: 1);
-    if (r != null && !out.contains(r)) out.add(r);
-  }
-  return out..sort((a, b) => a.start.compareTo(b.start));
-}
-
-/// `skippingDurations`: `{start: [s1, s2, …], end: [e1, e2, …]}` in seconds.
-/// Pairs with a length under half a second (such as the common `0`→`0.1`
-/// placeholder) are dropped.
-List<SkipRange> parseParentalSkipRanges(Object? json) {
-  final m = asMap(json);
-  if (m == null) return const [];
-  final starts = asList(m['start']);
-  final ends = asList(m['end']);
-  final out = <SkipRange>[];
-  for (var i = 0; i < starts.length && i < ends.length; i++) {
-    final r = _range(starts[i], ends[i], minSeconds: 0.5);
     if (r != null && !out.contains(r)) out.add(r);
   }
   return out..sort((a, b) => a.start.compareTo(b.start));

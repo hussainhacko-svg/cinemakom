@@ -20,12 +20,8 @@ class CatalogRepository {
 
   final ApiClient _api;
 
-  /// When the first page of a genre has fewer items than this, other kinds and
-  /// sorts are merged in (same as the Kotlin app).
-  static const int genreFallbackThreshold = 6;
-
   Future<List<MediaItem>> banners() async =>
-      parseMediaItems(await _api.fetch(ApiEndpoints.banners()));
+      parseBanners(await _api.fetch(ApiEndpoints.banners()));
 
   Future<List<VideoGroup>> videoGroups(ApiLanguage lang) async =>
       parseVideoGroups(await _api.fetch(ApiEndpoints.videoGroups(lang)));
@@ -54,27 +50,23 @@ class CatalogRepository {
   Future<List<MediaItem>> newlyAdded() async =>
       parseMediaItems(await _api.fetch(ApiEndpoints.newlyAdded()));
 
-  /// The main catalog. For [SortOrder.topRated], a larger page is fetched and
-  /// filtered to titles rated 7+ (same as the Kotlin app).
+  /// The main catalog. [page] is 0-based.
   Future<List<MediaItem>> catalog({
     required VideoKind kind,
     required SortOrder sort,
     int page = 0,
-  }) async {
-    final topRated = sort == SortOrder.topRated;
-    final items = parseMediaItems(
-      await _api.fetch(
-        ApiEndpoints.catalog(
-          kind: kind,
-          sort: sort,
-          page: page,
-          itemsPerPage: topRated ? 60 : 24,
-        ),
+    int itemsPerPage = 30,
+  }) async => parseMediaItems(
+    await _api.fetch(
+      ApiEndpoints.catalog(
+        kind: kind,
+        sort: sort,
+        page: page,
+        itemsPerPage: itemsPerPage,
       ),
-      fallbackKind: kind,
-    );
-    return topRated ? sortAndFilterTopRated(items) : items;
-  }
+    ),
+    fallbackKind: kind,
+  );
 
   /// Genres for the home rows and filters: the main genres first, then the
   /// sub-genres. Falls back to [fallbackGenres] when both requests fail or
@@ -111,54 +103,30 @@ class CatalogRepository {
         await _api.fetch(ApiEndpoints.categoryLanguages()),
       );
 
-  /// One page of a genre. On the first page, when there are fewer than
-  /// [genreFallbackThreshold] items, the other sort and the other kind are
-  /// merged in so the screen isn't nearly empty.
+  /// One page of a genre (30 items). Pass the returned
+  /// [OffsetPage.nextOffset] to load the next page.
   Future<OffsetPage> videosByCategory({
     required String categoryId,
     VideoKind kind = VideoKind.movies,
-    SortOrder sort = SortOrder.topRated,
+    SortOrder sort = SortOrder.recentlyAdded,
     int offset = 0,
-  }) async {
-    Future<OffsetPage> load(VideoKind k, SortOrder s) async => parseOffsetPage(
-      await _api.fetch(
-        ApiEndpoints.videosByCategory(
-          categoryId: categoryId,
-          kind: k,
-          sort: s,
-          offset: offset,
-        ),
+  }) async => parseOffsetPage(
+    await _api.fetch(
+      ApiEndpoints.videosByCategory(
+        categoryId: categoryId,
+        kind: kind,
+        sort: sort,
+        offset: offset,
       ),
-      fallbackKind: k,
-    );
-
-    final primary = await load(kind, sort);
-    if (offset != 0 || primary.items.length >= genreFallbackThreshold) {
-      return primary;
-    }
-    final extras = await Future.wait([
-      _quiet(() => load(kind, sort.other)),
-      _quiet(() => load(kind.other, sort)),
-      _quiet(() => load(kind.other, SortOrder.newest)),
-    ]);
-    final seen = <String>{};
-    return OffsetPage(
-      items: [
-        for (final item in [
-          ...primary.items,
-          for (final page in extras) ...?page?.items,
-        ])
-          if (seen.add(item.id)) item,
-      ],
-      nextOffset: primary.nextOffset,
-    );
-  }
+    ),
+    fallbackKind: kind,
+  );
 
   Future<OffsetPage> videosByCategoryAndLanguage({
     required String categoryId,
     required String languageId,
     VideoKind kind = VideoKind.movies,
-    SortOrder sort = SortOrder.topRated,
+    SortOrder sort = SortOrder.recentlyAdded,
     int offset = 0,
   }) async => parseOffsetPage(
     await _api.fetch(

@@ -155,4 +155,67 @@ void main() {
       );
     });
   });
+
+  test('episodes that all repeat the series name get no title', () {
+    final eps = parseEpisodes(fixture('series_episodes'));
+    expect(eps.every((e) => e.title.isEmpty), isTrue);
+    final distinct = parseEpisodes([
+      {'nb': '1', 'en_title': 'Pilot'},
+      {'nb': '2', 'en_title': 'The Sequel'},
+    ]);
+    expect(distinct.map((e) => e.title.en), ['Pilot', 'The Sequel']);
+  });
+
+  group('seek preview', () {
+    test('fixture sheets are ordered absolute URLs', () {
+      final preview = parseSeekPreview(fixture('thumbnails'))!;
+      expect(preview.sheetUrls, isNotEmpty);
+      expect(preview.sheetUrls.first, endsWith('_0.png'));
+      expect(preview.sheetUrls.every((u) => u.startsWith('https://')), isTrue);
+    });
+
+    test('no previews', () {
+      expect(parseSeekPreview(fixture('thumbnails_none')), isNull);
+      expect(parseSeekPreview(null), isNull);
+    });
+
+    test('relative URLs fall back to the image host, order is respected', () {
+      final preview = parseSeekPreview({
+        'videoThumbnails': [
+          {'url': 'vascin-video-thumbnails/9_1.png', 'order': '1'},
+          {'url': 'vascin-video-thumbnails/9_0.png', 'order': '0'},
+        ],
+      })!;
+      expect(preview.sheetUrls, [
+        'https://cnth2.shabakaty.com/vascin-video-thumbnails/9_0.png',
+        'https://cnth2.shabakaty.com/vascin-video-thumbnails/9_1.png',
+      ]);
+    });
+
+    test('frameAt maps time to sheet and cell (10 s, 10×10 grid)', () {
+      const p = SeekPreview(['a', 'b']);
+      expect(p.frameAt(Duration.zero), (
+        url: 'a',
+        x: 0,
+        y: 0,
+        width: 120,
+        height: 68,
+      ));
+      expect(p.frameAt(const Duration(seconds: 125)), (
+        url: 'a',
+        x: 240,
+        y: 68,
+        width: 120,
+        height: 68,
+      ));
+      expect(p.frameAt(const Duration(seconds: 1000)), (
+        url: 'b',
+        x: 0,
+        y: 0,
+        width: 120,
+        height: 68,
+      ));
+      expect(p.frameAt(const Duration(seconds: 2000)), isNull);
+    });
+  });
 }

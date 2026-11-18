@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:isolate';
 
@@ -10,15 +12,21 @@ import 'api_exception.dart';
 ///
 /// Pure Dart (no Flutter imports) so `tool/capture_fixtures.dart` can use it.
 class ApiClient {
-  ApiClient({Dio? dio, void Function(String message)? log})
-    : _dio = dio ?? createDio(log: log);
+  ApiClient({
+    Dio? dio,
+    void Function(String message)? log,
+    int maxConcurrent = 6,
+    this.retryDelay = const Duration(milliseconds: 500),
+  }) : _dio = dio ?? createDio(log: log),
+       _slots = _Slots(maxConcurrent);
 
   static const String baseUrl = 'https://cinemana.shabakaty.com/api/android/';
 
   static const Duration timeout = Duration(seconds: 30);
 
   /// Sent with **every** request to Cinemana: API calls, images, video streams
-  /// and downloads. Reuse this map, never copy it.
+  /// and downloads. Reuse this map, never copy it. As of 2026-11-19 the
+  /// servers don't require them, but the website sends them, so we do too.
   static const Map<String, String> defaultHeaders = {
     'User-Agent':
         'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
@@ -45,9 +53,42 @@ class ApiClient {
 
   final Dio _dio;
 
+  /// The server slows down badly under many parallel requests (20 at once
+  /// took ~20 s), so at most this many run at a time; the rest wait.
+  final _Slots _slots;
+
+  /// Wait before the single retry of a failed GET.
+  final Duration retryDelay;
+
   /// Sends [request] and returns the decoded JSON (a `List`, `Map`, scalar or
   /// `null` for an empty body). Throws [ApiException] on any failure.
+  ///
+  /// A GET that fails with a network error, a timeout or a 5xx is retried
+  /// once. 4xx answers and POSTs are never retried.
   Future<Object?> fetch(ApiRequest request, {CancelToken? cancelToken}) async {
+    await _slots.acquire();
+    try {
+      try {
+        return await _send(request, cancelToken);
+      } on ApiException catch (e) {
+        if (!_isRetryable(request, e) || cancelToken?.isCancelled == true) {
+          rethrow;
+        }
+        await Future<void>.delayed(retryDelay);
+        return await _send(request, cancelToken);
+      }
+    } finally {
+      _slots.release();
+    }
+  }
+
+  static bool _isRetryable(ApiRequest request, ApiException e) =>
+      request.method == HttpMethod.get &&
+      (e.kind == ApiErrorKind.network ||
+          e.kind == ApiErrorKind.timeout ||
+          (e.kind == ApiErrorKind.http && (e.statusCode ?? 0) >= 500));
+
+  Future<Object?> _send(ApiRequest request, CancelToken? cancelToken) async {
     try {
       final Response<String> response = switch (request.method) {
         HttpMethod.get => await _dio.get<String>(
@@ -58,8 +99,12 @@ class ApiClient {
         HttpMethod.post => await _dio.post<String>(
           request.path,
           queryParameters: request.query,
-          data: request.form,
-          options: Options(contentType: Headers.formUrlEncodedContentType),
+          data: request.json != null ? jsonEncode(request.json) : request.form,
+          options: Options(
+            contentType: request.json != null
+                ? Headers.jsonContentType
+                : Headers.formUrlEncodedContentType,
+          ),
           cancelToken: cancelToken,
         ),
       };
@@ -169,4 +214,30 @@ class _LogInterceptor extends Interceptor {
   }
 
   int _ms(RequestOptions o) => _started.remove(o)?.elapsedMilliseconds ?? -1;
+}
+
+/// A counting semaphore.
+class _Slots {
+  _Slots(this._free) : assert(_free > 0);
+
+  int _free;
+  final _waiting = Queue<Completer<void>>();
+
+  Future<void> acquire() {
+    if (_free > 0) {
+      _free--;
+      return Future.value();
+    }
+    final waiter = Completer<void>();
+    _waiting.add(waiter);
+    return waiter.future;
+  }
+
+  void release() {
+    if (_waiting.isNotEmpty) {
+      _waiting.removeFirst().complete();
+    } else {
+      _free++;
+    }
+  }
 }

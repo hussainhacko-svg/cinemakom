@@ -12,6 +12,9 @@ class FakeApiClient implements ApiClient {
   FakeApiClient(this.routes);
 
   final List<(bool Function(ApiRequest), Object? Function(ApiRequest))> routes;
+
+  @override
+  Duration get retryDelay => Duration.zero;
   final requests = <ApiRequest>[];
 
   /// A route matching requests whose path starts with [prefix].

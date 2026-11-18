@@ -52,11 +52,6 @@ class MediaDetails {
     this.trailerUrl,
     this.imdbUrl,
     this.introRanges = const [],
-    this.parentalSkipRanges = const [],
-    this.views,
-    this.likes,
-    this.dislikes,
-    this.commentCount,
     this.castable = false,
     this.subtitles = const [],
   });
@@ -69,15 +64,9 @@ class MediaDetails {
   final String? trailerUrl;
   final String? imdbUrl;
 
-  /// From `introSkipping`. Use for the "Skip intro" button.
+  /// From `introSkipping`. Use for the "Skip intro" button. Sometimes two
+  /// ranges: a cold open, then the intro.
   final List<SkipRange> introRanges;
-
-  /// From `skippingDurations`: scenes the parental filter skips. Not intros.
-  final List<SkipRange> parentalSkipRanges;
-  final int? views;
-  final int? likes;
-  final int? dislikes;
-  final int? commentCount;
   final bool castable;
   final List<SubtitleTrack> subtitles;
 }

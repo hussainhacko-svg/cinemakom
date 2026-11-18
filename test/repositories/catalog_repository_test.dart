@@ -24,24 +24,19 @@ void main() {
     expect(await repo.faq(), isNotEmpty);
   });
 
-  test('top-rated catalog asks for 60 items and keeps only 7+', () async {
+  test('catalog passes kind, sort and page through', () async {
     final api = F([
       F.path('video/V/2/', [
-        for (final (id, stars) in [
-          ('a', '9'),
-          ('b', '6'),
-          ('c', '8'),
-          ('d', '7.2'),
-          ('e', '7'),
-        ])
-          {'nb': id, 'en_title': id, 'stars': stars},
+        {'nb': 'a', 'en_title': 'A', 'stars': '9'},
       ]),
     ]);
     final items = await CatalogRepository(api)
-        .catalog(kind: VideoKind.movies, sort: SortOrder.topRated);
-    expect(api.requests.single.path, contains('itemsPerPage/60/'));
-    expect(items.map((i) => i.id), ['a', 'c', 'd', 'e']);
-    expect(items.every((i) => i.kind == VideoKind.movies), isTrue);
+        .catalog(kind: VideoKind.series, sort: SortOrder.mostViewed, page: 2);
+    expect(
+      api.requests.single.path,
+      'video/V/2/itemsPerPage/30/level/0/videoKind/2/sortParam/views_desc/pageNumber/2',
+    );
+    expect(items.single.kind, VideoKind.series);
   });
 
   test('genres merge main and sub categories without duplicates', () async {
@@ -68,61 +63,27 @@ void main() {
     expect(await repo.genres(ApiLanguage.ar), fallbackGenres);
   });
 
-  group('videosByCategory', () {
-    Map<String, Object?> page(List<String> ids) => {
-      'info': [
-        for (final id in ids) {'nb': id, 'en_title': id},
-      ],
-      'offset': 30,
-    };
+  test('videosByCategory returns one page and the next offset', () async {
+    final api = F([
+      F.path('videosByCategory', {
+        'info': [
+          for (var i = 1; i <= 30; i++) {'nb': '$i', 'en_title': 'T$i'},
+        ],
+        'offset': 30,
+      }),
+    ]);
+    final page = await CatalogRepository(api)
+        .videosByCategory(categoryId: '84');
+    expect(page.items, hasLength(30));
+    expect(page.items.first.kind, VideoKind.movies);
+    expect(page.nextOffset, 30);
+    expect(api.requests.single.query['orderby'], 'desc');
 
-    test('a full first page is returned as is', () async {
-      final api = F([
-        F.path('videosByCategory', page(['1', '2', '3', '4', '5', '6'])),
-      ]);
-      final result = await CatalogRepository(api)
-          .videosByCategory(categoryId: '84');
-      expect(result.items, hasLength(6));
-      expect(result.nextOffset, 30);
-      expect(api.requests, hasLength(1));
-    });
-
-    test('a short first page merges other sorts and kinds', () async {
-      final api = F([
-        F.path('videosByCategory', (r) {
-          final q = r.query;
-          return switch ((q['videoKind'], q['orderby'])) {
-            (1, 'r_desc') => page(['1', '2']),
-            (1, 'desc') => page(['2', '3']),
-            (2, 'r_desc') => offline,
-            (2, 'desc') => page(['4']),
-            _ => page([]),
-          };
-        }),
-      ]);
-      final result = await CatalogRepository(api)
-          .videosByCategory(categoryId: '84');
-      expect(result.items.map((i) => i.id), ['1', '2', '3', '4']);
-      expect(api.requests, hasLength(4));
-    });
-
-    test('later pages never merge, and the main request can fail', () async {
-      final api = F([
-        F.path('videosByCategory', page(['9'])),
-      ]);
-      final result = await CatalogRepository(api)
-          .videosByCategory(categoryId: '84', offset: 30);
-      expect(result.items, hasLength(1));
-      expect(api.requests, hasLength(1));
-
-      final failing = CatalogRepository(
-        F([F.path('videosByCategory', offline)]),
-      );
-      await expectLater(
-        failing.videosByCategory(categoryId: '84'),
-        throwsA(isA<ApiException>()),
-      );
-    });
+    final failing = CatalogRepository(F([F.path('videosByCategory', offline)]));
+    await expectLater(
+      failing.videosByCategory(categoryId: '84'),
+      throwsA(isA<ApiException>()),
+    );
   });
 
   test('category × language pages use the fixture', () async {

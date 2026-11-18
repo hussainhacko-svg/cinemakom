@@ -128,6 +128,12 @@ List<Episode> parseEpisodes(Object? json) {
               map?.values.whereType<List>().firstOrNull,
         );
   final byId = <String, Episode>{};
+  // Episodes usually repeat the series name as their title. A title shared by
+  // every episode is not an episode title, so it is dropped.
+  final titles = {
+    for (final e in list) firstNonBlank(asMap(e) ?? const {}, ['en_title']),
+  };
+  final sharedTitle = list.length > 1 && titles.length == 1;
   for (var i = 0; i < list.length; i++) {
     try {
       final m = asMap(list[i]);
@@ -154,10 +160,14 @@ List<Episode> parseEpisodes(Object? json) {
         id: id,
         season: (season ?? 1) < 1 ? 1 : (season ?? 1),
         episode: (episode ?? i + 1) < 1 ? i + 1 : (episode ?? i + 1),
-        title: LocalizedText(
-          en: usable(firstNonBlank(m, ['en_title', 'title', 'episodeTitle'])),
-          ar: usable(firstNonBlank(m, ['ar_title'])),
-        ),
+        title: sharedTitle
+            ? const LocalizedText()
+            : LocalizedText(
+                en: usable(
+                  firstNonBlank(m, ['en_title', 'title', 'episodeTitle']),
+                ),
+                ar: usable(firstNonBlank(m, ['ar_title'])),
+              ),
         imageUrl: item?.posterUrl,
         duration: parseSeconds(m['duration']),
       );
@@ -170,6 +180,24 @@ List<Episode> parseEpisodes(Object? json) {
         ? a.season.compareTo(b.season)
         : a.episode.compareTo(b.episode),
   );
+}
+
+/// `video_thumbnails`: `{videoThumbnails: [{sprite_url, url, order}], status}`.
+/// `null` when the title has no previews (`status` 204, empty list).
+SeekPreview? parseSeekPreview(Object? json) {
+  final sheets = <(int, String)>[];
+  for (final entry in asList(asMap(json)?['videoThumbnails'] ?? json)) {
+    final m = asMap(entry);
+    if (m == null) continue;
+    var url = readUrl(m, ['sprite_url']);
+    final relative = readString(m['url']);
+    if (!isHttpUrl(url)) url = resolveImageUrl(relative);
+    if (!isHttpUrl(url)) continue;
+    sheets.add((parseIntLoose(m['order']) ?? sheets.length, url!));
+  }
+  if (sheets.isEmpty) return null;
+  sheets.sort((a, b) => a.$1.compareTo(b.$1));
+  return SeekPreview([for (final s in sheets) s.$2]);
 }
 
 /// `videoSeasonNumber`: `[{season: "1"}, …]` → sorted, unique, ≥ 1.

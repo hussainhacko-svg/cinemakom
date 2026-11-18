@@ -115,7 +115,7 @@ void main() {
     final result = await SearchRepository(
       api,
       clock: () => DateTime(2027),
-    ).advancedSearch(staffName: 'Nolan', kind: VideoKind.movies, minStars: 8);
+    ).advancedSearch(staffName: 'Nolan', kind: VideoKind.movies);
     expect(result.single.kind, VideoKind.movies);
     expect(api.requests.single.query, containsPair('staffTitle', 'Nolan'));
     expect(api.requests.single.query, containsPair('year', '1900,2027'));

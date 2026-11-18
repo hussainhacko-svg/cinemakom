@@ -16,7 +16,6 @@ class MediaItem {
     this.hdPosterUrl,
     this.backdropUrl,
     this.year,
-    this.rating,
     this.kind,
     this.rootSeriesId,
     this.season,
@@ -39,9 +38,6 @@ class MediaItem {
   final String? hdPosterUrl;
   final String? backdropUrl;
   final int? year;
-
-  /// `stars`, 0–10.
-  final double? rating;
   final VideoKind? kind;
 
   /// The first episode's ID when this item is a later episode of a series.
@@ -65,7 +61,6 @@ class MediaItem {
     hdPosterUrl: hdPosterUrl,
     backdropUrl: backdropUrl,
     year: year,
-    rating: rating,
     kind: kind ?? this.kind,
     rootSeriesId: rootSeriesId,
     season: season,
@@ -76,18 +71,4 @@ class MediaItem {
 
   @override
   String toString() => 'MediaItem($id, ${title.en ?? title.ar}, $kind)';
-}
-
-/// Items with a rating of at least [minRating], best first. If fewer than 4
-/// qualify, all items sorted by rating instead (same as the Kotlin app).
-List<MediaItem> sortAndFilterTopRated(
-  List<MediaItem> items, {
-  double minRating = 7.0,
-}) {
-  int byRating(MediaItem a, MediaItem b) =>
-      (b.rating ?? 0).compareTo(a.rating ?? 0);
-  final high = items.where((i) => (i.rating ?? 0) >= minRating).toList()
-    ..sort(byRating);
-  if (high.length >= 4) return high;
-  return [...items]..sort(byRating);
 }

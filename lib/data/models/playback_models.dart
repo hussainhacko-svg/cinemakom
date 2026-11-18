@@ -100,3 +100,39 @@ List<SubtitleTrack> oneTrackPerLanguage(
   }
   return byLanguage.values.toList();
 }
+
+/// One frame of a seek-bar preview: a [width]×[height] cell at ([x], [y])
+/// inside the sprite sheet at [url].
+typedef SeekFrame = ({String url, int x, int y, int width, int height});
+
+/// Seek-bar previews from `video_thumbnails`: PNG sprite sheets, each a
+/// 10×10 grid of 120×68 frames, about one frame every 10 s, in row-major
+/// order. The last sheet is shorter.
+class SeekPreview {
+  const SeekPreview(this.sheetUrls);
+
+  static const int columns = 10;
+  static const int framesPerSheet = 100;
+  static const int frameWidth = 120;
+  static const int frameHeight = 68;
+  static const Duration interval = Duration(seconds: 10);
+
+  /// Sheet URLs in order.
+  final List<String> sheetUrls;
+
+  /// The frame to show at [position], or `null` past the last sheet.
+  SeekFrame? frameAt(Duration position) {
+    if (sheetUrls.isEmpty || position.isNegative) return null;
+    final index = position.inMilliseconds ~/ interval.inMilliseconds;
+    final sheet = index ~/ framesPerSheet;
+    if (sheet >= sheetUrls.length) return null;
+    final cell = index % framesPerSheet;
+    return (
+      url: sheetUrls[sheet],
+      x: (cell % columns) * frameWidth,
+      y: (cell ~/ columns) * frameHeight,
+      width: frameWidth,
+      height: frameHeight,
+    );
+  }
+}

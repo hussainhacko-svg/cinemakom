@@ -94,7 +94,6 @@ MediaItem? parseMediaItem(Object? json, {VideoKind? fallbackKind}) {
       hdPosterUrl: hd ?? card,
       backdropUrl: _httpUrl(map, _backdropKeys) ?? hd ?? card,
       year: _parseYear(map),
-      rating: _parseRating(map),
       kind: kind,
       rootSeriesId: readId(map['rootSeries']),
       season: season,
@@ -191,12 +190,44 @@ List<VideoGroup> parseVideoGroups(Object? json) {
   return groups;
 }
 
+/// `banner/level/0`. Banners are special: `imgObjUrl` is a wide cover
+/// (~2.7:1) and `imgMediumThumbObjUrl` is a relative path to the portrait
+/// poster.
+List<MediaItem> parseBanners(Object? json) => [
+  for (final item in parseMediaItems(json))
+    MediaItem(
+      id: item.id,
+      title: item.title,
+      otherTitle: item.otherTitle,
+      description: item.description,
+      posterUrl: item.posterUrl,
+      hdPosterUrl: null,
+      backdropUrl: item.backdropUrl,
+      year: item.year,
+      kind: item.kind,
+      rootSeriesId: item.rootSeriesId,
+      season: item.season,
+      episode: item.episode,
+      categories: item.categories,
+      duration: item.duration,
+    ),
+];
+
 /// `videosByCategory…`: `{info: [items], offset: 30}`. A bare list also works.
-OffsetPage parseOffsetPage(Object? json, {VideoKind? fallbackKind}) {
+/// Paging ends ([OffsetPage.nextOffset] is `null`) when the server returned
+/// fewer than [pageSize] raw items.
+OffsetPage parseOffsetPage(
+  Object? json, {
+  VideoKind? fallbackKind,
+  int pageSize = 30,
+}) {
   final map = asMap(json);
+  final raw = map?['info'] ?? json;
+  final rawCount = raw is List ? raw.length : 0;
+  final next = map == null ? null : parseIntLoose(map['offset']);
   return OffsetPage(
-    items: parseMediaItems(map?['info'] ?? json, fallbackKind: fallbackKind),
-    nextOffset: map == null ? null : parseIntLoose(map['offset']),
+    items: parseMediaItems(raw, fallbackKind: fallbackKind),
+    nextOffset: rawCount < pageSize ? null : next,
   );
 }
 
@@ -236,12 +267,26 @@ Duration? parseSeconds(Object? value) {
   return Duration(milliseconds: (seconds * 1000).round());
 }
 
+/// Images are on this host. Some fields (banners' `imgMediumThumbObjUrl`)
+/// hold a path like `vascin-poster-images/….jpg` instead of a full URL.
+const imageHost = 'https://cnth2.shabakaty.com/';
+
 String? _httpUrl(JsonMap map, List<String> keys) {
   for (final key in keys) {
-    final s = readString(map[key]);
-    if (s != null && isHttpUrl(unescapeUrl(s))) return unescapeUrl(s);
+    final url = resolveImageUrl(readString(map[key]));
+    if (url != null) return url;
   }
   return null;
+}
+
+/// A full image URL, a `vascin-…` path resolved against [imageHost], or
+/// `null` for anything else (bare file names, placeholders).
+String? resolveImageUrl(String? raw) {
+  if (raw == null) return null;
+  final s = unescapeUrl(raw);
+  if (isHttpUrl(s)) return s;
+  final path = s.startsWith('/') ? s.substring(1) : s;
+  return path.startsWith('vascin-') ? '$imageHost$path' : null;
 }
 
 int? _parseYear(JsonMap map) {
@@ -250,15 +295,6 @@ int? _parseYear(JsonMap map) {
   final m = RegExp(r'(1[89]\d\d|2\d\d\d)')
       .firstMatch(firstNonBlank(map, ['releaseYear', 'mDate']) ?? '');
   return m == null ? null : int.parse(m[1]!);
-}
-
-/// `stars` is the real rating. `rate` is usually "0".
-double? _parseRating(JsonMap map) {
-  for (final key in ['stars', 'imdbRating', 'rating', 'rate']) {
-    final r = parseDoubleLoose(map[key]);
-    if (r != null && r > 0) return r;
-  }
-  return null;
 }
 
 int? _positive(int? n) => (n == null || n <= 0) ? null : n;

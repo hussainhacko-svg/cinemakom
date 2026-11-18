@@ -71,7 +71,6 @@ class SearchRepository {
     String? categoryId,
     int? yearFrom,
     int? yearTo,
-    num? minStars,
     int page = 0,
   }) async => parseMediaItems(
     await _api.fetch(
@@ -82,7 +81,6 @@ class SearchRepository {
         categoryId: categoryId,
         yearFrom: yearFrom,
         yearTo: yearTo,
-        minStars: minStars,
         page: page,
         now: _clock(),
       ),
