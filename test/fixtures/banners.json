@@ -1,0 +1,629 @@
+[
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/DF2C8415-CFBA-F83C-3D0F-E2F20F85FC94_cover.jpg",
+    "imgThumb": "AD90F426-ADF5-9B17-C9B7-981345A21A4B_cover_thumb.jpg",
+    "img": "DF2C8415-CFBA-F83C-3D0F-E2F20F85FC94_cover.jpg",
+    "link": "https://cinemana.shabakaty.com/video/en/399243?showInfo=true",
+    "nb": "399243",
+    "ar_title": "عقيدة",
+    "en_title": "Tenet",
+    "other_title": "",
+    "stars": "7.4",
+    "ar_content": "متسلحًا بكلمة واحدة فقط (عقيدة) ومن أجل بقاء الجنس البشري، يسافر عميل سري في ملحمة جاسوسية عبر الزمن يتم تكليفه فيها بمنع إندلاع الحرب العالمية الثالثة، ليكشف عن حقائق معقدة وغامضة تتجاوز الواقع",
+    "en_content": "Armed with only one word, Tenet, and fighting for the survival of the entire world, a Protagonist journeys through a twilight world of international espionage on a mission that will unfold in something beyond real time.",
+    "mDate": "2020-08-26",
+    "year": "2020",
+    "kind": "1",
+    "season": "0",
+    "filmRating": "3",
+    "seriesRating": "1",
+    "episodeNummer": "0",
+    "rate": "0",
+    "isSpecial": "0",
+    "videoUploadDate": "2026-05-02 10:28:11",
+    "language_lighttigerNb": "7",
+    "trailterFile": null,
+    "rootSeries": "0",
+    "arTranslationFile": "8198CE89-A48E-2A25-11CE-E5F455337CF7_ar_transfile.srt",
+    "enTranslationFile": "A66897DB-5A4B-3B54-4AD5-EFD882C0770B_en_transfile.srt",
+    "useParentImg": "0",
+    "imdbUrlRef": "http://www.imdb.com/title/tt6723592/",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-11-27",
+    "trailer": "https://www.youtube.com/watch?v=L3pk_TBkihU",
+    "parent_skipping": "1",
+    "imgMediumThumbObjUrl": "vascin-poster-images/34FC40D8-A788-90DF-443B-B07F5BFA9836_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795727262&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Action",
+        "ar_title": "اكشن"
+      },
+      {
+        "en_title": "Sci-Fi",
+        "ar_title": "خيال علمي"
+      }
+    ],
+    "directorsInfo": [
+      {
+        "nb": "1085",
+        "name": "Christopher Nolan ",
+        "role": "1",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/0B912796-E2FF-2E6F-D672-D7BD4B3F4D35_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/46F49F8F-2AF9-3CF5-813D-3B52DB10D312_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F807DA69-55DE-9845-8BF5-403C50805226_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED"
+      }
+    ],
+    "actorsInfo": [
+      {
+        "nb": "5218",
+        "name": "Andrew Howard",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/4F63DC4A-76E8-6DE0-7A17-BDDEF03C7C9B_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504423&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/DF5773C3-A995-5009-2118-F0D2FB058E0B_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504423&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/21E1C80E-725D-2989-A026-E10F00F8B88B_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504423&Signature=REDACTED"
+      },
+      {
+        "nb": "16610",
+        "name": "Elizabeth Debicki",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/5B7CB6DA-1655-E31D-8BC2-F8810B189078_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797282130&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B198FBC9-EB03-B952-CF76-293EFB3A337D_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797282130&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B65E48D2-E53A-912A-92A4-25F194FAF7EC_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797282130&Signature=REDACTED"
+      },
+      {
+        "nb": "22081",
+        "name": "John David Washington",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/A45B5EB5-8116-9C81-BEFA-97319FF5B725_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208641&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/DB782C8E-0964-5292-26BB-3B2E84115302_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208641&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/6D1CC632-6A3F-ED2C-77D1-6EF67FB90064_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208641&Signature=REDACTED"
+      },
+      {
+        "nb": "72525",
+        "name": "Jonathan Camp",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/C11D5583-6739-B860-C12B-3D03254B2BFC_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/95C3965F-0D1C-844D-F6BE-1CDC0B48C127_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/C690E588-EB34-269C-B685-27D45ABCB810_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED"
+      },
+      {
+        "nb": "11214",
+        "name": "Martin Donovan",
+        "role": "2",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      },
+      {
+        "nb": "72524",
+        "name": "Rich Ceraulo Ko",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/F3E7F26F-512D-052E-C678-C97AA4CE3937_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/C5C6EB4E-A979-2F35-03CE-454AFB56A280_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/2BA9A10A-5C15-3A34-F49F-5374A9ACCC18_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813645&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "1085",
+        "name": "Christopher Nolan ",
+        "role": "3",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/0B912796-E2FF-2E6F-D672-D7BD4B3F4D35_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/46F49F8F-2AF9-3CF5-813D-3B52DB10D312_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F807DA69-55DE-9845-8BF5-403C50805226_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED"
+      }
+    ]
+  },
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/96498B09-4533-6F3E-B7E4-B44C486DEA5E_cover.jpg",
+    "imgThumb": "8E85C144-AB8C-0EE9-FA34-F873D5481AFC_cover_thumb.jpg",
+    "img": "96498B09-4533-6F3E-B7E4-B44C486DEA5E_cover.jpg",
+    "link": "https://cinemana.shabakaty.com/video/en/797119?lastEpisodeVideoID=3157016",
+    "nb": "797119",
+    "ar_title": "The Lord of the Rings: The Rings of Power",
+    "en_title": "The Lord of the Rings: The Rings of Power",
+    "other_title": "",
+    "stars": "6.9",
+    "ar_content": "تدور أحداث المسلسل خلال العصر الثاني في اﻷرض الوسطى، قبل أحداث (الهوبيت) و(سيد الخواتم) باﻵف السنين، حيث يجب على اﻷبطال مواجهة شر جديد في اﻷرض الوسطى.",
+    "en_content": "Epic drama set thousands of years before the events of J.R.R. Tolkien's 'The Hobbit' and 'The Lord of the Rings' follows an ensemble cast of characters, both familiar and new, as they confront the long-feared re-emergence of evil to...",
+    "mDate": "2022-09-01",
+    "year": "2022",
+    "kind": "2",
+    "season": "1",
+    "filmRating": "1",
+    "seriesRating": "5",
+    "episodeNummer": "1",
+    "rate": "0",
+    "isSpecial": "1",
+    "videoUploadDate": "2024-08-26 03:48:16",
+    "language_lighttigerNb": "7",
+    "trailterFile": null,
+    "rootSeries": "0",
+    "arTranslationFile": "EF92D682-0EB2-0880-5678-E16AF3320936_ar_transfile.srt",
+    "enTranslationFile": "FAF78CC4-FDB7-B5C9-BD77-2BA20620DEE0_en_transfile.srt",
+    "useParentImg": "0",
+    "imdbUrlRef": "https://www.imdb.com/title/tt7631058/",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-12-10",
+    "trailer": "https://www.youtube.com/watch?v=uYnQDsaxHZU&ab_channel=PrimeVideo",
+    "parent_skipping": "1",
+    "imgMediumThumbObjUrl": "vascin-poster-images/B8538DA9-F61F-AE49-7F8F-11BC753ABD28_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796850007&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Action",
+        "ar_title": "اكشن"
+      },
+      {
+        "en_title": "Adventure",
+        "ar_title": "مغامرة"
+      },
+      {
+        "en_title": "Drama",
+        "ar_title": "دراما"
+      },
+      {
+        "en_title": "Fantasy",
+        "ar_title": "خيالي"
+      }
+    ],
+    "directorsInfo": [],
+    "actorsInfo": [
+      {
+        "nb": "150439",
+        "name": "Daniel Weyman",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/9338D23E-A21B-CA19-577C-FEEEFEF6DE65_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/037E90D9-B241-1811-526E-B97F811B81D8_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/A39CFE7F-90F8-B25E-69E0-1F1FF37159F4_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED"
+      },
+      {
+        "nb": "14588",
+        "name": "Dylan Smith",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/5930C839-3775-ABD1-5FFB-BA34F01F7F10_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797196526&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F756DCED-63AD-0425-C90F-20458B9D949D_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797196526&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/222889EB-7A22-7C32-EA83-0AD845FE8DE7_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797196526&Signature=REDACTED"
+      },
+      {
+        "nb": "77434",
+        "name": "Ismael Cruz Cordova",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/7020FFB7-2EA1-2350-D7C8-A99FFFE8519D_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/15145FAF-702E-6FE4-9A2F-05731A287122_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/863C769B-61D6-6D1E-454B-B1B45EE26EAB_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED"
+      },
+      {
+        "nb": "150448",
+        "name": "Lenny Henry",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/8721B7AB-CF74-D584-C5A7-05BF4E40B8C1_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/E6A11A45-662C-AFEC-A12B-C049AD5A86B2_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B5429D34-E48F-C0BF-D07C-A898A285BBB6_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED"
+      },
+      {
+        "nb": "79375",
+        "name": "Markella Kavenagh",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/389C0E5A-426A-4240-FF41-773CDC4175B9_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208496&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B3924ADC-D8D8-1E16-E750-EDE0F5861734_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208496&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/058F9224-36A2-0A94-50CD-A160035FCEE7_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208496&Signature=REDACTED"
+      },
+      {
+        "nb": "150442",
+        "name": "Megan Richards",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/E266E0D3-45F6-7B2B-C608-7F4B3EC13D58_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B38B2B57-CA99-8720-7261-5F3974BB2B22_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/3A8C8BC1-D29F-93CA-6E9C-DA73785BAF82_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937170&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "549",
+        "name": "J.R.R. Tolkien ",
+        "role": "3",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/3E01530E-4CC1-0FB0-76CD-809F70F413B6_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796159123&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F53AD262-744F-CDBB-B88F-EA191DB2C406_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796159123&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/58237174-45D4-906E-1682-6E2D7CD7F709_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796159123&Signature=REDACTED"
+      }
+    ]
+  },
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/561146D2-608A-01F0-DDAC-0DC1EB4423E9_cover.jpg",
+    "imgThumb": "693EFDFE-F5B4-5F34-1EAC-B618D512C72A_cover_thumb.jpg",
+    "img": "561146D2-608A-01F0-DDAC-0DC1EB4423E9_cover.jpg",
+    "link": "https://cinemana.shabakaty.com/video/en/3156005?showInfo=true",
+    "nb": "3156005",
+    "ar_title": "الأوديسة",
+    "en_title": "The Odyssey",
+    "other_title": "",
+    "stars": "8.4",
+    "ar_content": "في إطار من الخيال والمغامرات، يتبع العمل رحلة (أوديسيوس) المحفوفة بالمخاطر في سبيل العودة لوطنه بعد حرب طرواده، حيث يقابل (بوليفيموس)، ويواجه حوريات البحر والساحرات.\n\n",
+    "en_content": "After the Trojan War, Odysseus faces a dangerous voyage back to Ithaca, meeting creatures like the Cyclops Polyphemus, Sirens, and Calypso along the way.",
+    "mDate": "2026-07-17",
+    "year": "2026",
+    "kind": "1",
+    "season": "0",
+    "filmRating": "4",
+    "seriesRating": "1",
+    "episodeNummer": "0",
+    "rate": "0",
+    "isSpecial": "0",
+    "videoUploadDate": "2026-11-17 11:45:30",
+    "language_lighttigerNb": "7",
+    "trailterFile": null,
+    "rootSeries": "0",
+    "arTranslationFile": "E0BA9703-3BEE-3CF3-DC71-C0635FB9C3D2_ar_transfile.srt",
+    "enTranslationFile": "A59B8414-2682-B134-AB9E-A534787BD318_en_transfile.srt",
+    "useParentImg": "0",
+    "imdbUrlRef": "https://www.imdb.com/title/tt33764258",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-12-07",
+    "trailer": "https://www.youtube.com/watch?v=Mzw2ttJD2qQ",
+    "parent_skipping": "1",
+    "imgMediumThumbObjUrl": "vascin-poster-images/D263D257-FEB2-A36B-2CAE-B2B05579101A_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796628448&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Action",
+        "ar_title": "اكشن"
+      },
+      {
+        "en_title": "Adventure",
+        "ar_title": "مغامرة"
+      },
+      {
+        "en_title": "Drama",
+        "ar_title": "دراما"
+      }
+    ],
+    "directorsInfo": [
+      {
+        "nb": "1085",
+        "name": "Christopher Nolan ",
+        "role": "1",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/0B912796-E2FF-2E6F-D672-D7BD4B3F4D35_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/46F49F8F-2AF9-3CF5-813D-3B52DB10D312_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F807DA69-55DE-9845-8BF5-403C50805226_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED"
+      }
+    ],
+    "actorsInfo": [
+      {
+        "nb": "2883",
+        "name": "Anne Hathaway",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/9E3C4B5E-270A-6C28-3218-4113DC8B7A51_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796332342&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/E036FFDD-903A-F13D-1849-12AA9A99ED9A_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796332342&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/D338C329-C34A-2216-1755-B4E00168FE36_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796332342&Signature=REDACTED"
+      },
+      {
+        "nb": "1778",
+        "name": "Matt Damon",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/53334E36-A44D-8719-F0C6-18456CED44C1_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245287&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/2B82F68F-F121-D5DC-D9B9-AFA9DD7348A3_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245287&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/82B8B804-BB04-8A34-2406-5601AB6CB0F8_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245287&Signature=REDACTED"
+      },
+      {
+        "nb": "4821",
+        "name": "Tom Holland",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/E3937481-4567-64CD-9B8C-4BB29571643D_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796505304&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/DF0C953A-E3EB-F6F7-DDBF-76B332409C40_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796505304&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/80A16F88-2F16-DF6E-9BDF-D46A25386E04_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796505304&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "1085",
+        "name": "Christopher Nolan ",
+        "role": "3",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/0B912796-E2FF-2E6F-D672-D7BD4B3F4D35_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/46F49F8F-2AF9-3CF5-813D-3B52DB10D312_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F807DA69-55DE-9845-8BF5-403C50805226_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245953&Signature=REDACTED"
+      },
+      {
+        "nb": "10626",
+        "name": "Homer ",
+        "role": "3",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/9583A828-E783-2BAE-58A8-62E00BBB5714_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937045&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/59CDF40B-2DB8-6B3E-6814-5704CDF821E5_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937045&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F6C19C0A-7D9F-E17B-271B-B7D059EF0E57_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796937045&Signature=REDACTED"
+      }
+    ]
+  },
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/8D512248-06E2-1296-5610-9C42D052F511_cover.jpg",
+    "imgThumb": "DE64A819-42E6-4AD2-868C-C8F1E9674E6D_cover_thumb.jpg",
+    "img": "8D512248-06E2-1296-5610-9C42D052F511_cover.jpg",
+    "link": "https://cinemana.shabakaty.cc/video/ar/3155285?showInfo=true",
+    "nb": "3155285",
+    "ar_title": "تجاره منظمه ( كنز قارون )",
+    "en_title": "Organize isler: karun hazinesi",
+    "other_title": "",
+    "stars": "2.5",
+    "ar_content": "حين تقع خريطة أسطورية في يد محتالٍ ذائع الصيت، يقرر تنفيذ عملية احتيال أخيرة قبل أن يترك هذا العالم خلفه إلى الأبد.",
+    "en_content": "When a mythical map falls into the hands of a legendary scam artist, he decides to pull one last con before leaving it all behind for good.",
+    "mDate": "2026-10-16",
+    "year": "2026",
+    "kind": "2",
+    "season": "1",
+    "filmRating": "1",
+    "seriesRating": "4",
+    "episodeNummer": "1",
+    "rate": "0",
+    "isSpecial": "0",
+    "videoUploadDate": "2026-11-17 10:40:50",
+    "language_lighttigerNb": "25",
+    "trailterFile": null,
+    "rootSeries": "0",
+    "arTranslationFile": "C348F022-0DAE-71F4-0400-30AB37C642D8_ar_transfile.srt",
+    "enTranslationFile": "",
+    "useParentImg": "0",
+    "imdbUrlRef": "https://www.imdb.com/title/tt38732131",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-12-18",
+    "trailer": "https://www.youtube.com/watch?v=9MfFrWahFqw",
+    "parent_skipping": "0",
+    "imgMediumThumbObjUrl": "vascin-poster-images/4E98F91F-037F-B314-35ED-84BF66963695_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797576873&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Comedy",
+        "ar_title": "كوميدي"
+      }
+    ],
+    "directorsInfo": [
+      {
+        "nb": "286739",
+        "name": "Yılmaz Erdoğan",
+        "role": "1",
+        "staff_img": null,
+        "staff_img_thumb": null,
+        "staff_img_medium_thumb": null
+      }
+    ],
+    "actorsInfo": [
+      {
+        "nb": "2618",
+        "name": "Kivanç Tatlitug",
+        "role": "2",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      },
+      {
+        "nb": "260141",
+        "name": "Önem Piskin",
+        "role": "2",
+        "staff_img": null,
+        "staff_img_thumb": null,
+        "staff_img_medium_thumb": null
+      },
+      {
+        "nb": "32328",
+        "name": "Uraz Kaygilaroglu",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/EEB3626E-C396-AAC5-09EB-46349203D9C3_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813900&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/1A8D4335-927C-1811-D8BA-F11A3647AE92_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813900&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/C44C98A2-61FA-FAE5-EDFE-0684F75E8127_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795813900&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "286739",
+        "name": "Yılmaz Erdoğan",
+        "role": "3",
+        "staff_img": null,
+        "staff_img_thumb": null,
+        "staff_img_medium_thumb": null
+      }
+    ]
+  },
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/55294CBD-3D5A-E228-AA1D-8CAE05703EB3_cover.jpg",
+    "imgThumb": "75A6AAB6-59AF-BC1C-52AD-A4B5E91F89B2_cover_thumb.jpg",
+    "img": "55294CBD-3D5A-E228-AA1D-8CAE05703EB3_cover.jpg",
+    "link": "https://cinemana.shabakaty.com/video/en/71027?showInfo=true",
+    "nb": "71027",
+    "ar_title": "ايزيل",
+    "en_title": "ايزيل",
+    "other_title": "Ezel ",
+    "stars": "8.7",
+    "ar_content": "جمعهم الانتقام وستفرقهم الخيانه .. قصه عمر الذي خانته صديقته عائشه واصدقائه وكيف رد الانتقام بين مشاعر الصداقه والحب",
+    "en_content": "جمعهم الانتقام وستفرقهم الخيانه .. قصه عمر الذي خانته صديقته عائشه واصدقائه وكيف رد الانتقام بين مشاعر الصداقه والحب",
+    "mDate": "2009-09-28",
+    "year": "2009",
+    "kind": "2",
+    "season": "1",
+    "filmRating": "1",
+    "seriesRating": "5",
+    "episodeNummer": "1",
+    "rate": "0",
+    "isSpecial": "0",
+    "videoUploadDate": "2026-09-04 09:19:52",
+    "language_lighttigerNb": "9",
+    "trailterFile": "",
+    "rootSeries": "0",
+    "arTranslationFile": "",
+    "enTranslationFile": "",
+    "useParentImg": "0",
+    "imdbUrlRef": "http://www.imdb.com/title/tt1534360/",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-12-16",
+    "trailer": "https://www.youtube.com/watch?v=By9K1QrtBq8",
+    "parent_skipping": "0",
+    "imgMediumThumbObjUrl": "vascin-poster-images/7C5BC15C-FB0D-7365-3405-B5D6B519118A_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797425911&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Arabic dubbed",
+        "ar_title": "مدبلج عربي"
+      },
+      {
+        "en_title": "Crime",
+        "ar_title": "جريمة"
+      },
+      {
+        "en_title": "Drama",
+        "ar_title": "دراما"
+      },
+      {
+        "en_title": "Mystery",
+        "ar_title": "غموض"
+      }
+    ],
+    "directorsInfo": [
+      {
+        "nb": "3665",
+        "name": "Uluç Bayraktar",
+        "role": "1",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      }
+    ],
+    "actorsInfo": [
+      {
+        "nb": "23116",
+        "name": "Bade Iscil",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/290D8CF9-D84D-F85F-5A65-3BAB5F24FF2F_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208414&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/CD3CEA25-F45C-763C-86EC-50519C80D9D1_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208414&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/79276D7E-41AA-4B0C-D2C6-ED3C515819F1_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1795208414&Signature=REDACTED"
+      },
+      {
+        "nb": "9012",
+        "name": "Cansu Dere",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/069FD650-A2E2-8E66-1099-E2A85EDF4571_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763600&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/39CE29ED-9167-BB56-BE38-70C9564F1FB5_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763600&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/8B1CE4BB-7A51-8E8D-D878-0D5B26B9796D_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763600&Signature=REDACTED"
+      },
+      {
+        "nb": "9014",
+        "name": "Kenan Imirzalioglu",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/D996D4C6-02B6-57C6-F561-2E546DEE526D_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763675&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B2B236D5-B719-37F8-6EF8-22FD81DF6EAD_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763675&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/2CC2D675-AC7E-A2A5-3331-F478830811F2_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796763675&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "29445",
+        "name": "Kerem Deren",
+        "role": "3",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      },
+      {
+        "nb": "31092",
+        "name": "Pinar Bulut",
+        "role": "3",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      }
+    ]
+  },
+  {
+    "imgObjUrl": "https://cnth2.shabakaty.com/vascin-cover-images/3D636247-44C3-B718-07AE-7ED97015AADC_cover.jpg",
+    "imgThumb": "FAF03D85-BD5E-E063-2C53-723ADBF37989_cover_thumb.jpg",
+    "img": "3D636247-44C3-B718-07AE-7ED97015AADC_cover.jpg",
+    "link": "https://cinemana.shabakaty.cc/video/ar/3157703?showInfo=false",
+    "nb": "3157703",
+    "ar_title": "الوحش",
+    "en_title": "The Beast",
+    "other_title": "",
+    "stars": "5",
+    "ar_content": "عندما تنسق ميليشيا من مسلحين مجهولي الهوية انقلابًا ضد الولايات المتحدة، يكتشف الرئيس القدرات الهجومية شديدة السرية التي تتمتع بها سيارته، في محاولة لإنقاذ حياته وإنقاذ أمريكا.\n\n",
+    "en_content": "When a militia of unidentified hostiles coordinates a coup against the U.S., the president uncovers the extent of The Beast's highly classified offensive capabilities in order to save his life and America.",
+    "mDate": "2026-10-08",
+    "year": "2026",
+    "kind": "1",
+    "season": "0",
+    "filmRating": "4",
+    "seriesRating": "1",
+    "episodeNummer": "0",
+    "rate": "0",
+    "isSpecial": "0",
+    "videoUploadDate": "2026-11-15 07:45:11",
+    "language_lighttigerNb": "7",
+    "trailterFile": null,
+    "rootSeries": "0",
+    "arTranslationFile": "3759EE1A-63F8-A0E7-D4BA-127E647424FD_ar_transfile.srt",
+    "enTranslationFile": "AC30AFD3-B7D9-A716-BFEB-A7F07F3C8AA0_en_transfile.srt",
+    "useParentImg": "0",
+    "imdbUrlRef": "https://www.imdb.com/title/tt29256561",
+    "showComments": "0",
+    "episode_flag": "0000",
+    "objectUrlExpiration": "2026-12-15",
+    "trailer": "https://www.youtube.com/watch?v=5ckqV_uf8E0",
+    "parent_skipping": "1",
+    "imgMediumThumbObjUrl": "vascin-poster-images/EC21480E-8A60-E47C-05A8-1C2FC08888DC_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797319080&Signature=REDACTED",
+    "categories": [
+      {
+        "en_title": "Action",
+        "ar_title": "اكشن"
+      },
+      {
+        "en_title": "Drama",
+        "ar_title": "دراما"
+      },
+      {
+        "en_title": "Thriller",
+        "ar_title": "اثارة"
+      }
+    ],
+    "directorsInfo": [
+      {
+        "nb": "4760",
+        "name": "Renny Harlin",
+        "role": "1",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/0F39541B-5B46-A6C2-A48E-B02BD3DE60EE_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504531&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/3EF9C446-946D-57AC-0578-ED6E938C00ED_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504531&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/5CE8D321-8198-56BB-DF60-90E4314869C4_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504531&Signature=REDACTED"
+      }
+    ],
+    "actorsInfo": [
+      {
+        "nb": "60156",
+        "name": "Guy Burnet",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/DF8588D2-B1B7-1852-7C5C-D2F833433F60_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797456001&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/0109B8D4-6A9D-5D74-8949-A0A62CE7432C_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797456001&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/C99DDE23-76B4-1ADE-058B-D07DD5E834F5_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797456001&Signature=REDACTED"
+      },
+      {
+        "nb": "4127",
+        "name": "Joel Kinnaman",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/842920E9-8E49-170E-2A73-4462633E464E_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418213&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/D94CA156-5632-3DB7-4317-0158B234BB20_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418213&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/1A71AC9B-7453-B4A0-E168-BC7F3B636300_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418213&Signature=REDACTED"
+      },
+      {
+        "nb": "1319",
+        "name": "Samuel L. Jackson",
+        "role": "2",
+        "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/036BDB75-F52B-A999-C876-FFC3F7546488_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245255&Signature=REDACTED",
+        "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/18F71FB8-F994-6E58-F56C-FE2BAA7AE81B_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245255&Signature=REDACTED",
+        "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/FB58B35C-17DD-2694-6B12-372F32E532E0_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245255&Signature=REDACTED"
+      }
+    ],
+    "writersInfo": [
+      {
+        "nb": "33121",
+        "name": "Umair Aleem",
+        "role": "3",
+        "staff_img": "defaultImages/not_available.jpg",
+        "staff_img_thumb": "defaultImages/not_available.jpg",
+        "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+      }
+    ]
+  }
+]

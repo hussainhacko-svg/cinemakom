@@ -1,0 +1,172 @@
+import 'dart:convert';
+import 'dart:isolate';
+
+import 'package:dio/dio.dart';
+
+import 'api_endpoints.dart';
+import 'api_exception.dart';
+
+/// The single HTTP client for the Cinemana API.
+///
+/// Pure Dart (no Flutter imports) so `tool/capture_fixtures.dart` can use it.
+class ApiClient {
+  ApiClient({Dio? dio, void Function(String message)? log})
+    : _dio = dio ?? createDio(log: log);
+
+  static const String baseUrl = 'https://cinemana.shabakaty.com/api/android/';
+
+  static const Duration timeout = Duration(seconds: 30);
+
+  /// Sent with **every** request to Cinemana: API calls, images, video streams
+  /// and downloads. Reuse this map, never copy it.
+  static const Map<String, String> defaultHeaders = {
+    'User-Agent':
+        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
+        'Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Referer': 'https://cinemana.shabakaty.com/',
+    'Origin': 'https://cinemana.shabakaty.com',
+  };
+
+  static Dio createDio({void Function(String message)? log}) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: timeout,
+        sendTimeout: timeout,
+        receiveTimeout: timeout,
+        headers: defaultHeaders,
+        // Decode JSON ourselves: the server's content types are unreliable.
+        responseType: ResponseType.plain,
+      ),
+    );
+    if (log != null) dio.interceptors.add(_LogInterceptor(log));
+    return dio;
+  }
+
+  final Dio _dio;
+
+  /// Sends [request] and returns the decoded JSON (a `List`, `Map`, scalar or
+  /// `null` for an empty body). Throws [ApiException] on any failure.
+  Future<Object?> fetch(ApiRequest request, {CancelToken? cancelToken}) async {
+    try {
+      final Response<String> response = switch (request.method) {
+        HttpMethod.get => await _dio.get<String>(
+          request.path,
+          queryParameters: request.query,
+          cancelToken: cancelToken,
+        ),
+        HttpMethod.post => await _dio.post<String>(
+          request.path,
+          queryParameters: request.query,
+          data: request.form,
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+          cancelToken: cancelToken,
+        ),
+      };
+      return await decodeBodyAsync(response.data, path: request.path);
+    } on DioException catch (e) {
+      throw _mapDioError(e, request.path);
+    }
+  }
+
+  /// Bodies above this size are decoded on a background isolate.
+  static const int isolateThreshold = 50 * 1024;
+
+  /// [decodeBody], on a background isolate for large bodies.
+  static Future<Object?> decodeBodyAsync(String? body, {String? path}) async {
+    if (body == null || body.length < isolateThreshold) {
+      return decodeBody(body, path: path);
+    }
+    return Isolate.run(() => decodeBody(body, path: path));
+  }
+
+  /// Decodes a raw body. Empty bodies become `null`.
+  static Object? decodeBody(String? body, {String? path}) {
+    final text = body?.trim() ?? '';
+    if (text.isEmpty) return null;
+    try {
+      return jsonDecode(text);
+    } on FormatException catch (e) {
+      throw ApiException(
+        ApiErrorKind.invalidResponse,
+        message: e.message,
+        path: path,
+      );
+    }
+  }
+
+  static ApiException _mapDioError(DioException e, String path) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
+        return ApiException(ApiErrorKind.timeout, path: path);
+      case DioExceptionType.cancel:
+        return ApiException(ApiErrorKind.cancelled, path: path);
+      case DioExceptionType.badResponse:
+        return ApiException(
+          ApiErrorKind.http,
+          statusCode: e.response?.statusCode,
+          message: _serverMessage(e.response?.data),
+          path: path,
+        );
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.connectionError:
+      case DioExceptionType.unknown:
+        return ApiException(
+          ApiErrorKind.network,
+          message: e.message ?? e.error?.toString(),
+          path: path,
+        );
+    }
+  }
+
+  /// Errors are usually HTTP 400 with `{msg}`.
+  static String? _serverMessage(Object? data) {
+    if (data is! String || data.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(data);
+      if (decoded is Map && decoded['msg'] != null) {
+        return decoded['msg'].toString();
+      }
+    } on FormatException {
+      // Not JSON. Fall through to the raw text.
+    }
+    return data.length > 200 ? data.substring(0, 200) : data;
+  }
+}
+
+class _LogInterceptor extends Interceptor {
+  _LogInterceptor(this._log);
+
+  final void Function(String) _log;
+  final _started = <RequestOptions, Stopwatch>{};
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    _started[options] = Stopwatch()..start();
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    _log(
+      '[api] ${response.statusCode} ${response.requestOptions.method} '
+      '${response.requestOptions.uri} (${_ms(response.requestOptions)} ms)',
+    );
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _log(
+      '[api] ERROR ${err.type.name} ${err.response?.statusCode ?? ''} '
+      '${err.requestOptions.method} ${err.requestOptions.uri} '
+      '(${_ms(err.requestOptions)} ms)',
+    );
+    handler.next(err);
+  }
+
+  int _ms(RequestOptions o) => _started.remove(o)?.elapsedMilliseconds ?? -1;
+}

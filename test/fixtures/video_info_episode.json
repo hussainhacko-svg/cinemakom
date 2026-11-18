@@ -1,0 +1,174 @@
+{
+  "nb": "4401",
+  "en_title": "Friends",
+  "ar_title": "Friends",
+  "other_title": "",
+  "stars": "8.8",
+  "enTranslationFile": "BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt",
+  "arTranslationFile": "40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt",
+  "fileFile": "34B97A1C-76F6-8922-7CFA-952B6C27D504_video.mkv",
+  "ar_content": "مسلسل كوميدي شهير يتناول مغامرات ستّة أصدقاء في العشرينيّات من عمرهم وهم يواجهون صعوبات العمل والحياة والحب في \"مانهاتن\" في التسعينيّات.\n\n",
+  "en_content": "Follows the personal and professional lives of six twenty to thirty-something-year-old friends living in Manhattan.",
+  "mDate": "1995-09-21",
+  "year": "1995",
+  "kind": "2",
+  "season": "2",
+  "img": "39D64597-247F-0A9F-36E9-454CD6F0DA6F_poster.jpg",
+  "imgThumb": "ED1F6BD5-1F76-6292-719F-62333F80F5BC_poster_thumb.jpg",
+  "imgMediumThumb": "EDA30CB5-61CB-E26E-7419-162A4D60BD81_poster_medium_thumb.jpg",
+  "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/39D64597-247F-0A9F-36E9-454CD6F0DA6F_poster.jpg",
+  "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/EDA30CB5-61CB-E26E-7419-162A4D60BD81_poster_medium_thumb.jpg",
+  "filmRating": "1",
+  "seriesRating": "4",
+  "episodeNummer": "1",
+  "rate": "0",
+  "isSpecial": "0",
+  "itemDate": "2015-03-01 00:00:00",
+  "duration": "1331.79",
+  "imdbUrlRef": "https://www.imdb.com/title/tt0108778/",
+  "rootSeries": "4328",
+  "useParentImg": "0",
+  "spTranslationFile": "",
+  "showComments": false,
+  "episode_flag": "0000",
+  "trailer": "https://www.youtube.com/watch?v=Yjkya4ewf48&ab_channel=FriendsReunionHD",
+  "audioStreamNumber": "0",
+  "parent_skipping": "1",
+  "collectionID": "0",
+  "isDeleted": "0",
+  "Likes": "1006",
+  "DisLikes": "37",
+  "CACHE_SHORT": null,
+  "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/ED1F6BD5-1F76-6292-719F-62333F80F5BC_poster_thumb.jpg",
+  "skippingDurations": {
+    "start": [
+      "42.211643",
+      "55.59306"
+    ],
+    "end": [
+      "43.01835",
+      "65.646806"
+    ]
+  },
+  "ratingImg": "https://cinemana.shabakaty.com/assetsUI/img/seriesRating/TV-PG.png",
+  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED",
+  "enTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED",
+  "translations": [
+    {
+      "id": 1,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED"
+    },
+    {
+      "id": 2,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED"
+    },
+    {
+      "id": 3,
+      "name": "english",
+      "type": "en",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED"
+    },
+    {
+      "id": 4,
+      "name": "english",
+      "type": "en",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797626579&Signature=REDACTED"
+    }
+  ],
+  "hasIntroSkipping": true,
+  "introSkipping": [
+    {
+      "start": "0",
+      "end": "47.135855",
+      "control_level": "3"
+    }
+  ],
+  "categories": [
+    {
+      "en_title": "Comedy",
+      "ar_title": "كوميدي"
+    },
+    {
+      "en_title": "Romance",
+      "ar_title": "رومانسي"
+    }
+  ],
+  "videoLikesNumber": "1006",
+  "videoDisLikesNumber": "37",
+  "videoLanguages": {
+    "en_title": "English",
+    "ar_title": "الإنجليزية"
+  },
+  "videoCommentsNumber": 0,
+  "videoViewsNumber": "0",
+  "directorsInfo": [],
+  "actorsInfo": [
+    {
+      "nb": "627",
+      "name": "Jennifer Aniston",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/611571A5-83E1-770E-018C-59F13D4AC304_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245552&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/38E4E0FF-ECBD-B88B-2D19-270C91BFF081_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245552&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/6AAE4FB7-8BF3-C0DB-43C0-AB1662EA1EAD_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245552&Signature=REDACTED"
+    },
+    {
+      "nb": "2283",
+      "name": "Courteney Cox",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/3A81B45D-20E1-7BC9-02F4-3A6F003D5B0E_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796331674&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/EF2CCBBC-784F-D82F-1844-D144515007D9_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796331674&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/F5674C49-AE59-2212-069C-9BFCAA1A2490_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796331674&Signature=REDACTED"
+    },
+    {
+      "nb": "4178",
+      "name": "Lisa Kudrow",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/E3B9419F-5E9F-8C09-BA03-A9D3281D6BF4_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/69E8FD38-0698-1AC0-3735-35AD200E343A_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/2707F654-912A-6B3F-FA84-2117385D622D_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED"
+    },
+    {
+      "nb": "4179",
+      "name": "Matt LeBlanc",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/C5524DE9-D506-9ECD-3075-AFEE2C8F302B_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/DE210E18-C709-38C9-90E4-AE4E3BD3FD60_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/44D57F90-703B-61D2-9E4D-E5C1E006AFD2_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED"
+    },
+    {
+      "nb": "3616",
+      "name": "Matthew Perry",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/F9BB4962-A1D1-A4E7-B0E7-569C6E100B11_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/E18A8ECD-F004-4AFA-AF03-761E4B7426E8_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/A5097DAB-3E8A-B7D4-9582-0DD6BAC1AD07_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED"
+    },
+    {
+      "nb": "975",
+      "name": "David Schwimmer",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/7F66F9C3-94E1-F191-8798-9524ACBCE65E_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245230&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/814C92B6-E56E-3AC1-76EF-5CAE6D9B9F38_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245230&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/20B67B5C-3290-0824-8A99-5D5C4CEF630B_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245230&Signature=REDACTED"
+    }
+  ],
+  "writersInfo": [
+    {
+      "nb": "4180",
+      "name": "David Crane",
+      "role": "3",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/E332C48E-48E0-6A3F-C8AF-3B296DA1A7E8_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/31715085-1831-8ADD-BCF9-DE418E287D58_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/65AE7128-5B3A-1ED1-C07D-2F36BA310D46_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796418009&Signature=REDACTED"
+    }
+  ],
+  "castable": "true"
+}

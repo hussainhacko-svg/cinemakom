@@ -1,0 +1,111 @@
+{
+  "title": "Gregory Hines",
+  "imgObjUrl": "https://cnth2.shabakaty.com/vascin-staff-poster/4450FC38-645D-36B5-6A3D-995516769182_poster.jpg",
+  "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-staff-poster/B326CFB9-AE7B-1545-40F2-0EC71FA69F48_poster_thumb.jpg",
+  "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-staff-poster/481A94A1-4F93-4BDB-7CC0-5158FC3C3D96_poster_medium_thumb.jpg",
+  "role": "Actor",
+  "items": [
+    {
+      "nb": "3119279",
+      "en_title": "Eve of Destruction",
+      "ar_title": "حوّاء المدمّرة",
+      "other_title": "",
+      "stars": "5",
+      "ar_content": "فيلم خيال علمي وأكشن أمريكي عن روبوتة أنثى متطورة تُدعى Eve VIII، تفقد السيطرة وتتحول إلى آلة قتل، بينما يلاحقها ضابط متخصص لإيقافها. يشبه The Terminator كثيرًا، لكن المدمّرة فيه امرأة.",
+      "en_content": "Eve is a robot, modelled on \"her\" creator. Eve's armoury includes a nuclear bomb, which for unexplained reasons is on-board during Eve's testing. When things go wrong during the tests, Eve is lost in the big city. Enter the rescue team, which includes the real (human) Eve. They must find and disarm her before she goes \"bang\". Eve is programmed to protect herself at all costs, so when she runs into a problem, she resorts to her super strength; hence the destruction.",
+      "mDate": "1991-01-18",
+      "year": "1991",
+      "kind": "1",
+      "season": "0",
+      "img": "69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+      "imgThumb": "877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+      "imgMediumThumb": "4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+      "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+      "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+      "filmRating": "4",
+      "seriesRating": "1",
+      "episodeNummer": "0",
+      "rate": "0",
+      "isSpecial": "0",
+      "itemDate": "2026-11-16 14:05:55",
+      "duration": "6010.03",
+      "imdbUrlRef": "https://www.imdb.com/title/tt0101831",
+      "rootSeries": "0",
+      "useParentImg": "0",
+      "spTranslationFile": "",
+      "showComments": "0",
+      "episode_flag": "0000",
+      "trailer": "https://www.youtube.com/watch?v=les7e-vP1iQ",
+      "audioStreamNumber": "0",
+      "parent_skipping": "1",
+      "collectionID": "0",
+      "isDeleted": "0",
+      "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+      "categories": [
+        {
+          "en_title": "Action",
+          "ar_title": "اكشن"
+        },
+        {
+          "en_title": "Fantasy",
+          "ar_title": "خيالي"
+        },
+        {
+          "en_title": "Sci-Fi",
+          "ar_title": "خيال علمي"
+        }
+      ]
+    },
+    {
+      "nb": "944219",
+      "en_title": "History of the World: Part I",
+      "ar_title": "History of the World: Part I",
+      "other_title": "",
+      "stars": "6.8",
+      "ar_content": "سلسلة من القصص الهزلية، التي تشرح تاريخ البشرية، ابتداءً من فجر التاريخ، مرورًا بالعصر الحجري، ومحاكم التفتيش الإسبانية، وانتهاءً بالمستقبل",
+      "en_content": "Mel Brooks brings his one-of-a-kind comic touch to the history of mankind covering events from the Old Testament to the French Revolution in a series of episodic comedy vignettes.",
+      "mDate": "1981-06-12",
+      "year": "1981",
+      "kind": "1",
+      "season": "0",
+      "img": "C6B9A725-1C97-9086-56C3-EABCBADBB56E_poster.jpg",
+      "imgThumb": "DAFB9136-647A-29B6-4956-1957A51FA03D_poster_thumb.jpg",
+      "imgMediumThumb": "306C32DF-12BB-2D46-985F-680C43A7E06E_poster_medium_thumb.jpg",
+      "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/C6B9A725-1C97-9086-56C3-EABCBADBB56E_poster.jpg",
+      "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/306C32DF-12BB-2D46-985F-680C43A7E06E_poster_medium_thumb.jpg",
+      "filmRating": "4",
+      "seriesRating": "1",
+      "episodeNummer": "0",
+      "rate": "0",
+      "isSpecial": "0",
+      "itemDate": "2023-04-21 00:50:17",
+      "duration": "5536.54",
+      "imdbUrlRef": "https://www.imdb.com/title/tt0082517/",
+      "rootSeries": "0",
+      "useParentImg": "0",
+      "spTranslationFile": "",
+      "showComments": "0",
+      "episode_flag": "0000",
+      "trailer": "https://www.imdb.com/video/vi2343371033",
+      "audioStreamNumber": "0",
+      "parent_skipping": "1",
+      "collectionID": "0",
+      "isDeleted": "0",
+      "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/DAFB9136-647A-29B6-4956-1957A51FA03D_poster_thumb.jpg",
+      "categories": [
+        {
+          "en_title": "Comedy",
+          "ar_title": "كوميدي"
+        },
+        {
+          "en_title": "History",
+          "ar_title": "تاريخي"
+        },
+        {
+          "en_title": "Musical",
+          "ar_title": "غنائي"
+        }
+      ]
+    }
+  ]
+}

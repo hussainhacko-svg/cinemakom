@@ -1,0 +1,169 @@
+{
+  "nb": "3119279",
+  "en_title": "Eve of Destruction",
+  "ar_title": "حوّاء المدمّرة",
+  "other_title": "",
+  "stars": "5",
+  "enTranslationFile": "FD4F1B84-2176-7731-858D-81B1A0D802F1_en_transfile.srt",
+  "arTranslationFile": "915E507A-F719-4156-56D5-3DF1F6406C24_ar_transfile.srt",
+  "fileFile": "46E92CBC-B51A-CDF0-4B9F-564699607A57_video.mkv",
+  "ar_content": "فيلم خيال علمي وأكشن أمريكي عن روبوتة أنثى متطورة تُدعى Eve VIII، تفقد السيطرة وتتحول إلى آلة قتل، بينما يلاحقها ضابط متخصص لإيقافها. يشبه The Terminator كثيرًا، لكن المدمّرة فيه امرأة.",
+  "en_content": "Eve is a robot, modelled on \"her\" creator. Eve's armoury includes a nuclear bomb, which for unexplained reasons is on-board during Eve's testing. When things go wrong during the tests, Eve is lost in the big city. Enter the rescue team, which includes the real (human) Eve. They must find and disarm her before she goes \"bang\". Eve is programmed to protect herself at all costs, so when she runs into a problem, she resorts to her super strength; hence the destruction.",
+  "mDate": "1991-01-18",
+  "year": "1991",
+  "kind": "1",
+  "season": "0",
+  "img": "69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+  "imgThumb": "877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+  "imgMediumThumb": "4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+  "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+  "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+  "filmRating": "4",
+  "seriesRating": "1",
+  "episodeNummer": "0",
+  "rate": "0",
+  "isSpecial": "0",
+  "itemDate": "2026-11-16 14:05:55",
+  "duration": "6010.03",
+  "imdbUrlRef": "https://www.imdb.com/title/tt0101831",
+  "rootSeries": "0",
+  "useParentImg": "0",
+  "spTranslationFile": "",
+  "showComments": false,
+  "episode_flag": "0000",
+  "trailer": "https://www.youtube.com/watch?v=les7e-vP1iQ",
+  "audioStreamNumber": "0",
+  "parent_skipping": "1",
+  "collectionID": "0",
+  "isDeleted": "0",
+  "Likes": "10",
+  "DisLikes": "8",
+  "CACHE_SHORT": null,
+  "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+  "skippingDurations": {
+    "start": [
+      "0"
+    ],
+    "end": [
+      "0.1"
+    ]
+  },
+  "ratingImg": "https://cinemana.shabakaty.com/assetsUI/img/Ratings/R.png",
+  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/915E507A-F719-4156-56D5-3DF1F6406C24_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED",
+  "enTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/FD4F1B84-2176-7731-858D-81B1A0D802F1_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED",
+  "translations": [
+    {
+      "id": 1,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/915E507A-F719-4156-56D5-3DF1F6406C24_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED"
+    },
+    {
+      "id": 2,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/915E507A-F719-4156-56D5-3DF1F6406C24_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED"
+    },
+    {
+      "id": 3,
+      "name": "english",
+      "type": "en",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/FD4F1B84-2176-7731-858D-81B1A0D802F1_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED"
+    },
+    {
+      "id": 4,
+      "name": "english",
+      "type": "en",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/FD4F1B84-2176-7731-858D-81B1A0D802F1_en_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797628218&Signature=REDACTED"
+    }
+  ],
+  "hasIntroSkipping": true,
+  "introSkipping": [
+    {
+      "start": "0",
+      "end": "27.120822",
+      "control_level": "3"
+    }
+  ],
+  "categories": [
+    {
+      "en_title": "Action",
+      "ar_title": "اكشن"
+    },
+    {
+      "en_title": "Fantasy",
+      "ar_title": "خيالي"
+    },
+    {
+      "en_title": "Sci-Fi",
+      "ar_title": "خيال علمي"
+    }
+  ],
+  "videoLikesNumber": "10",
+  "videoDisLikesNumber": "8",
+  "videoLanguages": {
+    "en_title": "English",
+    "ar_title": "الإنجليزية"
+  },
+  "videoCommentsNumber": 0,
+  "videoViewsNumber": "0",
+  "directorsInfo": [
+    {
+      "nb": "283313",
+      "name": "Duncan Gibbins",
+      "role": "1",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    }
+  ],
+  "actorsInfo": [
+    {
+      "nb": "179753",
+      "name": "Gregory Hines",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/4450FC38-645D-36B5-6A3D-995516769182_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796079951&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/B326CFB9-AE7B-1545-40F2-0EC71FA69F48_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796079951&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/481A94A1-4F93-4BDB-7CC0-5158FC3C3D96_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796079951&Signature=REDACTED"
+    },
+    {
+      "nb": "279569",
+      "name": "Michael Greene",
+      "role": "2",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    },
+    {
+      "nb": "159781",
+      "name": "Renée Soutendijk",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/F29C1FD1-02A6-821E-84E2-AC7C84F166BA_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797627957&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/E5432077-3A7D-037E-C88C-42F8272CE3E0_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797627957&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/9761F4AA-A5C6-9211-7364-871BCCCB3E67_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797627957&Signature=REDACTED"
+    }
+  ],
+  "writersInfo": [
+    {
+      "nb": "283313",
+      "name": "Duncan Gibbins",
+      "role": "3",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    },
+    {
+      "nb": "283316",
+      "name": "Yale Udoff",
+      "role": "3",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    }
+  ],
+  "castable": "true"
+}

@@ -1,0 +1,138 @@
+[
+  {
+    "nb": "149",
+    "ar_title": "Program",
+    "en_title": "Program",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": [
+      {
+        "catNb": "149",
+        "langFreq": "",
+        "lang_ar_title": "العربية",
+        "lang_en_title": "Arabic",
+        "langNb": "9",
+        "langFreqSeries": "2"
+      },
+      {
+        "catNb": "149",
+        "langFreq": "",
+        "lang_ar_title": "اليابانية",
+        "lang_en_title": "Japanese",
+        "langNb": "22",
+        "langFreqSeries": "1"
+      },
+      {
+        "catNb": "149",
+        "langFreq": "",
+        "lang_ar_title": "الكورية",
+        "lang_en_title": "Korean",
+        "langNb": "23",
+        "langFreqSeries": "3"
+      }
+    ]
+  },
+  {
+    "nb": "152",
+    "ar_title": "Religious",
+    "en_title": "Religious",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": []
+  },
+  {
+    "nb": "155",
+    "ar_title": "Biopic series",
+    "en_title": "Biopic series",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": []
+  },
+  {
+    "nb": "158",
+    "ar_title": "dialogue",
+    "en_title": "dialogue",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": []
+  },
+  {
+    "nb": "161",
+    "ar_title": "Entertaining",
+    "en_title": "Entertaining",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": []
+  },
+  {
+    "nb": "164",
+    "ar_title": "bollywood",
+    "en_title": "bollywood",
+    "description": null,
+    "porder": "0",
+    "updateDateTime": "0",
+    "img": null,
+    "imgThumb": null,
+    "imgMediumThumb": null,
+    "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+    "objectUrlExpiration": null,
+    "sort": "0",
+    "langArray": [
+      {
+        "catNb": "164",
+        "langFreq": "",
+        "lang_ar_title": "الهندية",
+        "lang_en_title": "Hindi",
+        "langNb": "10",
+        "langFreqSeries": "1"
+      }
+    ]
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "mp4-240",
+    "resolution": "240p",
+    "container": "mp4",
+    "transcoddedFileName": "1147DDF3-6533-D9C7-73D8-4D0D725847D4_video.mp4",
+    "videoUrl": "https://cdn.shabakaty.com/vascin21-mp4/1147DDF3-6533-D9C7-73D8-4D0D725847D4_video.mp4?response-content-disposition=attachment%3B%20filename%3D%22video.mp4%22&AWSAccessKeyId=REDACTED&Expires=1795381227&Signature=REDACTED"
+  },
+  {
+    "name": "mp4-360",
+    "resolution": "360p",
+    "container": "mp4",
+    "transcoddedFileName": "A0280375-4D02-64EA-EB19-64680CA95C23_video.mp4",
+    "videoUrl": "https://cdn.shabakaty.com/vascin21-mp4/A0280375-4D02-64EA-EB19-64680CA95C23_video.mp4?response-content-disposition=attachment%3B%20filename%3D%22video.mp4%22&AWSAccessKeyId=REDACTED&Expires=1795381227&Signature=REDACTED"
+  },
+  {
+    "name": "m480",
+    "resolution": "480p",
+    "container": "mp4",
+    "transcoddedFileName": "8B9AE16A-26C0-B810-B7EE-C4BA6E04070D_video.mp4",
+    "videoUrl": "https://cdn.shabakaty.com/vascin21-mp4/8B9AE16A-26C0-B810-B7EE-C4BA6E04070D_video.mp4?response-content-disposition=attachment%3B%20filename%3D%22video.mp4%22&AWSAccessKeyId=REDACTED&Expires=1795468530&Signature=REDACTED"
+  },
+  {
+    "name": "mp4-720",
+    "resolution": "720p",
+    "container": "mp4",
+    "transcoddedFileName": "F417BF82-3378-0A5A-32E1-77A4DA756007_video.mp4",
+    "videoUrl": "https://cdn.shabakaty.com/vascin21-mp4/F417BF82-3378-0A5A-32E1-77A4DA756007_video.mp4?response-content-disposition=attachment%3B%20filename%3D%22video.mp4%22&AWSAccessKeyId=REDACTED&Expires=1795294855&Signature=REDACTED"
+  },
+  {
+    "name": "mp4-1080",
+    "resolution": "1080p",
+    "container": "mp4",
+    "transcoddedFileName": "8F67870A-1EE5-D003-594F-E6AE18FA406D_video.mp4",
+    "videoUrl": "https://cdn.shabakaty.com/vascin21-mp4/8F67870A-1EE5-D003-594F-E6AE18FA406D_video.mp4?response-content-disposition=attachment%3B%20filename%3D%22video.mp4%22&AWSAccessKeyId=REDACTED&Expires=1795035772&Signature=REDACTED"
+  }
+]
