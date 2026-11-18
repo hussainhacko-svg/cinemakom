@@ -1,4 +1,5 @@
 import 'package:cinemakom/app/app.dart';
+import 'package:cinemakom/app/brand/cinemakom_mark.dart';
 import 'package:cinemakom/app/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -8,7 +9,8 @@ void main() {
     await tester.pumpWidget(const CinemakomApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Cinemakom'), findsWidgets);
+    expect(find.byType(CinemakomLogo), findsOneWidget);
+    expect(find.text('CINEMAKOM'), findsOneWidget);
     final direction = Directionality.of(tester.element(find.byType(Scaffold)));
     expect(direction, TextDirection.ltr);
   });

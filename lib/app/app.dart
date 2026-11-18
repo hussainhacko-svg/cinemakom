@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart'
 import 'package:material_ui/material_ui.dart';
 
 import '../features/debug/debug_screen.dart';
+import 'brand/cinemakom_mark.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/marquee_theme.dart';
 
@@ -42,7 +43,6 @@ class _PlaceholderScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.appTitle),
         actions: [
           // Developer-only API check; removed from release builds.
           if (kDebugMode)
@@ -54,7 +54,19 @@ class _PlaceholderScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: Center(child: Text(l10n.setupPlaceholder)),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 24,
+          children: [
+            const CinemakomLogo(),
+            Text(
+              l10n.setupPlaceholder,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

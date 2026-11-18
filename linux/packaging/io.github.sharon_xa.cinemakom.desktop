@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Cinemakom
+Name[ar]=سينماكم
+Comment=Movies and series from Cinemana
+Comment[ar]=أفلام ومسلسلات من سينمانا
+Exec=cinemakom
+Icon=io.github.sharon_xa.cinemakom
+Categories=AudioVideo;Video;Player;
+StartupWMClass=io.github.sharon_xa.cinemakom
