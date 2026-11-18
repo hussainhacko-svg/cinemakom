@@ -1,0 +1,11 @@
+{
+  "@@locale": "en",
+  "appTitle": "Cinemakom",
+  "@appTitle": {
+    "description": "The application name"
+  },
+  "setupPlaceholder": "Coming soon",
+  "@setupPlaceholder": {
+    "description": "Placeholder text on the empty Phase 0 screen"
+  }
+}
