@@ -61,7 +61,7 @@ lib/
   app/
     app.dart                    # MaterialApp.router, theme, locale, RTL
     router.dart                 # go_router + tab shell
-    theme/                      # Dark / True Black / Light themes, typography (Arabic font)
+    theme/                      # the one Marquee theme: colour tokens, type scale, ThemeData
     l10n/                       # app_ar.arb, app_en.arb
   core/
     network/
@@ -72,7 +72,7 @@ lib/
       json_utils.dart           # firstNonBlank(), parseIntLoose(), unescapeUrl()
     storage/
       database.dart             # drift DB: downloads, watch_history, favorites
-      preferences.dart          # language, theme, default resolution, default subtitle
+      preferences.dart          # language, default resolution, default subtitle
     platform/
       platform_info.dart        # isDesktop / isMobile helpers
   data/
@@ -80,10 +80,9 @@ lib/
                                 # Category, Language, StaffMember, StaffPage, VideoGroup, SkipRange
     parsers/                    # tolerant parsers ported from MediaModels.kt
     repositories/
-      catalog_repository.dart   # home rows, groups, featured, latest, by-category(+language)
-      search_repository.dart    # base64 title search + AdvancedSearch, merged and de-duplicated
-      media_repository.dart     # details, episodes, seasons, streams, subtitles, related, skip ranges, getVideosByIds
-      staff_repository.dart
+      catalog_repository.dart   # home rows, groups, featured, latest, genres, by-category(+language), FAQ
+      search_repository.dart    # base64 title search + AdvancedSearch, merged, de-duplicated and ranked
+      media_repository.dart     # details, episodes, seasons, streams, subtitles, related, skip ranges, getVideosByIds, staff pages
       library_repository.dart   # favorites + continue watching (drift)
       downloads_repository.dart # background_downloader + drift
   features/
@@ -105,45 +104,53 @@ Key rules:
 
 ## 4. Features
 
-### 4.1 Matching the Kotlin app
-- [ ] **App shell:** five tabs (Home, Continue, Favorites, Downloads, Settings). Bottom `NavigationBar` below 600 dp width, `NavigationRail` at 600 dp and up (same breakpoint as the Kotlin app).
-- [ ] **Home:** hero banner carousel, top-rated and newest movies, top-rated and newest series, curated video groups, and genre rows. Keep the Kotlin `sortAndFilterTopRated(7.0)` behavior. Load the above-the-fold sections first and the rest after.
-- [ ] **Genre detail:** paged grid with sort (newest or top rated) and kind (movies or series). Keep the fallback: when a page has fewer than 6 items, merge in the other kind or sort. Keep the hardcoded genre IDs 87–98 as a fallback.
-- [ ] **Search:** 400 ms debounce, three requests in parallel (base64 title, AdvancedSearch movies, AdvancedSearch series), merged and de-duplicated. Compute the year range from today's date instead of hardcoding `2026`.
-- [ ] **Details** (bottom sheet on mobile, side panel or dialog on desktop): poster, info, description, season and episode picker. For a series, fetch streams and subtitles for S1E1. Add to favorites, download.
+Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, no parental features) and **no ratings of any kind** (no scores, no likes, no "Top rated", no rating filters). Every feature below is backed by an endpoint verified in `docs/API.md`.
+
+### 4.1 Core
+- [ ] **App shell:** five tabs (Home, Continue, Favorites, Downloads, Settings). Bottom `NavigationBar` below 600 dp width, `NavigationRail` at 600 dp and up.
+- [ ] **Home:** hero carousel from `banner` (wide covers), curated video groups, Featured, Latest movies, Latest series, Most watched (`views_desc`), New releases by year (`r_desc`), Recently added (`desc`), and genre rows. Load the above-the-fold sections first and the rest after.
+- [ ] **Genre detail:** paged grid (30 per page, offset paging that stops on a short page) with sort (recently added, newest release, most watched) and kind (movies or series). Use `fallbackGenres` when the genre lists fail to load.
+- [ ] **Search:** 400 ms debounce, three requests in parallel (title search, AdvancedSearch movies, AdvancedSearch series), merged, de-duplicated and ranked. Never send an empty query. The year range is computed.
+- [ ] **Details** (bottom sheet on mobile, page or side panel on desktop): poster, synopsis, year, duration, genres, audio languages, trailer, IMDb link, season and episode picker. Episodes show as "Episode N" (the API has no episode titles) with the season image. Add to favorites, download.
 - [ ] **Player:**
-  - quality selection (default from settings, closest match)
-  - subtitles (Arabic, English or off, default from settings)
+  - quality selection (default from settings, closest match, 2160p when listed)
+  - subtitles (Arabic, English or off, default from settings; one track per language, SRT preferred)
   - playback speed
   - aspect/fit modes
-  - double-tap seek
+  - double-tap seek (mobile)
   - next episode
   - resume from saved position
   - brightness and volume swipe gestures (mobile only)
+  - always refetch stream URLs before playing (signed URLs expire after ~5 days)
 - [ ] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
 - [ ] **Favorites:** add, remove and list.
 - [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file.
 - [ ] **Settings:**
   - language (English or Arabic, default English. Arabic flips the layout to RTL)
-  - theme (Dark Mode, True Black or Light Mode, default Dark)
   - default resolution (2160p/1080p/720p/480p/360p, default 1080p)
   - default subtitle (Arabic, English or Off, default Arabic)
 - [ ] **First-launch language picker:** the first time the app opens, ask the user to pick English or Arabic before showing Home. Save the choice. It can be changed later in Settings.
-- [ ] **Branding:** the Cinema logo widget (port `CinemaLogo.kt`), app icons and splash screen.
+- [ ] **Branding:** the Marquee logo (ticket stub carrying ك, see `docs/DESIGN.md` §7), app icons and splash screen.
 
-### 4.2 New features from the newly found endpoints
-- [ ] **More like this** on the details screen (`relatedVideos`).
+### 4.2 Extras the API supports
+- [ ] **More like this** on details, from the recommendation service (`recommend.shabakaty.com`: same franchise, then shared cast), falling back to `relatedVideos`.
 - [ ] **Cast and crew** row on details (`actorsInfo`, `directorsInfo`, `writersInfo`). Tapping a person opens an **actor/director page** (`staff/actorID/...`).
-- [ ] **Skip intro/outro** button in the player (`introSkipping` / `skippingDurations`).
+- [ ] **Skip intro** button in the player, from `introSkipping` (`MediaDetails.introRanges`), which can hold two ranges.
+- [ ] **Seek-bar previews** from `video_thumbnails` sprite sheets (`SeekPreview.frameAt`). Popular titles have them; hide the preview when a title has none.
 - [ ] **Season picker** that loads first (`videoSeasonNumber`), with episodes loaded per season.
-- [ ] **Extra details:** trailer, duration, views and likes, audio languages, IMDb link.
-- [ ] **New home rows:** Featured, Latest movies, Latest series. A "See all" page for each video group (`videoListPagination`).
-- [ ] **Genre × language filter** (`categoryLangFreqVideo` + `videosByCategoryAndLanguage`).
-- [ ] **Advanced search filters:** minimum rating (`star`), category, year range, sort, actor name (`staffTitle`).
-- [ ] **Read-only comments** on details (`videoComment`).
-- [ ] **Library refresh:** update favorites and history metadata in one call (`POST getVideosByIds`).
+- [ ] **"See all"** page for each video group (`videoListPagination`).
+- [ ] **Genre × language filter** (`categoryLangFreqVideo` + `videosByCategoryAndLanguage`), e.g. Anime = Animation (57) × Japanese.
+- [ ] **Advanced search filters:** kind, genre (`category_id`), year range, actor or director name (`staffTitle`). No rating filter, no sort (the server ignores it).
+- [ ] **Library refresh:** update favorites and history metadata with `POST getVideosByIds` (40 numeric IDs per request).
 - [ ] **FAQ / help** screen in Settings (`faqQuestion`).
-- [ ] *Later:* seek-bar thumbnails (`video_thumbnails`). The test title returned empty, so check other titles before building this.
+
+### 4.3 Not possible or excluded
+- **Comments:** switched off server-wide (`showComments: false` everywhere).
+- **Collections, "Popular" (`popularFilms`), season posters:** the endpoints return nothing or fail with 500.
+- **View counts:** `videoViewsNumber` is always 0.
+- **Ratings, likes, age ratings:** excluded by the no-ratings rule.
+- **Parental filtering, scene skipping, kids mode:** excluded by the zero-censorship rule.
+- **Anything that needs a Shabakaty login.**
 
 ---
 
@@ -157,22 +164,23 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - ~~Optional: CI~~ Skipped by decision. Run `flutter analyze` and `flutter test` locally.
 - [x] **Done when:** an empty app runs on Android and Linux. Checked on the `Medium_Phone_API_37.0` emulator and the Linux desktop.
 
-### Phase 1: Data layer *(most important)*
-- `ApiClient` with the headers, a 30 s timeout and a debug logger.
-- Write `api_endpoints.dart` covering every public endpoint in `API.md`.
-- Port the tolerant parsers, and add the new models (staff, skip ranges, languages, comments).
-- Write `tool/capture_fixtures.dart`, a script that calls each endpoint once and saves the JSON to `test/fixtures/`.
-- Unit-test every parser against the fixtures, including edge cases (string vs number IDs, `\/` URLs, the `episodeNummer` spelling, object vs array roots).
-- Repositories with mocked-Dio tests.
-- **Done when:** `flutter test` is green and a debug screen lists real data from every endpoint.
+### Phase 1: Data layer *(most important)* ✅ *(done 2026-11-19)*
+- [x] `ApiClient` with the headers, a 30 s timeout and a debug logger. Large responses are decoded on a background isolate.
+- [x] Write `api_endpoints.dart` covering every public endpoint in `API.md`.
+- [x] Port the tolerant parsers, and add the new models (staff, intro ranges, languages, FAQ, seek previews). Comments are switched off server-wide, so they aren't modeled.
+- [x] Write `tool/capture_fixtures.dart`, a script that calls each endpoint once and saves the JSON to `test/fixtures/` (signed-URL credentials redacted).
+- [x] Unit-test every parser against the fixtures, including edge cases (string vs number IDs, `\/` URLs, the `episodeNummer` spelling, object vs array roots).
+- [x] Repositories (catalog, search, media) with fake-client tests. Staff pages live in `MediaRepository`.
+- [x] **Done when:** `flutter test` is green and a debug screen lists real data from every endpoint. Run the live checks with `dart run tool/api_contract_check.dart` and `flutter test integration_test/api_debug_test.dart -d linux`.
+- [x] **API deep dive (2026-11-19):** reverse-engineered from the website bundle, its network traffic, a field survey and edge probes. This corrected the sort codes, the search encoding, the batch limit, banner images, paging end and episode titles. See `docs/API.md`.
 
 ### Phase 2: App shell
 - go_router with the tab shell and per-tab back stacks.
-- Themes (all 3), ARB localization in en and ar, RTL switching.
+- The single Marquee theme (`lib/app/theme/`, done), bundled fonts, ARB localization in en and ar, RTL switching.
 - First-launch language picker (English or Arabic), shown once before Home and saved to preferences.
 - Preferences provider and the Settings screen.
 - Responsive navigation (bar or rail).
-- **Done when:** a fresh install asks for the language, you can switch tabs, change language and theme live, and settings survive a restart.
+- **Done when:** a fresh install asks for the language, you can switch tabs, change the language live, and settings survive a restart.
 
 ### Phase 3: Browsing
 - Home (all rows, carousel, shimmer placeholders, pull-to-refresh), genre detail with infinite scroll, search, and details with episodes.

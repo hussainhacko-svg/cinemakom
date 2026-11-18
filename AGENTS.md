@@ -5,10 +5,11 @@ Guidance for AI coding agents (Claude Code, Codex, etc.) working in this reposit
 ## What this is
 **Cinemakom** is a cross-platform streaming frontend written in **Flutter** for **Android, iOS, Linux and Windows**. It is a client for the Cinemana API (`https://cinemana.shabakaty.com/api/android/`). We build **only the frontend**. There is no backend in this repo.
 
-The original Kotlin/Jetpack Compose Android app is at `../cinematy`. Use it only as a behavior reference (see "Reference app" below).
+The original Kotlin/Jetpack Compose Android app is at `../cinematy`. It is low-quality AI-generated code: use it only for hints about which endpoints exist, and verify every behavior against the live API (see "Reference app" below).
 
 ## Read first
 - `docs/API.md`: every endpoint, the required headers, parameters and JSON quirks. **This is the source of truth for the API.**
+- `docs/DESIGN.md`: the "Marquee" design system (colours, type, spacing, components, performance rules). **Follow it for every screen.**
 - `docs/PLAN.md`: architecture, tech stack, feature list and build phases. Check which phase we're in before starting work, and tick items off in §4 as they're finished.
 
 ## Commands
@@ -32,6 +33,7 @@ Flutter is managed with **fvm**. The global SDK is at `~/fvm/default/bin`, which
 
 ## Conventions
 - Dart style: `flutter_lints` / analysis_options. Prefer `final`, `const` constructors, and small widgets.
+- **Design:** there is **one theme** (Marquee). No light/dark modes and no theme setting. Use `MarqueeColors`, `MarqueeText`, `MarqueeSpace` and `MarqueeRadius` from `lib/app/theme/`, or `Theme.of(context)`. Never hardcode colours, fonts or sizes in widgets. No shadows, blur or gradients (performance and style, see DESIGN.md §6).
 - **Localization:** every user-facing string goes in the ARB files (`app_ar.arb`, `app_en.arb`). The app supports **English (default) and Arabic**. On first launch it asks the user which language to use. Arabic switches the layout to RTL, so every screen must work in both directions. Use directional APIs (`EdgeInsetsDirectional`, `AlignmentDirectional`, `start`/`end`), never hardcoded left or right.
 - **Platforms:** check `isDesktop` / `isMobile` through `lib/core/platform`. Touch gestures (brightness and volume swipes, double-tap) are mobile only. Desktop needs keyboard shortcuts and mouse hover.
 - **Responsive layout:** below 600 dp width use a bottom `NavigationBar`, at 600 dp and up use a `NavigationRail`.
@@ -43,6 +45,8 @@ Flutter is managed with **fvm**. The global SDK is at `~/fvm/default/bin`, which
 - Never modify the reference app.
 
 ## Don'ts
+- **Zero censorship.** Never filter, hide, blur or skip content. Always send parental `level=0` (the unrestricted level). Don't build parental controls, kids modes, "family friendly" filters or scene skipping, and don't use `skippingDurations` / `checkVideoParentalLevel` / `parent_skipping`.
+- **No ratings of any kind.** Don't show, store, sort by or filter by ratings: no star or IMDb scores (`stars`, `rate`), no age or parental ratings (`filmRating`, `seriesRating`), no likes or dislikes, no "Top rated" rows and no minimum-rating filters. Don't parse these fields into models.
 - Don't add features that need a Shabakaty login (server-side history, likes, comments, subscriptions). They're out of scope for v1.
 - Don't hardcode the current year (e.g. in AdvancedSearch `year=1900,<year>`). Compute it.
 - Don't commit secrets, tokens or client IDs taken from the web frontend bundle.
