@@ -1,7 +1,7 @@
 // Live check of every endpoint through the repositories, using the debug
 // screen. Needs network access:
 //
-//   flutter test integration_test/api_debug_test.dart -d linux
+//   fvm flutter test integration_test/api_debug_test.dart -d linux
 import 'package:cinemakom/features/debug/debug_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

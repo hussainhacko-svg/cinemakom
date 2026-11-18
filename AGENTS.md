@@ -13,15 +13,17 @@ The original Kotlin/Jetpack Compose Android app is at `../cinematy`. It is low-q
 - `docs/PLAN.md`: architecture, tech stack, feature list and build phases. Check which phase we're in before starting work, and tick items off in §4 as they're finished.
 
 ## Commands
+**Always use `fvm flutter` / `fvm dart` in this project.** It is pinned to **Flutter 3.47.9** (Dart 3.13) in `.fvmrc`, while the global `flutter` on PATH is 3.50.0.
 ```bash
-flutter pub get
-flutter analyze                      # must be clean before you finish
-flutter test                         # unit + widget tests
-dart run build_runner build -d       # only if freezed/drift codegen is in use
-flutter run -d linux                 # quickest way to check UI on this machine
-flutter run -d <android-device-id>   # `flutter devices` to list
+fvm flutter pub get
+fvm flutter analyze                      # must be clean before you finish
+fvm flutter test                         # unit + widget tests
+fvm dart run build_runner build -d       # only if freezed/drift codegen is in use
+fvm flutter run -d linux                 # quickest way to check UI on this machine
+fvm flutter run -d <android-device-id>   # `fvm flutter devices` to list
+fvm dart run tool/api_contract_check.dart  # live API contract check
 ```
-Flutter is managed with **fvm**. The global SDK is at `~/fvm/default/bin`, which is on PATH. If a command fails because the SDK is missing, report it instead of trying to install toolchains yourself.
+**Why 3.47.9:** Flutter 3.50.0 has a Linux bug on NVIDIA's proprietary driver: the frame is drawn shifted by half the window, so you only see a quarter of the UI ([flutter#195885](https://github.com/flutter/flutter/issues/195885), [#196695](https://github.com/flutter/flutter/issues/196695)). The development machine has an NVIDIA GPU. Move back up (`fvm use <version>`, then restore `window_manager: ^0.7.0` and `sdk: ^3.14.0` in pubspec) only once a 3.50.x release fixes it, and check `fvm flutter run -d linux` renders the whole window. If a command fails because the SDK is missing, report it instead of installing toolchains yourself.
 
 ## Architecture rules
 - Folders are organized by feature: `lib/core` (network, storage, platform), `lib/data` (models, parsers, repositories), `lib/features/<feature>` (screen, widgets, providers). See PLAN.md §3.

@@ -13,7 +13,7 @@
 
 | Item | Notes |
 |---|---|
-| Flutter SDK (stable) | ✅ Flutter 3.50.0 through fvm (`fvm global stable`). `~/fvm/default/bin` is on PATH in `.bashrc` and fish |
+| Flutter SDK | ✅ The project is pinned to **Flutter 3.47.9** (Dart 3.13) in `.fvmrc`, so use `fvm flutter …`. The global `stable` (3.50.0) has an NVIDIA Linux rendering bug (see AGENTS.md → Commands) |
 | Java | ✅ OpenJDK 17 at `/usr/bin/java` (needed by the Android Gradle build) |
 | Android | ✅ SDK at `~/Android/Sdk` (with cmdline-tools), emulator `Medium_Phone_API_37.0`. `flutter doctor` is green. The new Android CLI no longer needs a license step |
 | Linux | ✅ `clang cmake ninja-build pkg-config gtk3` and **`mpv`/libmpv** (needed by media_kit). On Arch: `sudo pacman -S mpv` |
@@ -156,12 +156,14 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
+> **Status (2026-11-19):** Phases 0 and 1 are done, and so is the design system with the logo and app icons (`docs/DESIGN.md`). **Next: Phase 2 (app shell).** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 
 ### Phase 0: Setup ✅ *(done 2026-11-19)*
 - [x] Fix the Flutter install, run `flutter doctor`, then `flutter create` (§1).
 - [x] Add dependencies, lints and the folder layout from §3. `git init`. Write a `CLAUDE.md` or README that points to `docs/`.
-- ~~Optional: CI~~ Skipped by decision. Run `flutter analyze` and `flutter test` locally.
+- ~~Optional: CI~~ Skipped by decision. Run `fvm flutter analyze` and `fvm flutter test` locally.
 - [x] **Done when:** an empty app runs on Android and Linux. Checked on the `Medium_Phone_API_37.0` emulator and the Linux desktop.
 
 ### Phase 1: Data layer *(most important)* ✅ *(done 2026-11-19)*
@@ -171,7 +173,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - [x] Write `tool/capture_fixtures.dart`, a script that calls each endpoint once and saves the JSON to `test/fixtures/` (signed-URL credentials redacted).
 - [x] Unit-test every parser against the fixtures, including edge cases (string vs number IDs, `\/` URLs, the `episodeNummer` spelling, object vs array roots).
 - [x] Repositories (catalog, search, media) with fake-client tests. Staff pages live in `MediaRepository`.
-- [x] **Done when:** `flutter test` is green and a debug screen lists real data from every endpoint. Run the live checks with `dart run tool/api_contract_check.dart` and `flutter test integration_test/api_debug_test.dart -d linux`.
+- [x] **Done when:** `fvm flutter test` is green and a debug screen lists real data from every endpoint. Run the live checks with `fvm dart run tool/api_contract_check.dart` and `fvm flutter test integration_test/api_debug_test.dart -d linux`.
 - [x] **API deep dive (2026-11-19):** reverse-engineered from the website bundle, its network traffic, a field survey and edge probes. This corrected the sort codes, the search encoding, the batch limit, banner images, paging end and episode titles. See `docs/API.md`.
 
 ### Phase 2: App shell

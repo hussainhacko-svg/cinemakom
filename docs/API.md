@@ -5,12 +5,12 @@ The reverse-engineered API that Cinemakom is built on. **This file is the source
 **How this was verified (2026-11-19):**
 - **Live probes** of every endpoint: sorting, paging, limits, errors, headers and parental levels.
 - **The official web app** (`https://cinemana.shabakaty.com/home`): its JavaScript endpoint map, the parameters it builds, and its network traffic, watched in Chrome.
-- **Captured responses** in `test/fixtures/`. Re-capture them with `dart run tool/capture_fixtures.dart`.
+- **Captured responses** in `test/fixtures/`. Re-capture them with `fvm dart run tool/capture_fixtures.dart`.
 - **A field-level survey** of 862 records from 14 endpoints: types, missing and empty rates, and value formats.
 - **Edge-case probes:** past-the-end pages, special characters, invalid and mixed IDs, batch limits, and 40 parallel requests.
 - **Two repeatable live checks** that use the app's own code:
-  - `dart run tool/api_contract_check.dart` verifies every contract in this file: field types, parser yield, server limits and media files. **Run it before each release and whenever data looks wrong.**
-  - `flutter test integration_test/api_debug_test.dart -d linux` exercises every repository end to end.
+  - `fvm dart run tool/api_contract_check.dart` verifies every contract in this file: field types, parser yield, server limits and media files. **Run it before each release and whenever data looks wrong.**
+  - `fvm flutter test integration_test/api_debug_test.dart -d linux` exercises every repository end to end.
 
 Status legend: ✅ works and is used · ⚙️ works but unused · ❌ dead or broken · 🔒 needs a login (out of scope) · 🚫 excluded on purpose (zero-censorship rule).
 
@@ -237,7 +237,18 @@ It also calls `checkVideoParentalLevel` and `skippingDurations` (excluded for us
   2. Re-capture the fixtures and diff them.
   3. Update this file, the parsers and the tests together.
 
-## 7. Open questions
-- `introSkipping.control_level` is always `"3"` so far. Its meaning is unknown, and the app ignores it.
-- `r_asc` and `rating_desc` behave oddly. Avoid them.
-- The 2160p stream is listed only on some titles. Check it plays before offering "4K".
+## 7. Open questions and coverage gaps
+Known unknowns, for the next deep dive:
+- **Not analysed: the official Android app.** The API lives under `/api/android/`, so the official Cinemana Android app may call endpoints or parameters the website doesn't. Only the website bundle has been read so far.
+- **Unexplained fields:** `introSkipping.control_level` (always `"3"` so far), `isSpecial`, `episode_flag`, `audioStreamNumber` (multiple audio tracks?), `translationFlag`, `channels`, `orderNmmer`, `replacement`, `watermark`, `useParentImg`, `fileSizeServer`/`fileSizeClient`, `published`, `itemDate`, `updateDateTime` (a Unix timestamp), and `analytics` on video groups.
+- **Unverified behaviour:**
+  - The sort codes `r_asc`, `rating_desc`, `title_asc` and `title_desc` behave oddly or are ignored. Are there codes we haven't found?
+  - Is the 2160p stream actually playable?
+  - Are there streams other than progressive MP4 (HLS, multiple audio tracks)?
+  - Does any title have more than one subtitle per language, or languages other than ar/en (`spTranslationFile`)?
+  - Is the `staff` list paginated (Gregory Hines returned 2 items, another person 35)?
+  - What does `link` in banners mean beyond `lastEpisodeVideoID`?
+  - How does `category` relate to `mainCategories` / `subCategories` (is there a parent/child structure)?
+  - `videoLanguages` as a list (only the object form has been seen).
+- **Dead or blocked:** comments (`showComments: false` everywhere), collections (always empty), `popularFilms`, `latestVideosItems` (works but duplicates other lists), `seasonposters` (500), and the rating summary (needs the bundle's `ShabakatyAppId`, which we don't use).
+- **Not checked:** response times and caching per endpoint beyond `max-age=600`, and how stable IDs and URLs stay over days.

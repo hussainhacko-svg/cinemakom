@@ -2,7 +2,7 @@
 // docs/API.md says and the parsers expect. Uses the app's own request
 // builders, client and parsers.
 //
-//   dart run tool/api_contract_check.dart
+//   fvm dart run tool/api_contract_check.dart
 //
 // Exits with 1 when any contract is broken. Run it before a release, and
 // whenever something looks wrong with data.

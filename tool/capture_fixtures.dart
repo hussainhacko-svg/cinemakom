@@ -1,7 +1,7 @@
 // Captures one real response per endpoint into test/fixtures/.
 //
-//   dart run tool/capture_fixtures.dart            # capture everything
-//   dart run tool/capture_fixtures.dart --max 8    # keep at most 8 items per list
+//   fvm dart run tool/capture_fixtures.dart            # capture everything
+//   fvm dart run tool/capture_fixtures.dart --max 8    # keep at most 8 items per list
 //
 // Signed-URL credentials (AWSAccessKeyId, Signature) are redacted before
 // writing, so fixtures never contain them.
