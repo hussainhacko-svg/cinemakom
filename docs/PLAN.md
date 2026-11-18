@@ -164,7 +164,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
-> **Status (2026-11-19):** Phases 0 and 1 are done, and so is the design system with the logo and app icons (`docs/DESIGN.md`). **Next: Phase 2 (app shell).** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo and app icons are done too (`docs/DESIGN.md`). **Next: Phase 2 (app shell).** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
 
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 

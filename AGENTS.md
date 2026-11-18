@@ -54,3 +54,5 @@ fvm dart run tool/api_contract_check.dart  # live API contract check
 - Don't hardcode the current year (e.g. in AdvancedSearch `year=1900,<year>`). Compute it.
 - Don't commit secrets, tokens or client IDs taken from the web frontend bundle.
 - Don't publish, push or release builds unless asked.
+- **Git:** commit directly on `main`. Don't create branches unless the owner asks for one.
+- Never call Shabakaty's telemetry, IP-check or ad hosts (`api/info/*`, `whatismyip`, `shabakaty.com/clip/`, Sentry, `aj2376.online`; full list in `docs/API.md` §1). The only third-party call allowed is the public status page, and only after API calls fail.
