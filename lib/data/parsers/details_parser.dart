@@ -44,13 +44,11 @@ List<StaffCredit> parseStaffCredits(Object? json, StaffRole role) {
         id: id,
         name: name,
         role: role,
-        imageUrl: _http(
-          readUrl(m, [
-            'staff_img_medium_thumb',
-            'staff_img',
-            'staff_img_thumb',
-          ]),
-        ),
+        imageUrl: _image(m, [
+          'staff_img_medium_thumb',
+          'staff_img',
+          'staff_img_thumb',
+        ]),
       ),
     );
   }
@@ -69,7 +67,9 @@ List<SkipRange> parseIntroRanges(Object? json) {
   return out..sort((a, b) => a.start.compareTo(b.start));
 }
 
-/// `staff/actorID/{id}/lang/{lang}/level/0`.
+/// `staff/actorID/{id}/lang/{lang}/level/0`: `{title, role, img*ObjUrl,
+/// items}`. An unknown person answers `[]` (→ `null`). The image is often
+/// the `loadingImages/loading.gif` placeholder, which is dropped.
 StaffPage? parseStaffPage(Object? json) {
   try {
     final m = asMap(json);
@@ -79,9 +79,11 @@ StaffPage? parseStaffPage(Object? json) {
     return StaffPage(
       name: name,
       role: readString(m['role']),
-      imageUrl: _http(
-        readUrl(m, ['imgMediumThumbObjUrl', 'imgObjUrl', 'imgThumbObjUrl']),
-      ),
+      imageUrl: _image(m, [
+        'imgMediumThumbObjUrl',
+        'imgObjUrl',
+        'imgThumbObjUrl',
+      ]),
       items: parseMediaItems(m['items'] ?? m['videos'] ?? m['data']),
     );
   } catch (_) {
@@ -129,3 +131,12 @@ SkipRange? _range(Object? start, Object? end, {required double minSeconds}) {
 }
 
 String? _http(String? url) => isHttpUrl(url) ? url : null;
+
+/// The first real image under [keys] (placeholders are skipped).
+String? _image(JsonMap m, List<String> keys) {
+  for (final key in keys) {
+    final url = realImageUrl(readString(m[key]));
+    if (url != null) return url;
+  }
+  return null;
+}

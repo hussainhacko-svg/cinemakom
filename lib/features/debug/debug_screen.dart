@@ -169,12 +169,29 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
         'transcoddedFiles (movie)',
         () async => _list(
           await media.streams((await movie).id),
-          (s) => '${s.label} · ${s.container}',
+          (s) =>
+              '${s.label} · ${s.container} · expires '
+              '${s.expiresAt?.difference(DateTime.now().toUtc()).inHours} h',
         ),
       ),
       _Probe('translationFiles (movie)', () async {
         final tracks = await media.subtitles((await movie).id);
         return _list(tracks, (t) => '${t.languageCode} · ${t.format.name}');
+      }),
+      _Probe('translationFiles (styled ass, 279230)', () async {
+        final tracks = await media.subtitles('279230');
+        final styled = tracks.where((t) => t.isStyled).toList();
+        return _ProbeResult(styled.length, [
+          for (final t in oneTrackPerLanguage(tracks))
+            '${t.languageCode} · ${t.format.name}',
+        ]);
+      }),
+      _Probe('videoSeason flags (Lucifer, 36835)', () async {
+        final eps = await media.episodes('36835');
+        final finales = eps.where((e) => e.numbering.isFinale).toList();
+        return _ProbeResult(finales.length, [
+          for (final e in finales.take(3)) 'S${e.season} ${e.numbering}',
+        ]);
       }),
       _Probe(
         'recommendations (recommend.shabakaty.com)',

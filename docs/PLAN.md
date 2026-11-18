@@ -175,6 +175,11 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - [x] Repositories (catalog, search, media) with fake-client tests. Staff pages live in `MediaRepository`.
 - [x] **Done when:** `fvm flutter test` is green and a debug screen lists real data from every endpoint. Run the live checks with `fvm dart run tool/api_contract_check.dart` and `fvm flutter test integration_test/api_debug_test.dart -d linux`.
 - [x] **API deep dive (2026-11-19):** reverse-engineered from the website bundle, its network traffic, a field survey and edge probes. This corrected the sort codes, the search encoding, the batch limit, banner images, paging end and episode titles. See `docs/API.md`.
+- [x] **Second API deep dive (2026-11-19):**
+  - **Sources:** every guest page of the website, the full bundle, the Android app 5.3.3 (read-only) and a 2,000-request field survey.
+  - **New behaviour in the code:** `episode_flag` labels (finales, double episodes); styled ASS subtitles; stale stream URLs refetched past the API cache; sprite sheets with real row counts; placeholder images rejected; banner episode links; seasons fallback.
+  - **Search and sorting:** `AdvancedSearch` needs `type` and ORs title and staff; title and release-date sorts.
+  - See `docs/API.md` §8 for the product decisions this raised.
 
 ### Phase 2: App shell
 - go_router with the tab shell and per-tab back stacks.

@@ -1,0 +1,175 @@
+{
+  "nb": "3112835",
+  "en_title": "Sora wa Akai Kawa no Hotori",
+  "ar_title": "Sora wa Akai Kawa no Hotori",
+  "other_title": "Red River ,  Anatolia Story , Heaven by the Red River , Orontes Renka , Orontes Love Song , Where the Sky and the Red River Meet",
+  "stars": "6.5",
+  "enTranslationFile": "",
+  "arTranslationFile": "F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt",
+  "fileFile": "7425CFF5-BD2D-D5D7-4D20-1766B1DB014F_video.mkv",
+  "ar_content": "تنتقل الطالبة اليابانية يوري سوزوكي عبر الزمن إلى القرن الرابع عشر قبل الميلاد، حيث تجد نفسها وسط صراعات سياسية ومؤامرات على العرش. وبين محاولتها العودة إلى زمنها، تنشأ علاقة رومانسية مع الأمير كايل، بينما تكافح لتغيير مصيرها وحماية من تحب",
+  "en_content": "Yuri, a pretty Japanese girl, is ecstatic after passing her college entrance exam and having her first kiss with her childhood friend-turned boyfriend. However, her luck soon changes. She starts to notice that water becomes agitated whenever she goes near it. One night, hands appear out of a puddle on the street and drag her into the water! Transported to an ancient village in the Middle East, she is then captured by armed troops and taken to the Queen's palace for a human sacrifice.",
+  "mDate": "2026-07-08",
+  "year": "2026",
+  "kind": "2",
+  "season": "1",
+  "img": "59B40DA4-9760-A185-255E-E757EDE08504_poster.jpg",
+  "imgThumb": "67CB72EA-77FC-0C2C-8A72-A85B43B88E1E_poster_thumb.jpg",
+  "imgMediumThumb": "1E279244-5D9D-5B8F-73E3-EB1574B0D65A_poster_medium_thumb.jpg",
+  "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/59B40DA4-9760-A185-255E-E757EDE08504_poster.jpg",
+  "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/1E279244-5D9D-5B8F-73E3-EB1574B0D65A_poster_medium_thumb.jpg",
+  "filmRating": "1",
+  "seriesRating": "5",
+  "episodeNummer": "1",
+  "rate": "0",
+  "isSpecial": "0",
+  "itemDate": "2026-07-08 12:40:49",
+  "duration": "1370.09",
+  "imdbUrlRef": "https://myanimelist.net/anime/63489",
+  "rootSeries": "0",
+  "useParentImg": "0",
+  "spTranslationFile": "700F8CC2-B7B1-CFFE-2A27-316A0C6F89B8_sp_transfile.ass",
+  "showComments": false,
+  "episode_flag": "0000",
+  "trailer": "https://www.youtube.com/watch?v=INhZ5Jb6Hrw",
+  "audioStreamNumber": "0",
+  "parent_skipping": "0",
+  "collectionID": "0",
+  "isDeleted": "0",
+  "Likes": "99",
+  "DisLikes": "13",
+  "CACHE_SHORT": null,
+  "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/67CB72EA-77FC-0C2C-8A72-A85B43B88E1E_poster_thumb.jpg",
+  "ratingImg": "https://cinemana.shabakaty.com/assetsUI/img/seriesRating/TV-14.png",
+  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635689&Signature=REDACTED",
+  "enTranslationFilePath": "defaultImages/loading.gif",
+  "translations": [
+    {
+      "id": 1,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635689&Signature=REDACTED"
+    },
+    {
+      "id": 2,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635689&Signature=REDACTED"
+    },
+    {
+      "id": 3,
+      "name": "special",
+      "type": "sp",
+      "extention": "ass",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/700F8CC2-B7B1-CFFE-2A27-316A0C6F89B8_sp_transfile.ass?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635689&Signature=REDACTED"
+    }
+  ],
+  "hasIntroSkipping": false,
+  "categories": [
+    {
+      "en_title": "Action",
+      "ar_title": "اكشن"
+    },
+    {
+      "en_title": "Adventure",
+      "ar_title": "مغامرة"
+    },
+    {
+      "en_title": "Animation",
+      "ar_title": "رسوم متحركة"
+    },
+    {
+      "en_title": "Drama",
+      "ar_title": "دراما"
+    },
+    {
+      "en_title": "History",
+      "ar_title": "تاريخي"
+    },
+    {
+      "en_title": "Romance",
+      "ar_title": "رومانسي"
+    }
+  ],
+  "videoLikesNumber": "99",
+  "videoDisLikesNumber": "13",
+  "videoLanguages": {
+    "en_title": "Japanese",
+    "ar_title": "اليابانية"
+  },
+  "videoCommentsNumber": 0,
+  "videoViewsNumber": "0",
+  "directorsInfo": [
+    {
+      "nb": "46417",
+      "name": "Kobayashi Kousuke",
+      "role": "1",
+      "staff_img": "defaultImages/not_available.jpg",
+      "staff_img_thumb": "defaultImages/not_available.jpg",
+      "staff_img_medium_thumb": "defaultImages/not_available.jpg"
+    }
+  ],
+  "actorsInfo": [
+    {
+      "nb": "282329",
+      "name": "Chiba Shoya",
+      "role": "2",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    },
+    {
+      "nb": "179090",
+      "name": "Katou Wataru",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/BD1354C2-DA35-359E-F8D1-DED7215E50D8_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797541207&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/0132D174-D142-529C-3E8D-616C80287A01_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797541207&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/CBB36779-C476-D3D3-CBCD-DFB504BBF121_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1797541207&Signature=REDACTED"
+    },
+    {
+      "nb": "39065",
+      "name": "Maeno Tomoaki",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/DED2FB3E-4FEC-2720-6495-770205BECDB4_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245221&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/345C3494-8C51-4226-6900-1731BA292E4C_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245221&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/32A4A55A-9E01-08BA-0217-6C708F2CF002_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796245221&Signature=REDACTED"
+    },
+    {
+      "nb": "282326",
+      "name": "Tachibana Mirai",
+      "role": "2",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    },
+    {
+      "nb": "46413",
+      "name": "Uchida Aya",
+      "role": "2",
+      "staff_img": "https://cnth2.shabakaty.com/vascin-staff-poster/66120648-0670-8B6E-80F9-A8EBB8821F2B_poster.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504402&Signature=REDACTED",
+      "staff_img_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/1E993499-E041-A875-440A-BA4F957B8DDC_poster_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504402&Signature=REDACTED",
+      "staff_img_medium_thumb": "https://cnth2.shabakaty.com/vascin-staff-poster/31234235-D38F-97A7-B162-3890E55110FE_poster_medium_thumb.jpg?response-cache-control=max-age%3D2592000&AWSAccessKeyId=REDACTED&Expires=1796504402&Signature=REDACTED"
+    },
+    {
+      "nb": "282332",
+      "name": "Yusa Koji",
+      "role": "2",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    }
+  ],
+  "writersInfo": [
+    {
+      "nb": "282335",
+      "name": "Shinohara Chie",
+      "role": "3",
+      "staff_img": null,
+      "staff_img_thumb": null,
+      "staff_img_medium_thumb": null
+    }
+  ],
+  "castable": "true"
+}

@@ -17,9 +17,15 @@ final mediaRepositoryProvider = Provider<MediaRepository>(
 
 /// Details, episodes, streams and everything else about one title.
 class MediaRepository {
-  MediaRepository(this._api);
+  MediaRepository(this._api, {DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
 
   final ApiClient _api;
+  final DateTime Function() _clock;
+
+  /// When stream URLs expire sooner than this, they are refetched past the
+  /// API cache. Long enough for a whole film or most downloads.
+  static const Duration minStreamValidity = Duration(hours: 6);
 
   /// `null` when the server has no usable record for [id].
   Future<MediaDetails?> details(String id) async =>
@@ -29,15 +35,49 @@ class MediaRepository {
   Future<List<Episode>> episodes(String seriesId) async =>
       parseEpisodes(await _api.fetch(ApiEndpoints.seriesEpisodes(seriesId)));
 
-  /// Season numbers only, for a season picker that loads quickly.
-  Future<List<int>> seasons(String seriesId) async =>
-      parseSeasons(await _api.fetch(ApiEndpoints.seriesSeasons(seriesId)));
+  /// Season numbers only, for a season picker that loads quickly. Some
+  /// series answer `[]` (or 400) although they have episodes; then the
+  /// seasons are taken from the episode list.
+  Future<List<int>> seasons(String seriesId) async {
+    try {
+      final seasons = parseSeasons(
+        await _api.fetch(ApiEndpoints.seriesSeasons(seriesId)),
+      );
+      if (seasons.isNotEmpty) return seasons;
+    } on ApiException catch (e) {
+      if (e.kind != ApiErrorKind.http) rethrow;
+    }
+    return ({for (final e in await episodes(seriesId)) e.season}.toList())
+      ..sort();
+  }
 
   /// Stream qualities, highest first. For a series, pass an episode ID.
-  Future<List<VideoSource>> streams(String id) async =>
-      parseVideoSources(await _api.fetch(ApiEndpoints.streams(id)));
+  ///
+  /// A cache in front of the API sometimes serves signed URLs that have
+  /// already expired (the CDN then answers 403). When any URL expires within
+  /// [minStreamValidity], the list is refetched past that cache. The server
+  /// itself reuses each file's signature until it expires (up to 7 days), so
+  /// a URL can still expire sooner than the margin: when playback or a
+  /// download gets a 403, call this again for a new URL. Call it right before
+  /// playing or downloading; never store the URLs.
+  Future<List<VideoSource>> streams(String id) async {
+    final sources = parseVideoSources(
+      await _api.fetch(ApiEndpoints.streams(id)),
+    );
+    final now = _clock().toUtc();
+    if (sources.every((s) => s.isValidFor(minStreamValidity, now: now))) {
+      return sources;
+    }
+    return parseVideoSources(
+      await _api.fetch(
+        ApiEndpoints.streams(id, cacheBuster: '${now.millisecondsSinceEpoch}'),
+      ),
+    );
+  }
 
-  /// Every subtitle file. Use [oneTrackPerLanguage] to pick one per language.
+  /// Every subtitle file, including styled ASS tracks. Use
+  /// [oneTrackPerLanguage] to pick one plain track per language. Subtitle URLs
+  /// stay valid for about 30 days.
   Future<List<SubtitleTrack>> subtitles(String id) async =>
       parseSubtitles(await _api.fetch(ApiEndpoints.subtitles(id)));
 

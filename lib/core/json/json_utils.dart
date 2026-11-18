@@ -94,6 +94,26 @@ bool isHttpUrl(String? url) {
       uri.host.isNotEmpty;
 }
 
+/// True for the server's "no image" placeholders, which it sends as if they
+/// were real images: `…/loadingImages/loading.gif` (staff and category
+/// images), `defaultImages/loading.gif` (missing subtitles) and
+/// `defaultImages/not_available.jpg` (staff photos, answers 503).
+bool isPlaceholderImage(String? url) {
+  if (url == null) return false;
+  final path = (Uri.tryParse(url)?.path ?? url).toLowerCase();
+  return path.contains('loadingimages/') ||
+      path.contains('defaultimages/') ||
+      path.endsWith('/loading.gif') ||
+      path == 'loading.gif';
+}
+
+/// An absolute http(s) image URL that isn't a placeholder, or `null`.
+String? realImageUrl(String? url) {
+  if (url == null) return null;
+  final s = unescapeUrl(url);
+  return isHttpUrl(s) && !isPlaceholderImage(s) ? s : null;
+}
+
 /// An ID: non-blank and not "0" (the API uses 0 for "none").
 String? readId(Object? value) {
   final s = readString(value);

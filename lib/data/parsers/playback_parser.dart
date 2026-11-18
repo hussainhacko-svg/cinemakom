@@ -1,5 +1,5 @@
 import '../../core/json/json_utils.dart';
-import '../models/localized_text.dart';
+import '../models/media_item.dart';
 import '../models/playback_models.dart';
 import 'media_parser.dart';
 
@@ -56,6 +56,11 @@ const _imageExtensions = ['.gif', '.png', '.jpg', '.jpeg', '.webp'];
 /// Reads the `translations` list first, then the `arTranslationFilePath` /
 /// `enTranslationFilePath` fields for languages not found yet. Placeholders
 /// such as `defaultImages/loading.gif` are rejected.
+///
+/// Each plain language comes as both `srt` and `vtt`. Some titles add a
+/// styled Arabic `ass` track: `{type: "sp", name: "special"}` in
+/// `allVideoInfo`, but `{type: "arabic"}` in `translationFiles`. It becomes
+/// an `ar` track with [SubtitleFormat.ass].
 List<SubtitleTrack> parseSubtitles(Object? json) {
   final tracks = <SubtitleTrack>[];
   final seenPaths = <String>{};
@@ -70,12 +75,19 @@ List<SubtitleTrack> parseSubtitles(Object? json) {
     final format = switch (rawFormat?.toLowerCase().replaceFirst('.', '')) {
       'vtt' => SubtitleFormat.vtt,
       'srt' => SubtitleFormat.srt,
-      _ => path.endsWith('.vtt') ? SubtitleFormat.vtt : SubtitleFormat.srt,
+      'ass' || 'ssa' => SubtitleFormat.ass,
+      _ =>
+        path.endsWith('.vtt')
+            ? SubtitleFormat.vtt
+            : (path.endsWith('.ass') || path.endsWith('.ssa'))
+            ? SubtitleFormat.ass
+            : SubtitleFormat.srt,
     };
     tracks.add(
       SubtitleTrack(
         url: url,
-        languageCode: language,
+        // The styled track is Arabic whatever its `type` says ("sp").
+        languageCode: format == SubtitleFormat.ass ? 'ar' : language,
         format: format,
         name: name,
       ),
@@ -93,13 +105,16 @@ List<SubtitleTrack> parseSubtitles(Object? json) {
       final name = firstNonBlank(m, ['name', 'lang', 'language', 'title']);
       add(
         firstNonBlank(m, ['file', 'filePath', 'url', 'subtitleUrl', 'src']),
-        _languageCode(readString(m['type'])) ?? _languageCode(name),
+        _languageCode(readString(m['type'])) ?? _languageCode(name) ?? 'ar',
         firstNonBlank(m, ['extention', 'extension']),
         name,
       );
     }
     if (map != null) {
-      final have = tracks.map((t) => t.languageCode).toSet();
+      final have = {
+        for (final t in tracks)
+          if (!t.isStyled) t.languageCode,
+      };
       for (final (code, keys) in const [
         ('ar', ['arTranslationFilePath', 'arTranslationFile']),
         ('en', ['enTranslationFilePath', 'enTranslationFile']),
@@ -117,6 +132,10 @@ List<SubtitleTrack> parseSubtitles(Object? json) {
 
 /// `videoSeason`: every episode, de-duplicated and sorted by season, then
 /// episode. A missing season becomes 1, a missing episode its list position.
+///
+/// Episode titles are never used: the server repeats the series name, or a
+/// season name ("Attack on Titan Final Season"), in every episode. The label
+/// comes from `episode_flag` ([Episode.numbering]).
 List<Episode> parseEpisodes(Object? json) {
   final map = asMap(json);
   final list = json is List
@@ -128,12 +147,6 @@ List<Episode> parseEpisodes(Object? json) {
               map?.values.whereType<List>().firstOrNull,
         );
   final byId = <String, Episode>{};
-  // Episodes usually repeat the series name as their title. A title shared by
-  // every episode is not an episode title, so it is dropped.
-  final titles = {
-    for (final e in list) firstNonBlank(asMap(e) ?? const {}, ['en_title']),
-  };
-  final sharedTitle = list.length > 1 && titles.length == 1;
   for (var i = 0; i < list.length; i++) {
     try {
       final m = asMap(list[i]);
@@ -153,21 +166,16 @@ List<Episode> parseEpisodes(Object? json) {
           'episode',
         ]),
       );
-      String? usable(String? t) =>
-          (t == null || RegExp(r'^\d+$').hasMatch(t)) ? null : t;
       final item = parseMediaItem(m);
+      final number = (episode ?? i + 1) < 1 ? i + 1 : (episode ?? i + 1);
       byId[id] = Episode(
         id: id,
         season: (season ?? 1) < 1 ? 1 : (season ?? 1),
-        episode: (episode ?? i + 1) < 1 ? i + 1 : (episode ?? i + 1),
-        title: sharedTitle
-            ? const LocalizedText()
-            : LocalizedText(
-                en: usable(
-                  firstNonBlank(m, ['en_title', 'title', 'episodeTitle']),
-                ),
-                ar: usable(firstNonBlank(m, ['ar_title'])),
-              ),
+        episode: number,
+        numbering: EpisodeNumbering.fromFlag(
+          number,
+          readString(m['episode_flag']),
+        ),
         imageUrl: item?.posterUrl,
         duration: parseSeconds(m['duration']),
       );
@@ -182,10 +190,15 @@ List<Episode> parseEpisodes(Object? json) {
   );
 }
 
-/// `video_thumbnails`: `{videoThumbnails: [{sprite_url, url, order}], status}`.
-/// `null` when the title has no previews (`status` 204, empty list).
+/// `video_thumbnails`:
+/// `{videoThumbnails: [{sprite_url, url, order, height, …}], status}`.
+///
+/// `height` is the sheet's pixel height (68 per row, 680 for a full sheet);
+/// a missing height counts as a full sheet, and `0` marks a broken sheet.
+/// `null` when the title has no previews (`status` 204, empty list) or every
+/// sheet is broken.
 SeekPreview? parseSeekPreview(Object? json) {
-  final sheets = <(int, String)>[];
+  final sheets = <(int, SeekSheet)>[];
   for (final entry in asList(asMap(json)?['videoThumbnails'] ?? json)) {
     final m = asMap(entry);
     if (m == null) continue;
@@ -193,9 +206,16 @@ SeekPreview? parseSeekPreview(Object? json) {
     final relative = readString(m['url']);
     if (!isHttpUrl(url)) url = resolveImageUrl(relative);
     if (!isHttpUrl(url)) continue;
-    sheets.add((parseIntLoose(m['order']) ?? sheets.length, url!));
+    final height = parseIntLoose(m['height']);
+    final rows = height == null
+        ? SeekPreview.maxRows
+        : (height ~/ SeekPreview.frameHeight).clamp(0, SeekPreview.maxRows);
+    sheets.add((
+      parseIntLoose(m['order']) ?? sheets.length,
+      (url: url!, rows: rows),
+    ));
   }
-  if (sheets.isEmpty) return null;
+  if (sheets.every((s) => s.$2.rows == 0)) return null;
   sheets.sort((a, b) => a.$1.compareTo(b.$1));
   return SeekPreview([for (final s in sheets) s.$2]);
 }
@@ -213,6 +233,8 @@ List<int> parseSeasons(Object? json) {
 String? _languageCode(String? raw) {
   final s = raw?.trim().toLowerCase();
   if (s == null || s.isEmpty) return null;
+  // "sp" / "special" is the styled Arabic track.
+  if (s == 'sp' || s == 'special') return 'ar';
   if (s == 'ar' || s.startsWith('arab') || s == 'عربي') return 'ar';
   if (s == 'en' || s.startsWith('engl')) return 'en';
   return s;

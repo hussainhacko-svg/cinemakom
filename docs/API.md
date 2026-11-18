@@ -2,253 +2,391 @@
 
 The reverse-engineered API that Cinemakom is built on. **This file is the source of truth.** The old Kotlin app (`../cinematy`) got several things wrong (sort codes, genre IDs, search encoding, subtitles), so don't trust it over this file.
 
-**How this was verified (2026-11-19):**
-- **Live probes** of every endpoint: sorting, paging, limits, errors, headers and parental levels.
-- **The official web app** (`https://cinemana.shabakaty.com/home`): its JavaScript endpoint map, the parameters it builds, and its network traffic, watched in Chrome.
+**How this was verified (second deep dive, 2026-11-19):**
+- **The official website** (`https://cinemana.shabakaty.com/home`) in Chrome. Every guest page was visited and its requests recorded: home, new releases, popular, movies, series, anime, a genre, search (suggestions and the results page), a movie, a series, an episode switch, the season row, staff, a group's "see all", a collection, FAQ, settings as a guest and the Arabic switch. In the player: quality switch, subtitles menu and skip intro.
+- **The website's JavaScript** (`main.d454b5f16dee02a7a9d8.js`, 3.3 MB, no lazy chunks). It was read as text: the full endpoint map, every call site's parameters, the sort list, the filter names and the player logic.
+- **The official Android app** (Shabakaty Cinemana 5.3.3, `com.shabakaty.cinemana`, from APKPure). It was unzipped and its dex string tables read; it was never run (§6).
+- **Live probes** (at most 6 requests at a time) of every parameter: accepted values, missing/empty/invalid/out of range/past the end, paging, limits, errors, headers and caching.
+- **A field-level survey:**
+  - 497 `allVideoInfo` records (200 movies, 100 series, 197 episodes);
+  - 1,037 stream files from 200 titles;
+  - 200 subtitle sets (26 files downloaded);
+  - 150 seek-preview sets;
+  - 100 series with 8,721 episodes;
+  - 60 staff pages and 60 recommendation answers;
+  - ffprobe on 480p, 1080p and 2160p files.
 - **Captured responses** in `test/fixtures/`. Re-capture them with `fvm dart run tool/capture_fixtures.dart`.
-- **A field-level survey** of 862 records from 14 endpoints: types, missing and empty rates, and value formats.
-- **Edge-case probes:** past-the-end pages, special characters, invalid and mixed IDs, batch limits, and 40 parallel requests.
 - **Two repeatable live checks** that use the app's own code:
-  - `fvm dart run tool/api_contract_check.dart` verifies every contract in this file: field types, parser yield, server limits and media files. **Run it before each release and whenever data looks wrong.**
+  - `fvm dart run tool/api_contract_check.dart` verifies every behaviour the code relies on. **Run it before each release and whenever data looks wrong.**
   - `fvm flutter test integration_test/api_debug_test.dart -d linux` exercises every repository end to end.
 
-Status legend: ✅ works and is used · ⚙️ works but unused · ❌ dead or broken · 🔒 needs a login (out of scope) · 🚫 excluded on purpose (zero-censorship rule).
+Status legend: ✅ used · ⚙️ works but unused · ❌ dead or broken · 🔒 needs a login (out of scope) · 🚫 excluded on purpose (zero censorship, no ratings, no telemetry).
 
 ---
 
 ## 1. Hosts
 
-| Host | What | Notes |
+| Host | What | Status |
 |---|---|---|
-| `cinemana.shabakaty.com/api/android/` | The main API | JSON over GET, plus one form POST |
-| `recommend.shabakaty.com` | "More like this" recommendations | JSON POST, no login needed ✅ |
-| `cnth2.shabakaty.com` | Posters, staff photos, subtitles, seek-preview sprites | Static files. Posters aren't signed, subtitles are |
-| `cdn.shabakaty.com`, `cndw6.shabakaty.com`, … | Video files | Several CDN hosts. Always use the URL as given |
-| `thumbnail.shabakaty.com` | Season posters | ❌ Returns 500, even for the official website |
-| `rating.shabakaty.com` | Cinemana user ratings | ❌ for us: needs a `ShabakatyAppId` header whose value only exists in the web bundle. We don't use client IDs from the bundle (AGENTS.md) |
-| `contwatch.shabakaty.com`, `account.shabakaty.com` | Watch progress, accounts | 🔒 Login only. Out of scope |
+| `cinemana.shabakaty.com/api/android/` | The main API: JSON over GET, plus one form POST | ✅ |
+| `recommend.shabakaty.com` | "More like this", JSON POST, no login | ✅ |
+| `cnth2.shabakaty.com` | Posters, covers, staff photos, subtitles, seek-preview sprites. Posters aren't signed; subtitles are | ✅ |
+| `cdn.shabakaty.com` → `cndw1…6.shabakaty.com` | Video files. `cdn` answers **302** to a node; follow redirects | ✅ |
+| `shabakaty.statuspage.io` (`6b1m6vnfz2jk.statuspage.io/api/v2/…`) | Public Atlassian status page with a "Cinemana" component, used by the Android app | ⚙️ (product decision, §8) |
+| `thumbnail.shabakaty.com/api/series/seasonposters` | Season posters | ❌ 500, also on the website |
+| `rating.shabakaty.com` | User ratings | 🚫 ratings; also needs the bundle's app ID |
+| `cinemana.shabakaty.com/api/info/{ShabakatyInfo,userInfo}/`, `…/whatismyip`, `share./tv.shabakaty.com/whatismyip`, `shabakaty.com/clip/`, `hacheckphp.php` | Telemetry and ISP/IP checks (POSTs device info) | 🚫 never call |
+| `se.shabakaty.com` (Sentry), `aj2376.online` (ads), `api.onesignal.com`, `api.ipify.org`, Yandex, New Relic | Error reporting, ads, push, analytics | 🚫 |
+| `contwatch.shabakaty.com`, `account.shabakaty.com` | Watch progress, accounts | 🔒 |
+| `updates.shabakaty.com/api/apps/7` | The Android app's own update feed | not relevant |
 
 ## 2. Conventions
 
 ### Headers
-The website sends `User-Agent`, `Referer: https://cinemana.shabakaty.com/` and `Origin: https://cinemana.shabakaty.com`. **None of them are required** by the API, the image host or the video CDN (tested with no headers at all). We still send them on every request through the one shared map, `ApiClient.defaultHeaders`, in case the servers start checking.
+The website sends `User-Agent`, `Referer: https://cinemana.shabakaty.com/` and `Origin: https://cinemana.shabakaty.com`. **None of them is required** by any endpoint, including the two POSTs, the image host and the video CDN. This was tested with no headers at all, and with curl and Dart user agents. We still send them on every request through the one shared map, `ApiClient.defaultHeaders`, in case the servers start checking.
 
 ### Parental level: always `0`
-Every `level` parameter is a parental level. **`0` is the unrestricted level** and returns the full catalog: 85 banners, versus 33 at level 2 and 13 at level 3 (levels 1, 4 and 5 behave like 0). Cinemakom always sends `0`, with no setting to change it (the zero-censorship rule in AGENTS.md).
+Every `level` parameter is a parental level. **`0` is the unrestricted level** and returns the full catalog: 85 banners, versus 33 at level 2 and 13 at level 3. Levels 1, 4, 5, 6, 99, `-1` and `abc` behave like 0. Cinemakom always sends `0`, with no setting to change it (the zero-censorship rule in AGENTS.md).
 
 ### Language
-`lang` accepts `ar` or `en`. Anything else is treated as `en`. It only changes text the server localizes itself (group titles, category names, staff role). Media items always carry both `en_title` and `ar_title`.
+`lang` accepts `ar` or `en`. For `videoGroups` anything else means English. For `mainCategories` / `subCategories`, an unknown value means **Arabic** and a missing one English. `lang` only changes text the server localizes itself (group titles, category names, the staff role). Media items always carry both `en_title` and `ar_title`.
 
 ### Kind
-`videoKind` / `kind`: `1` = movies, `2` = series. Unknown codes are treated as `1`. `AdvancedSearch` uses `type=movies|series` instead.
+`videoKind` / `kind`: `1` = movies, `2` = series. Unknown codes (`0`, `3`, `abc`) mean `1`. `AdvancedSearch` uses `type=movies|series`, and **without a valid `type` it returns movies only**.
 
-### Sort codes (catalog `sortParam`, `videosByCategory…` `orderby`)
-Verified by checking the order of live results:
+### Sort codes
+These are `sortParam` on the catalog and `orderby` on `videosByCategory…`. They are the website's full list (`sortingOptions`), checked against the order of live results:
 
-| Code | Meaning | `SortOrder` |
-|---|---|---|
-| `desc` | Recently **uploaded** first (the default) | `recentlyAdded` |
-| `asc` | Oldest uploads first | `oldestAdded` |
-| `r_desc` | Newest **release year** first. **Not "top rated"** (the Kotlin app got this wrong) | `newestRelease` |
-| `stars_desc` | Highest `stars` first. **Not used: the app has no ratings** (AGENTS.md) | none |
-| `views_desc` | **Most watched** first | `mostViewed` |
-| `r_asc`, `rating_desc`, `title_asc`, `title_desc`, … | Listed in the website's code, but unreliable or ignored | not used |
+| Code | Meaning | Catalog | `videosByCategory…` | `SortOrder` |
+|---|---|---|---|---|
+| `desc` | Recently **uploaded** first (the default) | ✅ | ✅ | `recentlyAdded` |
+| `asc` | Oldest uploads first | ✅ | ✅ | `oldestAdded` |
+| `r_desc` | Newest **release date** (`mDate`) first. **Not "top rated"** | ✅ | ✅ | `newestRelease` |
+| `r_asc` | Oldest release date first. Junk `mDate`s (year 201) come first | ✅ | ✅ | `oldestRelease` |
+| `title_asc` / `title_desc` | By raw `en_title`, database collation (leading spaces and punctuation first) | ❌ ignored (gives `desc`) | ✅ | `titleAscending` / `titleDescending` (`worksOnCatalog: false`) |
+| `views_desc` | Most watched first | ✅ | ✅ | `mostViewed` |
+| `views_asc` | Least watched first | works | works | not used (no use case) |
+| `rating_asc` / `rating_desc` | Parental (age) rating | works | works | 🚫 no ratings |
+| `stars_asc` / `stars_desc` | IMDb score | works | works | 🚫 no ratings |
 
-Any unknown code silently falls back to `desc`. **`AdvancedSearch` ignores sorting entirely**, including on the official website.
+**Never send any other code.** An unknown code (or an empty one) gives `desc` on the catalog, but on `videosByCategory…` it gives a **stars order**. `AdvancedSearch` ignores `sort`, and so does the website, even though its UI sends it. `CatalogRepository.catalog` throws `ArgumentError` for title sorts.
 
-### Paging (each endpoint differs)
+### Paging
 
-| Endpoint | Scheme | Page size |
-|---|---|---|
-| `video/V/2/…/pageNumber/{n}` (catalog, title search) | 0-based page | `itemsPerPage`, **capped at 99** |
-| `latestMovies` / `latestSeries` `…/page/{n}/` | 0-based page | `itemsPerPage` (24 by default, 100 works) |
-| `featuredMovies …/page/{n}` | 0-based page | `itemsPerPage` (12) |
-| `videoListPagination …/page/{n}` | 0-based page | 12 |
-| `videosByCategory`, `videosByCategoryAndLanguage` | **item offset** (`offset=30` skips 30 items); the response's `offset` is the next one | 30 |
-| `AdvancedSearch` | 0-based `page` | 12 |
-| `newlyVideosItems/…/offset/{n}/` | **`n` is a count, not an offset**: returns `n` items, capped at 12 | ≤ 12 |
+| Endpoint | Scheme | Page size | End of list |
+|---|---|---|---|
+| `video/V/2/…/pageNumber/{n}` (catalog) | 0-based page | `itemsPerPage`, **capped at 99**; `0` gives 10 | empty page |
+| `video/V/2/itemsPerPage/A/video_title_search/{q}/itemsPerPage/B/…` | 0-based page | **`B` counts, `A` is ignored**; cap 98–99 | empty page. **Pages can be one item short mid-list** (50 asked, 49 given) |
+| `latestMovies` / `latestSeries` `…/page/{n}/` | 0-based page | `itemsPerPage`, **no cap** (1000 works); `0`/`abc` gives 12/`[]` | empty page |
+| `featuredMovies …/page/{n}` | 0-based page | `itemsPerPage`, no cap; 480+ items in total | empty page |
+| `videoListPagination …/page/{n}` | 0-based page | `itemsPerPage` (12 on the website; 24 and 100 work) | short page, then empty pages |
+| `videosByCategory`, `videosByCategoryAndLanguage` | **item offset** (`offset=30` skips 30); the response's `offset` is the next one | 30, fixed | short page. Past the end, `offset` keeps growing, so never stop on its absence |
+| `AdvancedSearch` | 0-based `page` | 12, fixed (`itemsPerPage` ignored) | **empty page**: mid-list pages of 11 occur |
+| `newlyVideosItems/…/offset/{n}/` | **`n` is a count**, capped at 12 | ≤ 12 | n/a |
+| `latestVideosItems/…/offset/{n}/` | `n` is a count, **no cap** (2000 works) | n | n/a |
+| `staff`, `videoSeason`, `relatedVideos`, recommendations | not paged | all at once | n/a |
 
-**The end of a list:** every endpoint answers `200` with an empty list past the end. `videosByCategory…` keeps sending a larger `offset` even then (`offset=999999` → next `1000029`), so **stop paging on an empty page or one shorter than the page size**, never on the absence of `offset` (`OffsetPage.hasMore`). `itemsPerPage=0` gives 10. A negative page or offset is treated as 0.
+A negative page or offset counts as 0. Past the end, every list endpoint answers `200` with an empty list.
 
 ### Responses
-- **IDs** are under `nb`, as strings. `"0"` means "none" (e.g. `rootSeries: "0"`).
-- **Numbers usually arrive as strings** (`"7.5"`), but not always (`videoCommentsNumber` is a number). The string `"null"` also appears.
-- **Ratings and counters aren't used.** The app has no ratings (AGENTS.md), so `stars`, `rate`, `filmRating`, `seriesRating`, `Likes`, `DisLikes` and `videoLikesNumber` are never parsed. For the record: `stars` is a 2–9.5 score, `rate` is an unrelated large number (e.g. `1565775`), and **`videoViewsNumber` is always `0`** (even for the most-watched titles), so view counts can't be shown either.
-- **Titles are often untranslated:** 58% of records have identical `en_title` and `ar_title`, and some `en_title`s are in Arabic. Show `ar_title` in Arabic and `en_title` in English, and don't assume either one is in its own language.
+- **IDs** are under `nb`, as strings. `"0"` means "none" (e.g. `rootSeries: "0"`). Staff IDs and video IDs share one number space but are different things.
+- **Numbers usually arrive as strings** (`"7.5"`), but not always (`videoCommentsNumber` is a number). The string `"null"` also appears, and booleans appear as JSON booleans (`hasIntroSkipping`) and as strings (`castable: "true"`).
+- **Ratings and counters aren't used.** The app has no ratings (AGENTS.md), so `stars`, `rate`, `filmRating`, `seriesRating`, `ratingImg`, `Likes`, `DisLikes`, `videoLikesNumber` and `videoDisLikesNumber` are never parsed. **`videoViewsNumber` is always `0`**, so view counts can't be shown either.
+- **Titles are often untranslated:** 56% of records have identical `en_title` and `ar_title`, some `en_title`s are in Arabic, and 3% have stray leading or trailing spaces. Show `ar_title` in Arabic and `en_title` in English, and trim.
 - **`custom_en_title` / `custom_ar_title`** on group items are the **group's** name, not the item's. Ignore them.
-- **Content types are unreliable**, so the client reads bodies as text and decodes the JSON itself.
-- **Caching:** API responses have `Cache-Control: max-age=600`, so caching for 10 minutes is safe.
-- **Concurrency:** 40 parallel requests all succeeded (no rate limiting), but the server slows to a crawl (~20 s with 20 at once). `ApiClient` runs at most 6 requests at a time and retries a failed GET once, on network errors, timeouts and 5xx only.
-- **Signed URLs:** video and subtitle URLs carry `AWSAccessKeyId`, `Expires` and `Signature`, and **expire after about 5 days**. Never store them: refetch `transcoddedFiles` / `translationFiles` before playing or downloading. Poster URLs aren't signed.
+- **Content types are unreliable** (`text/html` for empty bodies, `binary/octet-stream` for some videos), so the client reads bodies as text and decodes the JSON itself.
+
+### Caching
+- An nginx and HAProxy cache sits in front of the API (`x-cache-status-nginx: HIT|MISS|STALE|BYPASS`).
+- `Cache-Control` is `max-age=600` for lists (banner, groups, catalog, latest, categories by genre) and `max-age=1800` for details, playback, categories and search. Both add `stale-if-error=3600`. `featuredMovies` and title search send none.
+- **The cache serves stale `transcoddedFiles` answers whose signed URLs have already expired** (see Streams).
+- Any extra query parameter bypasses the cache: `?_=<unique>` (`ApiEndpoints.streams(cacheBuster:)`).
+
+### Speed and concurrency
+- Median responses take 70–150 ms. `categoryLangFreqVideo` takes about 400 ms, and `featuredMovies` once took 9 s when uncached.
+- 40 parallel requests all succeeded (no rate limiting), but the server slows to a crawl with 20 at once.
+- `ApiClient` runs at most 6 requests at a time and retries a failed GET once, on network errors, timeouts and 5xx only.
 
 ### Errors
 
 | Situation | Response |
 |---|---|
-| Unknown endpoint | `404 {"status": false, "error": "Unknown method."}` |
-| `allVideoInfo` for an unknown or invalid ID | `400 []` or `400` with an empty body |
-| `videoSeason` for an unknown ID | `400`, empty body |
-| `transcoddedFiles` for an unknown ID | `200`, **empty body** |
-| `translationFiles` for an unknown ID | `200` with the `defaultImages/loading.gif` placeholders |
-| `staff`, `relatedVideos` for an unknown ID | `200 []` |
-| Title search with a raw `=` or `+` in the path | `400` (see Search) |
+| Unknown endpoint, or GET on a POST endpoint | `404 {"status": false, "error": "Unknown method."}` |
+| `allVideoInfo`: unknown ID | `400 []` |
+| `allVideoInfo`: `0` / `abc` | `400`, empty body |
+| `allVideoInfo` for some deleted or broken titles (e.g. `1184051`) | **`200`, empty `text/html` body**, while its episodes and streams still exist |
+| `transcoddedFiles`: unknown / negative ID | `200`, empty body |
+| `transcoddedFiles`: `0` / `abc` | `400`, empty body |
+| `translationFiles`: unknown ID | `200`, with `defaultImages/loading.gif` placeholders and no `translations` |
+| `videoSeason`: unknown / invalid ID | `400`, empty body |
+| `videoSeason`: a movie ID | `200 []` |
+| `videoSeasonNumber`: unknown / movie ID | `400`, empty body |
+| `video_thumbnails`: unknown ID | `200 {"videoThumbnails": [], "status": 204}` |
+| `video_thumbnails`: `0` / negative | `400 {"message": "bad Request"}` |
+| `staff`: unknown ID | `200 []` |
+| `staff`: `0` / `abc` | `500`, empty body |
+| `relatedVideos`: unknown ID | `200 []` |
+| `videoListPagination`: unknown group | `200 []` |
+| `videosByCategoryAndLanguage` without `language_id` | `400 "bad request"` |
+| `AdvancedSearch?page=abc` | `200`, empty body |
+| Title search with a raw `=` or `+` in the path | `400` |
+| Title search with an invalid base64 segment | `400` HTML page ("Under maintenence") |
+| `getVideosByIds` with more than 40 IDs | `400 "max array 40 item"` |
+| `getVideosByIds` without brackets, or as JSON | `200`, empty body |
+| Recommendation: non-numeric `MovieId` | `400` |
+| Recommendation: form body | `415` |
+| Recommendation: GET | `200`, empty `temp` answer |
 
 ## 3. Data model
 
 ### Media items
-Lists and details share one record shape with 70+ fields. The useful ones:
+Lists and details share one record shape. The useful fields:
 
 | Field | Meaning |
 |---|---|
 | `nb` | ID |
-| `en_title`, `ar_title`, `other_title` | Titles. `other_title` is the original-language title |
-| `en_content`, `ar_content` | Synopsis |
+| `en_title`, `ar_title`, `other_title` | Titles. `other_title` is the original-language title (37% non-empty) |
+| `en_content`, `ar_content` | Synopsis (1% empty) |
 | `kind` | `1` movie, `2` series |
-| `year`, `mDate` | Release year / date |
-| `stars` | Rating, 0–10 |
-| `duration` | Seconds, as a string with decimals (`"6010.03"`) |
-| `rootSeries`, `season`, `episodeNummer` | Series structure (two m's in `episodeNummer`) |
-| `imgObjUrl`, `imgMediumThumbObjUrl`, `imgThumbObjUrl` | Images (see below) |
+| `year`, `mDate` | Release year, release date `YYYY-MM-DD` (always set, sometimes junk: `0201-05-31`, `2028-06-28`) |
+| `duration` | Seconds, as a string with or without decimals (`"6010.03"`, 909–15,790 s seen) |
+| `rootSeries`, `season`, `episodeNummer` | Series structure (two m's). Movies have `season` and `episodeNummer` `"0"` |
+| `episode_flag` | Episode label, see Series |
+| `imgObjUrl`, `imgMediumThumbObjUrl`, `imgThumbObjUrl` | Images, see Images |
 | `categories` | `[{en_title, ar_title}]` |
-| `imdbUrlRef`, `trailer` | IMDb (sometimes MyAnimeList) link, YouTube trailer |
-| `published`, `updateDateTime`, `videoUploadDate` | Upload timestamps |
+| `imdbUrlRef` | IMDb link (in several URL forms), **or a MyAnimeList link for 8% (anime)**, or `""` (12%). `MediaDetails.imdbUrlIsImdb` |
+| `trailer` | YouTube watch URL (71%), sometimes with HTML-escaped junk (`&ab;_channel=`), once an IMDb video. `MediaDetails.trailerYoutubeId` |
+| `itemDate`, `videoUploadDate`, `publishDate`, `updateDateTime` | Upload dates (`YYYY-MM-DD hh:mm:ss`) and a Unix timestamp |
+| `hasIntroSkipping`, `introSkipping` | Intro ranges, see Intro skipping |
+| `videoLanguages` | **Always an object** `{en_title, ar_title}`: the audio language (the list form was never seen) |
+| `arTranslationFile(Path)`, `enTranslationFile(Path)`, `spTranslationFile`, `translations` | Subtitles, see Subtitles |
+
+**Fields that are meaningless or not modelled:**
+- `isSpecial` (15% `"1"`; it correlates with nothing, and the website doesn't use it)
+- `audioStreamNumber` (`0`–`14`, but every file has **one** audio track, see Streams)
+- `orderNmmer` (always `"1"`)
+- `useParentImg` (always `0`)
+- `isDeleted` (`"2"` on a few titles that are still served)
+- `collectionID` (always `"0"`)
+- `castable` (always `"true"`)
+- `fileFile`, `fileSizeServer`, `objectUrlExpiration`, `language_lighttigerNb`, `CACHE_SHORT`, `showComments` (always false)
+- `parent_skipping` and `skippingDurations` (🚫 parental scene skips, also embedded in `allVideoInfo`)
 
 ### Series and episodes
-A series has **no separate record**. It is represented by its **first episode (S1E1)**, which has `rootSeries: "0"`. Every other episode has `rootSeries` set to S1E1's `nb`, so **series ID = `rootSeries`, or the item's own `nb` when `rootSeries` is `"0"`** (`MediaItem.seriesId`). The website resolves it the same way.
-- `latestSeries` and the series catalog list S1E1 items.
-- `videoSeason` returns every episode **unsorted** (Friends: 234 episodes, starting at S9E1). Sort by season, then episode.
-- **Episodes have no titles of their own**: each one repeats the series name. They have **no per-episode synopsis** either (it repeats too). **Images are per season** (Friends has 10 unique images across 234 episodes). The UI should label episodes "Episode N" and use the season image.
+A series has **no separate record**. It is represented by its **first episode (S1E1)**, which has `rootSeries: "0"`. Every other episode has `rootSeries` set to S1E1's `nb`, so **series ID = `rootSeries`, or the item's own `nb` when `rootSeries` is `"0"`** (`MediaItem.seriesId`). `latestSeries`, the series catalog and staff pages list S1E1 items.
+- `videoSeason` returns every episode **unsorted** (only 59% of series come sorted; Friends has 234 episodes starting at S9E1). Sort by season, then episode. Numbering has gaps in 7% of series, and some seasons don't start at 1.
+- **Episodes have no titles of their own.** Most repeat the series name. Some repeat a *season* name ("Attack on Titan Final Season", "Tokyo Ghoul:re"), or spelling variants of the series name. Their synopsis repeats too. **Cinemakom never uses episode titles.** Images are per season.
+- **`episode_flag` sets the label**, decoded as the website does (`EpisodeNumbering.fromFlag`):
+  - `0000` → N
+  - `1000` → N, final episode (23 of 100 series have one)
+  - `0001` → N − 1
+  - `1001` → N − 1, final
+  - `0010` → N & N + 1, a double episode (33 occurrences)
+  - `0020` / `0100` → N & N + 1 & N + 2
+  - Anything else → N.
+- **`videoSeasonNumber` can return `[]`** for a series that has episodes. `MediaRepository.seasons` then takes the seasons from the episodes.
 
 ### Images
-All posters are portrait 2:3. Measured on Avengers: Infinity War:
-
-| Field | Size | Weight | Use |
-|---|---|---|---|
-| `imgThumbObjUrl` | 100×150 | ~6 KB | Tiny thumbnails, blurred placeholders |
-| `imgMediumThumbObjUrl` | 293×439 | ~40 KB | Cards and grids |
-| `imgObjUrl` | **2000×3000** | **~1.5 MB** | Details and hero only, **decoded at display size** (`cacheWidth`). Never in lists |
-
-- **Banner images are different:** `banner` items have a **wide** `imgObjUrl` (the `_cover.jpg`, about 2.7:1, e.g. 3881×1437, 1350×500), the only landscape artwork the API offers. Their `imgMediumThumbObjUrl` is a **relative path** (`vascin-poster-images/….jpg`) to the normal 293×439 portrait poster. Resolve it against `https://cnth2.shabakaty.com/` (`resolveImageUrl`, `parseBanners`). The fields `img`, `imgThumb` and `imgMediumThumb` are bare file names: ignore them.
-- **Staff photos:** `staff_img` / `staff_img_medium_thumb` are 293×439, `staff_img_thumb` is 100×150. They're often `null`.
-- There are **no backdrops** other than banners.
+- **Posters** are portrait, from `cnth2…/vascin-poster-images/{uuid}_poster.{jpg|png|webp|jpeg|jfif}`:
+  - `imgThumbObjUrl`: 100 px wide (`…_poster_thumb.*`). Use for tiny placeholders.
+  - `imgMediumThumbObjUrl`: **293 px wide**, height varies (366–443; usually 439, so not always 2:3). Use for cards and grids.
+  - `imgObjUrl`: the original upload, **anywhere from 253×383 (20 KB) to 2000×3000 (2.5 MB, sometimes PNG)**. Details and hero only, decoded at display size (`cacheWidth`). Never in lists.
+- **Banner covers:** `banner` items have a **wide** `imgObjUrl` (`vascin-cover-images/…_cover.jpg`, 1350×500, 3544×1313, 3881×1437 or 4050×1500, about 2.7:1, 170–420 KB). It is the only landscape artwork the API offers; there are no other backdrops. Their `imgMediumThumbObjUrl` is a **relative path** to the 293-wide portrait poster: resolve it against `https://cnth2.shabakaty.com/` (`resolveImageUrl`). `img`, `imgThumb` and `imgMediumThumb` are bare file names: ignore them.
+- **Staff photos:** `staff_img` / `staff_img_medium_thumb` are 293 wide, `staff_img_thumb` 100 wide. 24% are `null`, and 17% are `defaultImages/not_available.jpg`, which answers 503.
+- **Placeholders** must be rejected wherever an image is read (`isPlaceholderImage`). They are:
+  - `https://cinemana.shabakaty.com/loadingImages/loading.gif` (47% of staff pages, almost every category)
+  - `defaultImages/loading.gif`
+  - `defaultImages/not_available.jpg`
 
 ### Streams (`transcoddedFiles`)
-`[{name, resolution, container, transcoddedFileName, videoUrl}]`. Every stream seen so far is **progressive MP4** (no HLS), at `240p` / `360p` / `480p` / `720p` / `1080p`, and **`2160p`** on some titles. Servers answer byte ranges with `206`. Sizes are large (1080p ≈ 3 GB for 2.5 h). No headers are required. For a series, request an **episode** ID.
+`[{name, resolution, container, transcoddedFileName, videoUrl}]`.
+- **Formats:** every stream is **progressive MP4** (`container: "mp4"`); there is no HLS or DASH. Video is H.264 High, 23.976 fps, plus **one** AAC-LC stereo track, even where `audioStreamNumber` says more.
+- **Qualities:** `240p`, `360p`, `480p` (named `m480`), `720p`, `1080p`, and **`2160p`** (`mp4-4k`) on 22% of titles. 3% lack 1080p.
+- **Frame size:** the "p" is a size class; wide films are shorter (a "2160p" file can be 3840×1820).
+- **File sizes:** 4K is about **22 Mbit/s, 10 GB per hour**; 1080p is 1.7–3 Mbit/s. Measured throughput from the development machine was about 26 Mbit/s.
+- **Fast start:** 1080p and lower files are **not fast-start** (`moov` comes after a GB-sized `mdat`), so a player must make a ranged read of the tail first. The 4K files are fast-start.
+- **CDN:** `cdn.shabakaty.com` answers 302 to a `cndwN` node, which answers byte ranges with `206`. No headers are required. Some nodes send `binary/octet-stream`.
+- **Series:** request an **episode** ID.
+- **Signed URLs** carry `AWSAccessKeyId`, `Expires` and `Signature`, plus `response-content-disposition` (videos) or `response-cache-control` (subtitles).
+  - The server **reuses each file's signature until it expires, at most 7 days**, so a URL can arrive with anywhere from 0 to 7 days left.
+  - The API cache **can even serve URLs that expired hours ago**. Whether those then fail depends on the CDN node (403 `AccessDenied` on some, 206 on others).
+  - `MediaRepository.streams` therefore refetches past the cache when any URL expires within 6 hours.
+  - Players and downloads must call `streams()` again on a 403.
+  - Never store stream URLs.
+- **Subtitle URLs** last about 30 days.
 
-### Subtitles (`translationFiles`)
-`{arTranslationFilePath, enTranslationFilePath, translations: [{id, name, type, extention, file}]}`
-- **Each language comes twice, as `srt` and as `vtt`.** The key is spelled `extention`.
-- Files are **UTF-8 without a BOM**. Line endings are mixed (`\n` and `\r\n`).
-- When there are no subtitles, the path fields hold the placeholder **`defaultImages/loading.gif`**. Only accept real `http(s)` subtitle files.
+### Subtitles (`translationFiles`, and `translations` in `allVideoInfo`)
+`{arTranslationFile, arTranslationFilePath, enTranslationFile, enTranslationFilePath, spTranslationFile, translations?: [{id, name, type, extention, file}]}`. The key is spelled `extention`.
+- **Each plain language comes twice**, as `srt` and `vtt`. In the survey, 75% of titles had Arabic, 48% English, and 24% none (no `translations` key; the paths hold `defaultImages/loading.gif`). No other languages exist.
+- **Styled "special" subtitles:** 11% of titles (almost all Japanese anime) add an **ASS** file.
+  - It appears as `{type: "sp", name: "special", extention: "ass"}` in `allVideoInfo`, but as **`{type: "arabic", name: "arabic", extention: "ass"}` in `translationFiles`**.
+  - It is styled **Arabic**: UTF-8 **with a BOM**, CRLF line endings, `PlayRes` 640×360 or 1280×720.
+  - It names fonts such as "Adobe Arabic", which the player won't have.
+  - Some are huge (2.5 MB of karaoke effects).
+  - `parseSubtitles` makes it an `ar` track with `SubtitleFormat.ass` (`isStyled`), and `oneTrackPerLanguage` offers it separately from the plain Arabic track.
+  - The website plays only the `vtt` tracks from `allVideoInfo`, with Arabic as the default, and renders the ASS track with SubtitlesOctopus.
+- **SRT** files are UTF-8 **without** a BOM and mix `\n` and `\r\n` within one file. **VTT** files use `\n` only. The `Content-Type` is `text/plain` or `application/octet-stream`.
+- Only accept real `http(s)` subtitle files. One title had a `.txt` Arabic path.
 
 ### Intro skipping
-`allVideoInfo.introSkipping`: `[{start, end, control_level}]` in seconds. These are **real intro ranges**, sometimes two (a cold open, then the intro). Example: Game of Thrones `0→8 s` and `241→348 s`. Use it for the "Skip intro" button.
+`allVideoInfo.introSkipping` is `[{start, end, control_level}]` in seconds, as strings. It is present when `hasIntroSkipping` is true (57% of titles) and `null` otherwise.
+- These are **real intro ranges**: 1 range for 78% of those titles, 2 for 20% (a cold open, then the intro), 3 for 2%. For example, `0→11.9 s` and `230→291 s`.
+- `control_level` is always `"3"` and means nothing to us.
+- Every range seen has end > start.
+- The website shows "Skip intro" while the playhead is inside a range and jumps to its `end`. Use it for the same button (`MediaDetails.introRanges`).
 
 ### Seek-bar previews (`video_thumbnails`)
-`{videoThumbnails: [{sprite_url, url, order, height}], status}`. `status` is `204` with an empty list when a title has none. Popular titles have them; many new ones don't.
-- Each sheet is a PNG **10×10 grid of 120×68 frames**, about **one frame every 10 s**, in row-major order. The last sheet is shorter.
-- Example: Friends 1332 s → 2 sheets, the second 4 rows tall.
+`{videoThumbnails: [{id, video_item_id, image_name, url, sprite_url, order, height, status, ModifiedOn, updated_date_time}], status}`. `status` is `204` with an empty list when a title has none (49% of titles).
+- **Sheet layout:** each sheet is a PNG **1200 px wide**: 10 columns × up to 10 rows of **120×68** frames, **one frame every 10 s**, row-major. The website hard-codes the same geometry (`interval 10, width 120, height 68`).
+- **`height` is the sheet's real pixel height**: 68 × rows, with 680 for a full sheet. The **last sheet is usually shorter** (e.g. 408 = 6 rows). `SeekPreview` keeps each sheet's row count and returns no frame past it.
+- **Broken sheets** have `height: "0"`, and their file is an XML error. They keep their place with 0 rows.
+- Some titles have **fewer sheets than their duration needs**, so previews stop early.
 - Prefer `sprite_url`, which is absolute. Otherwise prefix `url` with `https://cnth2.shabakaty.com/`.
-- See `SeekPreview.frameAt`.
 
----
+### Staff
+- `allVideoInfo` lists people in `actorsInfo`, `directorsInfo` and `writersInfo` as `[{nb, name, role, staff_img, staff_img_thumb, staff_img_medium_thumb}]`. `role` is `"2"` for actors, `"1"` for directors and `"3"` for writers. 39% of titles list no director and 31% no writer.
+- The staff page is `{title, role, imgObjUrl, imgThumbObjUrl, imgMediumThumbObjUrl, items}`.
+  - `role` is one localized string ("Actor" / "الممثل", "Director", "Writers"), and it is **unreliable**: one person can have several staff IDs (Christopher Nolan has three), each with its own role.
+  - `items` are S1E1 and movie records, newest year first, all at once (up to about 40).
 
-## 4. Endpoints
+## 4. Endpoints: coverage matrix
+
+**Source:** W = the website bundle's endpoint map · C = seen in Chrome network traces · A = the Android app's strings. Relative paths are under `https://cinemana.shabakaty.com/api/android/`. All are GET unless marked.
 
 ### Home and catalog
 
-| | Method | Path | Notes |
-|---|---|---|---|
-| ✅ | GET | `banner/level/0` | Hero banners (85). Wide images. `link` points to the website and sometimes carries `lastEpisodeVideoID` for series |
-| ✅ | GET | `videoGroups/lang/{lang}/level/0` | Curated rows: `{groups: [{groupsID, title, content: [media], hasPagination, analytics}]}`. **The ID key is `groupsID`.** Titles are localized |
-| ✅ | GET | `videoListPagination/groupID/{groupsID}/level/0/itemsPerPage/12/page/{page}` | "See all" for a group |
-| ✅ | GET | `featuredMovies/level/0/itemsPerPage/12/page/{page}` | Featured titles |
-| ✅ | GET | `latestMovies/level/0/itemsPerPage/24/page/{page}/` | Newest movies |
-| ✅ | GET | `latestSeries/level/0/itemsPerPage/24/page/{page}/` | Newest series (S1E1 items) |
-| ✅ | GET | `newlyVideosItems/level/0/offset/12/` | The 12 newest uploads (movies and episodes) |
-| ✅ | GET | `video/V/2/itemsPerPage/{n}/level/0/videoKind/{kind}/sortParam/{sort}/pageNumber/{page}` | **The main catalog.** Powers top rated, most viewed, newest release and recently added, for movies or series |
-| ❌ | GET | `latestVideosItems/level/0/offset/{n}/` | The website's "new releases". Returns `n` items and duplicates `newlyVideosItems`. Not used |
-| ❌ | GET | `popularFilms/kind/{D,W,M,Y}/level/0/page/{page}` | Always `[]` |
+| Endpoint | Source | Status | Verified parameters and behaviour | Response |
+|---|---|---|---|---|
+| `banner/level/0` | W C A | ✅ `banners()` | 85 items; level 2 gives 33, level 3 gives 13 | Media records, plus `link`: `https://cinemana.shabakaty.{com,cc}/video/{lang}/{id}?showInfo=…` or `?lastEpisodeVideoID={episode}`, the episode to open (`MediaItem.linkedEpisodeId`) |
+| `videoGroups/lang/{lang}/level/0` | W C A | ✅ `videoGroups()` | Unknown `lang` means English | `{groups: [{groupsID, title, content: [12 media], hasPagination: 1, analytics: {eventID, eventInt}}]}`. **The ID key is `groupsID`.** `analytics` is telemetry: ignore it |
+| `videoListPagination/groupID/{id}/level/0/itemsPerPage/{n}/page/{p}` | W C A | ✅ `videoGroupPage()` | `n` up to 100; page 0 equals the group's `content`. A query form also works | Media list |
+| `featuredMovies/level/0/itemsPerPage/{n}/page/{p}` | W C A | ✅ `featured()` | Movies only, `n` uncapped. The website only loads page 0 | Media list |
+| `latestMovies/level/0/itemsPerPage/{n}/page/{p}/` | W C | ✅ `latestMovies()` | `n` uncapped (1000 works); the trailing slash is optional | Movies |
+| `latestSeries/level/0/itemsPerPage/{n}/page/{p}/` | W C | ✅ `latestSeries()` | Same | S1E1 items |
+| `newlyVideosItems/level/0/offset/12/` | W C A | ✅ `newlyAdded()` | The website's home "New releases" row. Count capped at 12, movies only | Media list |
+| `latestVideosItems/level/0/offset/{n}/` | W | ⚙️ | `n` items, uncapped, movies only. The same list as `newlyVideosItems`; the website never calls it | Media list |
+| `video/V/2/itemsPerPage/{n}/level/0/videoKind/{k}/sortParam/{s}/pageNumber/{p}` | W C A | ✅ `catalog()` | **The main catalog**, all genres (the website's genre "-1"). Sorts: see §2. The query form `video/V/2?itemsPerPage=…&videoKind=…` (what the APK uses) is equivalent; extra filters (`category_id`, `videoTitle`, `q`) are ignored | Media list |
+| `popularFilms/kind/{D,W,M,Y}/level/0/page/{p}` | W C | ❌ | Always `[]`; the website's Popular page says "There is no content" | `[]` |
 
 ### Categories and languages
 
-| | Method | Path | Notes |
-|---|---|---|---|
-| ✅ | GET | `mainCategories?lang=` | The 15 main genres: `[{nb, title}]`. **84** Action, **56** Adventure, **57** Animation, **59** Comedy, **60** Crime, **61** Documentary, **62** Drama, **67** Fantasy, **70** Horror, **76** Mystery, **77** Romance, **78** Sci-Fi, **79** Sport, **80** Thriller, **89** Western. These are also the app's `fallbackGenres` |
-| ✅ | GET | `subCategories?lang=` | 34 secondary genres (Biography, Family, Supernatural, Anime tags…), same shape |
-| ✅ | GET | `category` | 50 categories with both `en_title` and `ar_title`. Includes non-genres (e.g. 149 "Program") that return nothing |
-| ✅ | GET | `categoryLangFreqVideo` | Each category with a `langArray: [{catNb, langNb, lang_en_title, lang_ar_title, langFreq, langFreqSeries}]` (823 pairs). `langFreq` is often `""`, so treat it as 0 |
-| ✅ | GET | `videosByCategory?categoryID=&orderby=&videoKind=&offset=&level=0` | `{info: [media], offset: next}`, 30 per page |
-| ✅ | GET | `videosByCategoryAndLanguage?category_id=&language_id=&orderby=&videoKind=&offset=&level=0` | Same shape. `language_id` is `langNb`. The website's Anime pages use `category_id=57` (Animation) with `orderby=desc` |
+| Endpoint | Source | Status | Verified parameters and behaviour | Response |
+|---|---|---|---|---|
+| `mainCategories?lang=` | W C | ✅ `genres()` | 15 main genres, sorted by title in the requested language. **84** Action, **56** Adventure, **57** Animation, **59** Comedy, **60** Crime, **61** Documentary, **62** Drama, **67** Fantasy, **70** Horror, **76** Mystery, **77** Romance, **78** Sci-Fi, **79** Sport, **80** Thriller, **89** Western (`fallbackGenres`) | `[{nb, title}]` |
+| `subCategories?lang=` | W C | ✅ `genres()` | 34 secondary genres (Biography, Family, Supernatural, Program…) | `[{nb, title}]` |
+| `category` | W A | ✅ `allCategories()` | 50 = main + sub + `0` ("uncategorized"). No parent/child structure. Images are all the `loading.gif` placeholder | `[{nb, en_title, ar_title, description, porder, sort, img…, updateDateTime}]` |
+| `categoryLangFreqVideo` | W C | ✅ `categoryLanguages()` | 50 categories × 56 audio languages = 823 pairs. `langFreq` (movies) and `langFreqSeries` are accurate counts, but often `""` (= 0) | Categories + `langArray: [{catNb, langNb, lang_en_title, lang_ar_title, langFreq, langFreqSeries}]` |
+| `videosByCategory?categoryID=&orderby=&videoKind=&offset=&level=0` | W C | ✅ `videosByCategory()` | 30 per page, item offset. All sorts in §2 work, including title sorts. `categoryID=-1` gives `[]` (the website uses the catalog instead). `0` (uncategorized) works. With no parameters it returns a default list | `{info: [media], offset: next}` |
+| `videosByCategoryAndLanguage?category_id=&language_id=&orderby=&videoKind=&offset=&level=0` | W C | ✅ `videosByCategoryAndLanguage()` | Same shape and sorts. `language_id` is a `langNb` (7 English, 9 Arabic, 22 Japanese, 25 Turkish…), and missing it gives 400. **Anime** = `category_id=57, language_id=22`, with series as the website's default tab. For "all genres" with a language, the website sends `category_id=56` | Same |
 
 ### Search
 
-| | Method | Path | Notes |
-|---|---|---|---|
-| ✅ | GET | `video/V/2/itemsPerPage/30/video_title_search/{q}/itemsPerPage/30/pageNumber/{page}/level/0` | Title search across movies and series, with good relevance. **Encoding:** `q` = percent-encode(base64(URL-encode(query))). A raw `=` padding or `+` makes the server answer **400**: "the dark knight" and "spider-man" both failed in the Kotlin app. Verified with spaces, `'`, `&`, `:`, `-`, `%`, `+`, `#`, Arabic, accented and CJK text. Leading and trailing spaces are ignored. Search is fuzzy (`c++` matches loosely), and an empty segment returns something arbitrary, so never send an empty query |
-| ✅ | GET | `AdvancedSearch?level=0&…` | Filters, verified live: `videoTitle`, `staffTitle` (actor or director name, e.g. "Christopher Nolan"), `type=movies\|series`, `category_id` (**not** `category`, which returns nothing), `year=from,to` (the website always sends `1900,<current year>`), `star` (minimum rating, **not used**: no ratings), `page`. Arabic `staffTitle` works, an unknown `type` is ignored, and an empty `videoTitle` returns a default list. **No sorting.** 12 per page |
+| Endpoint | Source | Status | Verified parameters and behaviour | Response |
+|---|---|---|---|---|
+| `video/V/2/itemsPerPage/{A}/video_title_search/{q}/itemsPerPage/{B}/pageNumber/{p}/level/0` | W C | ✅ `titleSearch()` | Title search across movies and series, with good relevance. The server computes **`urldecode(base64decode(q))`**. **Our encoding** is percent-encode(base64(URL-encode(query))), and it keeps every character (`c++`, `100%`, `%41`, Arabic, CJK, accents, `'`, `&`, `:`). **The website's encoding** is unpadded base64url of the raw text; it works for plain text but **turns `c++` into `c  ` and `%41` into `A`**. A raw `=`/`+` in the path gives 400, and an empty `q` gives `[]`. Only `B` counts (see Paging). The website sends `A=20, B=12`, page 0 only | Media list |
+| `AdvancedSearch?level=0&…` | W C A | ✅ `advancedSearch()` | See the filter list below | Media list |
+
+`AdvancedSearch` filters:
+- **`type=movies|series`:** the builder requires it, because without it the server returns movies only.
+- **`videoTitle` and `staffTitle`:** OR-ed. The results page sends the query in both, and so does `SearchRepository.search`. Arabic names work.
+- **`category_id`:** a single ID. A comma list keeps only the lower ID, a name or an unknown ID is ignored (unfiltered results), and `category` returns nothing.
+- **`year=from,to`:** the website always sends `1900,<current year>`. A reversed range returns `[]` (the builder swaps it), and a single year is ignored.
+- **`page`:** 12 per page.
+- **Ignored:** `sort`, `itemsPerPage`, `lang`, `q`, `search`.
+- **Excluded:** `star` (minimum rating).
 
 ### Media details and playback
 
-| | Method | Path | Notes |
+| Endpoint | Source | Status | Verified parameters and behaviour | Response |
+|---|---|---|---|---|
+| `allVideoInfo/id/{id}` | W C A | ✅ `details()` | Every title page and episode switch | The full record (§3) with `actorsInfo`, `directorsInfo`, `writersInfo`, `categories`, `videoLanguages`, `introSkipping`, `translations`, … |
+| `transcoddedFiles/id/{id}` | W C A | ✅ `streams()` | Cached by the API (stale answers can hold expired URLs). `?_=<unique>` bypasses the cache | Streams (§3) |
+| `translationFiles/id/{id}` | W C | ✅ `subtitles()` | The website calls it only for the special ASS track | Subtitles (§3) |
+| `videoSeason/id/{seriesId}` | W C A | ✅ `episodes()` | Pass the series ID. An episode ID also answers, with an incomplete list | All episodes, unsorted |
+| `videoSeasonNumber/id/{seriesId}` | W C | ✅ `seasons()` | Can be `[]`; the repository then falls back to the episodes | `[{season: "1"}, …]` |
+| POST `https://recommend.shabakaty.com/api/recommendation/recommend` | W C A | ✅ `recommendations()` | JSON body `{MovieId, MovieName?, ReProcessIfExpired: true}`. `MovieId` can be a string or a number; an episode ID gives the same results as its series. `MovieName` and extra fields change nothing | `{movieId, movieName, recommendations: [10–30 media + distance_type ("collection", "staff_at_least_2", "base + genre", "base + genre + group_coll", or null), country, distances, …], expirationDate, temp}`. An unknown ID gives `[]` with `temp: true` |
+| `relatedVideos/id/{id}/kind/{k}/level/0` | W | ⚙️ fallback in `recommendations()` | Up to 30 items; `kind` changes the results. The website no longer calls it | Media list |
+| `video_thumbnails/video_id/{id}` | W C | ✅ `seekPreview()` | Every title page and episode switch | Sprites (§3) |
+| POST `getVideosByIds` | W | ✅ `byIds()` | Form body `ids=[id1, id2, …]` (the brackets are required; `["1","2"]` also works). At most 40 IDs. The response keeps the request order and repeats duplicates. Unknown numeric IDs are skipped, but one non-numeric ID empties the whole response. GET gives 404. The website uses it for guest history | Full records (with subtitle file names) |
+| `staff/actorID/{id}/lang/{lang}/level/0` | W C | ✅ `staff()` | Not paged; extra path segments and parameters are ignored. Level 2 hides titles. The APK form `staff/actorID/{id}/level/{level}` (no `lang`) also works | Staff page (§3) |
+| `faqQuestion` | W C | ✅ `faq()` | 29 bilingual entries. `porder` is always 0. `categoryName` is in English only ("User Account Management", "Video Options"…) | `[{nb, en_title, ar_title, en_content, ar_content, categoryName, categoryNb, porder, priority, …}]` |
+
+### Dead, excluded and login-only
+
+| Endpoint | Source | Status | Notes |
 |---|---|---|---|
-| ✅ | GET | `allVideoInfo/id/{id}` | The full record. Adds `actorsInfo`, `directorsInfo`, `writersInfo` (`[{nb, name, role, staff_img…}]`, role `1` director, `2` actor, `3` writer), `categories`, `videoLanguages` (an object or a list of `{en_title, ar_title}`), `introSkipping`, `trailer`, `imdbUrlRef`, `videoViewsNumber`, `videoLikesNumber`, `videoDisLikesNumber`, `castable`, and `translations` (same as `translationFiles`) |
-| ✅ | GET | `transcoddedFiles/id/{id}` | Streams (see §3) |
-| ✅ | GET | `translationFiles/id/{id}` | Subtitles (see §3) |
-| ✅ | GET | `videoSeason/id/{seriesId}` | All episodes, unsorted |
-| ✅ | GET | `videoSeasonNumber/id/{seriesId}` | `[{season: "1"}, …]` |
-| ✅ | POST | `https://recommend.shabakaty.com/api/recommendation/recommend` | **"More like this", as the website uses it.** JSON body `{MovieId, MovieName?, ReProcessIfExpired: true}`. Returns `{movieId, movieName, recommendations: [media…], expirationDate}`, 10 items, each with a `distance_type` (`collection` = same franchise, `staff_at_least_2` = shared cast). `MovieId` can be a string or a number. An episode ID gives the same results as its series root. `MovieName` doesn't change the results. An unknown ID returns an empty list. Usually under 300 ms. No login |
-| ⚙️ | GET | `relatedVideos/id/{id}/kind/{kind}/level/0` | Older "similar titles" (10 items). The website no longer calls it. The app uses it only as a fallback |
-| ✅ | GET | `video_thumbnails/video_id/{id}` | Seek-preview sprites (see §3) |
-| ✅ | POST | `getVideosByIds` | Form body `ids=[id1, id2, …]` (the brackets are required). Fresh metadata for many titles at once, e.g. to refresh favorites and history. **At most 40 IDs**: 41 or more answer `400`. The response **keeps the request order** and repeats duplicates. Unknown numeric IDs are skipped, but **a single non-numeric ID empties the whole response**, and `[]` answers 400. `MediaRepository.byIds` sends only de-duplicated numeric IDs, 40 at a time |
-| ✅ | GET | `staff/actorID/{staffId}/lang/{lang}/level/0` | Person page: `{title, role, img*ObjUrl, items: [media]}` |
-| ✅ | GET | `faqQuestion` | 29 FAQ entries, bilingual |
-| 🚫 | GET | `skippingDurations/id/{id}` | Parental-filter scene skips (`{start: [], end: []}`), not intros. Excluded under zero censorship |
-| 🚫 | GET | `checkVideoParentalLevel/id/{id}` | Parental check. Excluded |
-| ❌ | GET | `videoComment/id/{id}/limit/{n}/offset/{n}` | Always `[]`. Comments are **switched off server-wide** (`showComments: false` on every title) |
-| ❌ | GET | `collectionsId/`, `collectionVideos/collectionID/{id}/level/0` | Always `[]`, even for collection IDs the recommendation service reports |
-| ❌ | POST | `https://thumbnail.shabakaty.com/api/series/seasonposters` `{RootSeries}` | Returns 500, also on the website |
+| `skippingDurations/id/{id}` (and `skippingDurations`/`parent_skipping` in records) | W C A | 🚫 | Parental scene skips (`{start: [], end: []}`), not intros. Zero censorship |
+| `checkVideoParentalLevel/id/{id}` | W C | 🚫 | Parental check, called on every title page by the website |
+| `videoComment/id/{id}/limit/{n}/offset/{n}` | W A | ❌ | Always `[]`. Comments are off server-wide (`showComments: false` everywhere) |
+| `collectionsId/`, `collectionsId/level/0` (A), `collectionVideos/collectionID/{id}/level/0` (W C), `getCollection/collectionID/{id}/level/0` (A) | W C A | ❌ | Always `[]`, including the website's `/collections/1` page and the APK's "franchises" endpoint. `collectionID` is `"0"` on every record |
+| `popularFilms/…` | W C | ❌ | Always `[]` |
+| POST `https://thumbnail.shabakaty.com/api/series/seasonposters` `{RootSeries}` | W C | ❌ | 500 on every series page of the website |
+| `rating.shabakaty.com/api/…` (`rating-summary-by-targets-types`, `ratings`, `check-rating`) | W C | 🚫 | Ratings. Needs the bundle's `ShabakatyAppId`, which we never use |
+| `api/info/ShabakatyInfo/`, `api/info/userInfo/`, `whatismyip` (×3), `shabakaty.com/clip/`, `hacheckphp.php` | W C A | 🚫 | Telemetry and IP/ISP checks |
+| `history`, `continueWatching/level/{l}/itemPerPage/12/page/{p}`, `addToHistory`, `removeFromHistory`, `get_subscriptions`, `add_subscriptions`, `remove_subscriptions`, `get_subscription_status`, `memberCheckVideoStatus/id/{id}`, `addLike`, `increaseNumberOfView`, `highlightEpisode`, `addComment`, `removeComment`, `updateComment` (A), `commentSpam` (A), `reportIssue`, `get_notifications`, `resetNewNotifications`, `notifications` (A), `userSettings/lang/{lang}`, `changeParentalLevel`, `UserTranslationSettings`, `device/login_status` (A), `login`/`logout`/`me` (A), all of `contwatch.shabakaty.com` and `account.shabakaty.com` | W A | 🔒 | Need a Shabakaty login. Never called |
 
-### Login only (🔒 out of scope)
-`history`, `continueWatching`, `addToHistory`, `removeFromHistory`, `get_subscriptions`, `add_subscriptions`, `remove_subscriptions`, `get_subscription_status`, `memberCheckVideoStatus`, `addLike`, `increaseNumberOfView`, `highlightEpisode`, `addComment`, `removeComment`, `reportIssue`, `get_notifications`, `resetNewNotifications`, `userSettings`, `changeParentalLevel`, `UserTranslationSettings`, everything on `contwatch.shabakaty.com` and `account.shabakaty.com`, and rating writes on `rating.shabakaty.com`.
+## 5. What the website calls (Chrome traces)
 
----
+| Page | Requests |
+|---|---|
+| Home | `banner`, `newlyVideosItems` ("New releases" row), `videoGroups/lang/{lang}`, `mainCategories`, `videoListPagination` (row scrolling) |
+| Arabic switch | Re-requests `videoGroups/lang/ar` and `mainCategories?lang=ar`; the layout turns RTL |
+| New releases | `latestMovies` page 0 |
+| Popular | `popularFilms/kind/M` (empty) |
+| Movies / Series | `video/V/2/itemsPerPage/30/…/sortParam/desc/pageNumber/0`, `mainCategories`, `subCategories`, `categoryLangFreqVideo`. A genre uses `videosByCategory` (with a language: `videosByCategoryAndLanguage`), offset +30 on scroll |
+| Anime | `categoryLangFreqVideo`, `videosByCategoryAndLanguage` (57 × 22 by default) |
+| Search box (while typing) | Title search, `itemsPerPage/20 … /12`, page 0 |
+| Search results page | `AdvancedSearch` with `videoTitle=staffTitle=<query>`, `year=1900,<year>`, `type`, `page` |
+| Title page | `checkVideoParentalLevel` 🚫, `allVideoInfo`, recommendation, `transcoddedFiles`, `skippingDurations` 🚫, `video_thumbnails`, the `vtt` files, `translationFiles`; series pages add `videoSeason`, `videoSeasonNumber` and `seasonposters` ❌. The URL is `/video/{lang}/{id}`, with `?lastEpisodeVideoID=` for a specific episode |
+| Episode switch | `allVideoInfo`, `transcoddedFiles`, `skippingDurations` 🚫, `video_thumbnails` for the episode |
+| Player | Default quality 480p (`localStorage['latest-quality']`). The quality switch keeps the position; the subtitle menu offers Arabic and English (`vtt`); the Skip Intro button jumps to the range end |
+| Group "see all" | `videoListPagination`, page +1 on scroll |
+| Staff | `staff/actorID/{id}/lang/{lang}/level/0` |
+| FAQ | `faqQuestion` |
+| Settings (guest) | Login wall only |
+| Collections | `collectionVideos` (empty) |
+| Everywhere | 🚫 telemetry: `ShabakatyInfo`, Sentry, Yandex, New Relic, ratings |
 
-## 5. What the website calls (for reference)
+## 6. The Android app (5.3.3)
+The app is native Kotlin (Retrofit/OkHttp, ExoPlayer). It was removed from Google Play in 2019 and is now distributed through Shabakaty's site and APK mirrors. Its dex strings show:
+- the same endpoints as the website, often in query form (`video/V/2` with `@Query` parameters);
+- `staff/actorID/{id}/level/{level}` without `lang`;
+- `collectionsId/level/{level}` and **`getCollection/collectionID/{id}/level/{level}`** ("franchises"), both empty;
+- comment, notification, device-login and account endpoints (🔒);
+- Zendesk support SDK paths (`/api/mobile/…`, `/api/v2/help_center/…`) and a public status page (`6b1m6vnfz2jk.statuspage.io`);
+- telemetry, ads (Epom via `aj2376.online`), OneSignal and `api.ipify.org` (🚫).
 
-**Title page** (`/video/{lang}/{id}`):
-1. `allVideoInfo`
-2. the recommendation service
-3. `transcoddedFiles`
-4. `translationFiles`
-5. `video_thumbnails`
-6. `videoSeason` and `videoSeasonNumber` (series only)
-7. `seasonposters`, which fails with 500
+It has no endpoint the website lacks that returns data. App IDs, keys and tokens in it were not used or copied.
 
-It also calls `checkVideoParentalLevel` and `skippingDurations` (excluded for us) and the rating summary (needs the app ID).
-
-**Home** uses `banner`, `videoGroups` and the category endpoints. The **Anime** section uses `videosByCategoryAndLanguage` with `category_id=57`.
-
-## 6. Keeping this reliable
-- **The parsers never throw.** They skip bad records, and `tool/api_contract_check.dart` checks that no *valid* record is skipped (parser yield = raw count).
-- **Fixtures are real responses** (lists trimmed to 6 items, signed URLs redacted). Parser tests run against them, plus inline edge cases.
+## 7. Keeping this reliable
+- **The parsers never throw.** They skip bad records, and `tool/api_contract_check.dart` checks that no *valid* record is skipped (parser yield = raw count). It also checks every behaviour this file documents and the code relies on: search encoding and page size, `AdvancedSearch` semantics, sort codes, paging ends, stream freshness, styled subtitles, sprite geometry, placeholders, banner links and intro ranges.
+- **Fixtures are real responses** (lists trimmed to 6 items, signed URLs redacted). Parser tests run against them, plus inline edge cases. `series_episodes_finale` / `series_episodes_double` (Lucifer, One Piece), `subtitles_special` / `video_info_special` and `thumbnails_broken` (816721) use fixed long-lived IDs. `staff_no_photo` is discovered.
 - **When the API changes:**
   1. Run the contract check.
   2. Re-capture the fixtures and diff them.
   3. Update this file, the parsers and the tests together.
 
-## 7. Open questions and coverage gaps
-Known unknowns, for the next deep dive:
-- **Not analysed: the official Android app.** The API lives under `/api/android/`, so the official Cinemana Android app may call endpoints or parameters the website doesn't. Only the website bundle has been read so far.
-- **Unexplained fields:** `introSkipping.control_level` (always `"3"` so far), `isSpecial`, `episode_flag`, `audioStreamNumber` (multiple audio tracks?), `translationFlag`, `channels`, `orderNmmer`, `replacement`, `watermark`, `useParentImg`, `fileSizeServer`/`fileSizeClient`, `published`, `itemDate`, `updateDateTime` (a Unix timestamp), and `analytics` on video groups.
-- **Unverified behaviour:**
-  - The sort codes `r_asc`, `rating_desc`, `title_asc` and `title_desc` behave oddly or are ignored. Are there codes we haven't found?
-  - Is the 2160p stream actually playable?
-  - Are there streams other than progressive MP4 (HLS, multiple audio tracks)?
-  - Does any title have more than one subtitle per language, or languages other than ar/en (`spTranslationFile`)?
-  - Is the `staff` list paginated (Gregory Hines returned 2 items, another person 35)?
-  - What does `link` in banners mean beyond `lastEpisodeVideoID`?
-  - How does `category` relate to `mainCategories` / `subCategories` (is there a parent/child structure)?
-  - `videoLanguages` as a list (only the object form has been seen).
-- **Dead or blocked:** comments (`showComments: false` everywhere), collections (always empty), `popularFilms`, `latestVideosItems` (works but duplicates other lists), `seasonposters` (500), and the rating summary (needs the bundle's `ShabakatyAppId`, which we don't use).
-- **Not checked:** response times and caching per endpoint beyond `max-age=600`, and how stable IDs and URLs stay over days.
+## 8. Open questions and decisions
+**Closed in this deep dive:**
+- **Android app:** analysed (§6). There is nothing new to use.
+- **Fields:** `introSkipping.control_level` (always `"3"`, meaningless) and `episode_flag` (episode labels) are explained. `audioStreamNumber` is a meaningless counter (one audio track per file). `isSpecial`, `orderNmmer`, `replacement`, `watermark`, `useParentImg`, `fileSize*`, `channels` and `translationFlag` are meaningless or absent. `published`, `itemDate` and `updateDateTime` are upload timestamps. Group `analytics` is telemetry.
+- **Sort codes:** all 12 of the website's keys were mapped (§2). There are no hidden ones.
+- **2160p:** real 3840-wide H.264 at about 22 Mbit/s, fast-start, byte ranges work.
+- **Other formats:** there is no HLS or DASH, and no multi-audio.
+- **Subtitles:** only Arabic and English plain tracks exist, plus the styled Arabic ASS track (`spTranslationFile`). There is at most one per language and format.
+- **Staff lists:** not paginated. Counts differ simply by filmography (up to about 40).
+- **Banner `link`:** `showInfo` (details or player) and `lastEpisodeVideoID` (the episode to open), on `.com` or `.cc`.
+- **`category`:** the union of main and sub genres plus `0`, with no hierarchy.
+- **`videoLanguages`:** always an object.
+- **Caching:** measured per endpoint (§2). Stable IDs: the old IDs from the first deep dive (Friends 4328, Avengers 191463) still resolve. Signed URLs: §3.
+
+**Still open (low risk):**
+- Why `allVideoInfo` answers an empty 200 for a few series roots (e.g. 1184051) whose episodes still play. The app shows them as unavailable.
+- How often the API cache serves expired stream URLs. It was seen on 13 of 1,037 files, and the repository handles it.
+
+**Product decisions for the owner:**
+1. **Title sorts (A→Z, Z→A)** work only inside a genre, not on "all movies/series". Offer them only on genre pages?
+2. **Styled ASS subtitles** for anime: offer them as "Arabic (styled)" next to plain Arabic? They need libass (media_kit has it) and an Arabic fallback font.
+3. **Search by actor:** the search now also matches cast and crew names, like the website. Keep it?
+4. **Service status:** show an outage notice from the public status page when the API fails?
+5. **4K:** at 22 Mbit/s and 10 GB per hour, should 2160p be hidden on mobile data or by default?

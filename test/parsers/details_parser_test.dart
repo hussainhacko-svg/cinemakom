@@ -30,7 +30,7 @@ void main() {
         'nb': '1',
         'en_title': 'A',
         'videoLanguages': {'en_title': 'English', 'ar_title': 'الإنجليزية'},
-        'trailer': 'https://www.youtube.com/watch?v=x',
+        'trailer': 'https://www.youtube.com/watch?v=3jBWJIAfBOY&ab;_channel=X',
         'imdbUrlRef': '',
         'introSkipping': [
           {'start': '0', 'end': '27.12', 'control_level': '3'},
@@ -46,7 +46,9 @@ void main() {
       })!;
       expect(d.audioLanguages.single.en, 'English');
       expect(d.trailerUrl, startsWith('https://'));
+      expect(d.trailerYoutubeId, '3jBWJIAfBOY');
       expect(d.imdbUrl, isNull);
+      expect(d.imdbUrlIsImdb, isFalse);
       expect(d.introRanges, [
         const SkipRange(Duration.zero, Duration(milliseconds: 27120)),
       ]);
@@ -60,6 +62,26 @@ void main() {
     });
   });
 
+  test('youtubeVideoId', () {
+    expect(youtubeVideoId('https://youtu.be/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+    expect(
+      youtubeVideoId('https://www.youtube.com/embed/dQw4w9WgXcQ'),
+      'dQw4w9WgXcQ',
+    );
+    expect(
+      youtubeVideoId('https://www.imdb.com/video/imdb/vi199737113/'),
+      isNull,
+    );
+    expect(youtubeVideoId(''), isNull);
+  });
+
+  test('external link: IMDb or MyAnimeList', () {
+    MediaDetails d(String url) =>
+        parseMediaDetails({'nb': '1', 'en_title': 'A', 'imdbUrlRef': url})!;
+    expect(d('http://www.imdb.com/title/tt0111161/').imdbUrlIsImdb, isTrue);
+    expect(d('https://myanimelist.net/anime/1').imdbUrlIsImdb, isFalse);
+  });
+
   test('staff credits skip entries without ID or name', () {
     final credits = parseStaffCredits([
       {'nb': '1', 'name': 'A', 'staff_img': null},
@@ -69,6 +91,16 @@ void main() {
     ], StaffRole.director);
     expect(credits.single.name, 'A');
     expect(credits.single.imageUrl, isNull);
+    final placeholder = parseStaffCredits([
+      {
+        'nb': '3',
+        'name': 'B',
+        'staff_img': 'defaultImages/not_available.jpg',
+        'staff_img_medium_thumb':
+            'https://cnth2.shabakaty.com/defaultImages/not_available.jpg',
+      },
+    ], StaffRole.actor);
+    expect(placeholder.single.imageUrl, isNull);
   });
 
   test('staff page fixture', () {
@@ -76,6 +108,13 @@ void main() {
     expect(page.name, isNotEmpty);
     expect(page.items, isNotEmpty);
     expect(parseStaffPage({'items': []}), isNull);
+    expect(parseStaffPage(<Object?>[]), isNull);
+  });
+
+  test('staff page placeholder image is dropped', () {
+    final page = parseStaffPage(fixture('staff_no_photo'))!;
+    expect(page.imageUrl, isNull);
+    expect(page.items, isNotEmpty);
   });
 
   test('faq fixture is sorted and bilingual', () {

@@ -28,10 +28,22 @@ Future<void> main(List<String> args) async {
   final outDir = Directory('test/fixtures')..createSync(recursive: true);
   final failures = <String>[];
 
-  Future<Object?> capture(String name, ApiRequest request) async {
+  /// Saves one response. With [prefer], matching list items are moved to
+  /// the front before trimming, so the fixture keeps them.
+  Future<Object?> capture(
+    String name,
+    ApiRequest request, {
+    bool Function(Map<Object?, Object?> item)? prefer,
+  }) async {
     try {
       final json = await client.fetch(request);
-      final trimmed = _redact(_trim(json, maxItems));
+      final ordered = prefer == null || json is! List
+          ? json
+          : [
+              ...json.where((e) => e is Map && prefer(e)),
+              ...json.where((e) => e is! Map || !prefer(e)),
+            ];
+      final trimmed = _redact(_trim(ordered, maxItems));
       File('${outDir.path}/$name.json')
           .writeAsStringSync('${_encoder.convert(trimmed)}\n');
       stdout.writeln('✓ ${name.padRight(34)} ${_describe(json)}');
@@ -112,6 +124,38 @@ Future<void> main(List<String> args) async {
     ApiEndpoints.advancedSearch(videoTitle: 'batman', kind: VideoKind.series),
   );
 
+  // Styled "special" (ass) subtitles exist mostly on Japanese anime.
+  final anime = await client.fetch(
+    ApiEndpoints.videosByCategoryAndLanguage(
+      categoryId: '57',
+      languageId: '22',
+      kind: VideoKind.series,
+    ),
+  );
+  // List items lack `spTranslationFile`; getVideosByIds records have it.
+  final animeIds = [
+    if (anime is Map && anime['info'] is List)
+      for (final i in anime['info'] as List)
+        if (i is Map) '${i['nb']}',
+  ];
+  final full = animeIds.isEmpty
+      ? null
+      : await client.fetch(
+          ApiEndpoints.videosByIds(
+            animeIds.take(ApiEndpoints.maxIdsPerRequest).toList(),
+          ),
+        );
+  final special =
+      [
+        if (full is List)
+          for (final i in full)
+            if (i is Map && '${i['spTranslationFile'] ?? ''}'.trim().isNotEmpty)
+              '${i['nb']}',
+      ].firstOrNull ??
+      '279230';
+  await capture('subtitles_special', ApiEndpoints.subtitles(special));
+  await capture('video_info_special', ApiEndpoints.videoInfo(special));
+
   // Details and playback, for a movie.
   final movieId = _firstValue(latestMovies, ['nb', 'id']);
   if (movieId != null) {
@@ -141,6 +185,18 @@ Future<void> main(List<String> args) async {
       await capture('staff', ApiEndpoints.staff(staffId, ApiLanguage.en));
     }
 
+    // A person whose page image is the loading.gif placeholder.
+    final cast = info is Map ? info['actorsInfo'] : null;
+    for (final actor in cast is List ? cast.take(12) : const <Object?>[]) {
+      final id = actor is Map ? '${actor['nb']}' : null;
+      if (id == null) continue;
+      final page = await client.fetch(ApiEndpoints.staff(id, ApiLanguage.en));
+      if (page is Map && '${page['imgObjUrl']}'.contains('loading.gif')) {
+        await capture('staff_no_photo', ApiEndpoints.staff(id, ApiLanguage.en));
+        break;
+      }
+    }
+
     final secondId = _valueAt(latestMovies, 1, ['nb', 'id']);
     await capture(
       'videos_by_ids',
@@ -159,6 +215,8 @@ Future<void> main(List<String> args) async {
   if (movieId != null) {
     await capture('thumbnails_none', ApiEndpoints.thumbnails(movieId));
   }
+  // A title whose only sprite sheet is broken (height 0, error file).
+  await capture('thumbnails_broken', ApiEndpoints.thumbnails('816721'));
 
   // Details and playback, for a series. A series is identified by its first
   // episode (rootSeries == 0). Prefer one with several seasons.
@@ -189,6 +247,20 @@ Future<void> main(List<String> args) async {
       await capture('subtitles_episode', ApiEndpoints.subtitles(episodeId));
     }
   }
+
+  // episode_flag: Lucifer has season finales (1000), One Piece a double
+  // episode (0010). Long-running series, so the IDs are stable.
+  bool flagged(Map<Object?, Object?> e) => '${e['episode_flag']}' != '0000';
+  await capture(
+    'series_episodes_finale',
+    ApiEndpoints.seriesEpisodes('36835'),
+    prefer: flagged,
+  );
+  await capture(
+    'series_episodes_double',
+    ApiEndpoints.seriesEpisodes('38834'),
+    prefer: flagged,
+  );
 
   await capture('faq', ApiEndpoints.faq());
 

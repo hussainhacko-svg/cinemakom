@@ -1,0 +1,30 @@
+{
+  "arTranslationFile": "F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt",
+  "enTranslationFile": "",
+  "spTranslationFile": "700F8CC2-B7B1-CFFE-2A27-316A0C6F89B8_sp_transfile.ass",
+  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635799&Signature=REDACTED",
+  "enTranslationFilePath": "defaultImages/loading.gif",
+  "translations": [
+    {
+      "id": 1,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "srt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635799&Signature=REDACTED"
+    },
+    {
+      "id": 2,
+      "name": "arabic",
+      "type": "ar",
+      "extention": "vtt",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/F613BDCF-0668-B6B4-367E-B7A01CBFDD92_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635799&Signature=REDACTED"
+    },
+    {
+      "id": 3,
+      "name": "arabic",
+      "type": "arabic",
+      "extention": "ass",
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/700F8CC2-B7B1-CFFE-2A27-316A0C6F89B8_sp_transfile.ass?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797635799&Signature=REDACTED"
+    }
+  ]
+}

@@ -6,7 +6,9 @@ import '../models/localized_text.dart';
 /// `category`, `mainCategories?lang=` and `subCategories?lang=`.
 ///
 /// `mainCategories`/`subCategories` send `{nb, title}` with the title in the
-/// requested [lang]; `category` sends both `en_title` and `ar_title`.
+/// requested [lang] (sorted by that title); `category` sends both `en_title`
+/// and `ar_title`. `category` = the 15 main + 34 sub genres + `0`
+/// ("uncategorized"); there is no parent/child structure.
 /// Nested children are flattened. Entries without an ID or a name are skipped.
 List<Category> parseCategories(Object? json, {ApiLanguage? lang}) {
   final out = <Category>[];
@@ -170,10 +172,12 @@ const List<Category> fallbackGenres = [
   ),
 ];
 
+/// Category images are almost always the `loading.gif` placeholder, which
+/// is dropped.
 String? _image(JsonMap map) {
   for (final key in ['imgMediumThumbObjUrl', 'imgObjUrl', 'imgThumbObjUrl']) {
-    final s = readString(map[key]);
-    if (s != null && isHttpUrl(unescapeUrl(s))) return unescapeUrl(s);
+    final url = realImageUrl(readString(map[key]));
+    if (url != null) return url;
   }
   return null;
 }

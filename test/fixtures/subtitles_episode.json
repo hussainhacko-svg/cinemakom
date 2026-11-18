@@ -2,36 +2,36 @@
   "arTranslationFile": "40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt",
   "enTranslationFile": "BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt",
   "spTranslationFile": "",
-  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED",
-  "enTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED",
+  "arTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED",
+  "enTranslationFilePath": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED",
   "translations": [
     {
       "id": 1,
       "name": "arabic",
       "type": "ar",
       "extention": "srt",
-      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED"
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED"
     },
     {
       "id": 2,
       "name": "arabic",
       "type": "ar",
       "extention": "vtt",
-      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED"
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/40276599-D507-F775-725A-ACCCA6037DCC_ar_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED"
     },
     {
       "id": 3,
       "name": "english",
       "type": "en",
       "extention": "srt",
-      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED"
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.srt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED"
     },
     {
       "id": 4,
       "name": "english",
       "type": "en",
       "extention": "vtt",
-      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797630421&Signature=REDACTED"
+      "file": "https://cnth2.shabakaty.com/vascin-translation-files/BD2A72A3-0101-AE1A-1F45-BFB24128080E_en_transfile.vtt?response-cache-control=max-age%3D86400&AWSAccessKeyId=REDACTED&Expires=1797589844&Signature=REDACTED"
     }
   ]
 }

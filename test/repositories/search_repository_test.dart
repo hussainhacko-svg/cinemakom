@@ -40,6 +40,11 @@ void main() {
       final results = await repo.search('  monster ');
       expect(results.map((i) => i.id), ['2', '4', '1', '3']);
       expect(api.requests, hasLength(3));
+      // Like the website: the query is both a title and a staff name.
+      for (final r in api.requests.where((r) => r.path == 'AdvancedSearch')) {
+        expect(r.query['videoTitle'], 'monster');
+        expect(r.query['staffTitle'], 'monster');
+      }
       expect(
         api.requests
             .where((r) => r.path == 'AdvancedSearch')

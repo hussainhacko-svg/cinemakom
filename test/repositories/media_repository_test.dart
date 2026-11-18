@@ -1,4 +1,5 @@
 import 'package:cinemakom/core/network/api_endpoints.dart';
+import 'package:cinemakom/core/network/api_exception.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/repositories/media_repository.dart';
@@ -40,6 +41,75 @@ void main() {
       title: LocalizedText(en: 'M'),
     );
     expect(await repo.recommendations(movie), isNotEmpty);
+  });
+
+  group('streams', () {
+    final now = DateTime.utc(2026, 11, 19, 12);
+    String url(DateTime expires) =>
+        'https://cdn.shabakaty.com/v.mp4?AWSAccessKeyId=K'
+        '&Expires=${expires.millisecondsSinceEpoch ~/ 1000}&Signature=S';
+    List<Map<String, String>> streams(DateTime expires) => [
+      {'resolution': '720p', 'videoUrl': url(expires)},
+      {'resolution': '480p', 'videoUrl': '${url(expires)}&q=480'},
+    ];
+
+    test('fresh URLs are used as they are', () async {
+      final api = F([
+        F.path('transcoddedFiles/', streams(now.add(const Duration(days: 5)))),
+      ]);
+      final sources = await MediaRepository(api, clock: () => now).streams('7');
+      expect(sources, hasLength(2));
+      expect(api.requests, hasLength(1));
+    });
+
+    test('stale cached URLs are refetched past the cache', () async {
+      final api = F([
+        (
+          (r) => r.path.startsWith('transcoddedFiles/') && r.query.isEmpty,
+          (_) => streams(now.subtract(const Duration(hours: 1))),
+        ),
+        (
+          (r) => r.path.startsWith('transcoddedFiles/') && r.query.isNotEmpty,
+          (_) => streams(now.add(const Duration(days: 7))),
+        ),
+      ]);
+      final sources = await MediaRepository(api, clock: () => now).streams('7');
+      expect(api.requests, hasLength(2));
+      expect(api.requests.last.query['_'], '${now.millisecondsSinceEpoch}');
+      expect(
+        sources.every(
+          (s) => s.isValidFor(MediaRepository.minStreamValidity, now: now),
+        ),
+        isTrue,
+      );
+    });
+
+    test('URLs expiring within the margin are refreshed too', () async {
+      final api = F([
+        F.path('transcoddedFiles/', streams(now.add(const Duration(hours: 2)))),
+      ]);
+      await MediaRepository(api, clock: () => now).streams('7');
+      expect(api.requests, hasLength(2));
+    });
+  });
+
+  test('seasons fall back to the episodes when the list is empty', () async {
+    for (final answer in <Object?>[
+      <Object?>[],
+      const ApiException(ApiErrorKind.http, statusCode: 400),
+    ]) {
+      final api = F([
+        F.path('videoSeasonNumber/', answer),
+        F.path('videoSeason/', [
+          {'nb': '1', 'en_title': 'S', 'season': '2', 'episodeNummer': '1'},
+          {'nb': '2', 'en_title': 'S', 'season': '1', 'episodeNummer': '1'},
+          {'nb': '3', 'en_title': 'S', 'season': '2', 'episodeNummer': '2'},
+        ]),
+      ]);
+      expect(await MediaRepository(api).seasons('1'), [1, 2]);
+    }
+    final dead = MediaRepository(F([F.path('videoSeasonNumber/', offline)]));
+    await expectLater(dead.seasons('1'), throwsA(isA<ApiException>()));
   });
 
   test('staff page', () async {

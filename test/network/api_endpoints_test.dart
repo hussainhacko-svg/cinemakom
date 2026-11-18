@@ -27,20 +27,43 @@ void main() {
     },
   );
 
+  test('title search keeps a literal + and % (the server URL-decodes)', () {
+    // urldecode(base64decode(segment)) must give back the query.
+    String roundTrip(String q) => Uri.decodeComponent(
+      utf8.decode(base64.decode(ApiEndpoints.encodeTitleQuery(q))),
+    );
+    for (final q in ['c++', '100%', '%41', 'fast & furious', "ocean's"]) {
+      expect(roundTrip(q), q);
+    }
+  });
+
   test('advanced search computes the year range instead of hardcoding it', () {
     final q = ApiEndpoints.advancedSearch(
+      kind: VideoKind.movies,
       videoTitle: 'x',
       now: DateTime(2031, 3, 1),
     ).query;
     expect(q['year'], '1900,2031');
-    expect(q.containsKey('type'), isFalse);
+    expect(q['type'], 'movies');
     expect(q.containsKey('staffTitle'), isFalse);
+  });
+
+  test('advanced search swaps a reversed year range and clamps the page', () {
+    final q = ApiEndpoints.advancedSearch(
+      kind: VideoKind.series,
+      yearFrom: 2020,
+      yearTo: 2000,
+      page: -3,
+    ).query;
+    expect(q['year'], '2000,2020');
+    expect(q['page'], 0);
   });
 
   test('advanced search includes only the filters that are set', () {
     final q = ApiEndpoints.advancedSearch(
       staffTitle: 'Nolan',
       kind: VideoKind.series,
+      categoryId: ' 84 ',
       yearFrom: 2000,
       yearTo: 2010,
       page: 2,
@@ -49,6 +72,7 @@ void main() {
       'level': 0,
       'staffTitle': 'Nolan',
       'type': 'series',
+      'category_id': '84',
       'year': '2000,2010',
       'page': 2,
     });
@@ -70,9 +94,23 @@ void main() {
         'recentlyAdded': 'desc',
         'oldestAdded': 'asc',
         'newestRelease': 'r_desc',
+        'oldestRelease': 'r_asc',
         'mostViewed': 'views_desc',
+        'titleAscending': 'title_asc',
+        'titleDescending': 'title_desc',
       },
     );
+    expect(SortOrder.values.where((s) => !s.worksOnCatalog), [
+      SortOrder.titleAscending,
+      SortOrder.titleDescending,
+    ]);
+  });
+
+  test('streams can bypass the API cache', () {
+    expect(ApiEndpoints.streams('7').query, isEmpty);
+    final fresh = ApiEndpoints.streams('7', cacheBuster: '123');
+    expect(fresh.path, 'transcoddedFiles/id/7');
+    expect(fresh.query, {'_': '123'});
   });
 
   test('recommendations POST JSON to the recommendation service', () {
@@ -96,7 +134,14 @@ void main() {
   });
 
   test('no rating filter or rating sort exists', () {
-    expect(SortOrder.values.map((s) => s.code), isNot(contains('stars_desc')));
-    expect(ApiEndpoints.advancedSearch().query.containsKey('star'), isFalse);
+    final codes = SortOrder.values.map((s) => s.code);
+    for (final banned in ['stars', 'rating']) {
+      expect(codes.where((c) => c.startsWith(banned)), isEmpty);
+    }
+    expect(
+      ApiEndpoints.advancedSearch(kind: VideoKind.movies).query
+          .containsKey('star'),
+      isFalse,
+    );
   });
 }

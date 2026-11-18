@@ -52,10 +52,13 @@ enum VideoKind {
   final String searchType;
 }
 
-/// `sortParam` (catalog) and `orderby` (videosByCategory…) values. Unknown
-/// codes silently fall back to [recentlyAdded]. `AdvancedSearch` ignores
-/// sorting entirely. Rating-based sorts (`stars_desc`) exist but are not used:
-/// the app has no ratings (AGENTS.md).
+/// `sortParam` (catalog) and `orderby` (videosByCategory…) values.
+///
+/// Never send any other code: the catalog silently falls back to `desc`, but
+/// `videosByCategory…` falls back to a rating order. `AdvancedSearch` ignores
+/// sorting entirely. The website also offers `views_asc`, parental-rating
+/// sorts (`rating_*`) and IMDb-score sorts (`stars_*`); none is used (no
+/// ratings, AGENTS.md).
 enum SortOrder {
   /// Most recently uploaded first (`desc`). The server default.
   recentlyAdded('desc'),
@@ -63,14 +66,29 @@ enum SortOrder {
   /// Oldest uploads first (`asc`).
   oldestAdded('asc'),
 
-  /// Newest release year first (`r_desc`). This is *not* "top rated".
+  /// Newest release date (`mDate`) first (`r_desc`). This is *not* "top
+  /// rated".
   newestRelease('r_desc'),
 
-  /// Most watched first (`views_desc`).
-  mostViewed('views_desc');
+  /// Oldest release date first (`r_asc`). Some `mDate`s are junk (year 201),
+  /// so the first items can look odd.
+  oldestRelease('r_asc'),
 
-  const SortOrder(this.code);
+  /// Most watched first (`views_desc`).
+  mostViewed('views_desc'),
+
+  /// A→Z by English title (`title_asc`). Only `videosByCategory…`: the main
+  /// catalog ignores it.
+  titleAscending('title_asc', worksOnCatalog: false),
+
+  /// Z→A by English title (`title_desc`). Only `videosByCategory…`.
+  titleDescending('title_desc', worksOnCatalog: false);
+
+  const SortOrder(this.code, {this.worksOnCatalog = true});
   final String code;
+
+  /// Whether the main catalog (`video/V/2/…/sortParam/`) honours this sort.
+  final bool worksOnCatalog;
 }
 
 /// Language of titles in endpoints that take `lang`. Anything else is
@@ -118,13 +136,17 @@ abstract final class ApiEndpoints {
         'latestSeries/level/$level/itemsPerPage/$itemsPerPage/page/$page/',
       );
 
-  /// The 12 newest uploads. The `offset` segment is really a count, capped
-  /// at 12.
+  /// The 12 newest uploads (movies only). The `offset` segment is really a
+  /// count, capped at 12.
   static ApiRequest newlyAdded() =>
       const ApiRequest('newlyVideosItems/level/$level/offset/12/');
 
+  /// Most items the main catalog returns per page.
+  static const int maxCatalogPageSize = 99;
+
   /// Main catalog by kind and sort. [page] is 0-based. The server caps
-  /// [itemsPerPage] at 99.
+  /// [itemsPerPage] at [maxCatalogPageSize]. [sort] must be one the catalog
+  /// honours ([SortOrder.worksOnCatalog]); title sorts are silently ignored.
   static ApiRequest catalog({
     required VideoKind kind,
     required SortOrder sort,
@@ -191,6 +213,10 @@ abstract final class ApiEndpoints {
   // ---- Search ---------------------------------------------------------------
 
   /// Title search across movies and series.
+  ///
+  /// The path has `itemsPerPage` twice: only the second one counts. The
+  /// server sometimes returns one item fewer than asked, so a short page is
+  /// not the end: stop paging on an empty page.
   static ApiRequest titleSearch(
     String query, {
     int page = 0,
@@ -204,33 +230,53 @@ abstract final class ApiEndpoints {
   /// URL-encode (spaces as `%20`), then standard base64. The caller must
   /// percent-encode the result: a raw `=` or `+` in the path makes the server
   /// answer 400 ("the dark knight", "spider-man").
+  ///
+  /// The server decodes `urldecode(base64decode(segment))`. The website sends
+  /// unpadded base64url of the raw text instead, which loses a literal `+`
+  /// ("c++" becomes "c  ") and `%xx`; this encoding keeps every character.
   static String encodeTitleQuery(String query) =>
       base64.encode(utf8.encode(Uri.encodeComponent(query.trim())));
 
-  /// `AdvancedSearch`, 12 results per page. Every filter is optional. The
-  /// year range defaults to 1900 through the current year (computed, never
-  /// hardcoded). The server ignores `sort`, so it isn't offered.
+  /// Results per `AdvancedSearch` page. Pages are sometimes one short in the
+  /// middle of a list, so stop paging on an empty page.
+  static const int advancedSearchPageSize = 12;
+
+  /// Earliest year of the `AdvancedSearch` year range.
+  static const int firstYear = 1900;
+
+  /// `AdvancedSearch`. Verified behaviour:
+  /// - [kind] is required: without `type` (or with an unknown one) the server
+  ///   returns movies only.
+  /// - [videoTitle] and [staffTitle] are OR-ed (the website sends the same
+  ///   text in both).
+  /// - [categoryId] is a single ID. A comma list uses only one of them, and an
+  ///   unknown ID is ignored (unfiltered results).
+  /// - The year range defaults to 1900 through the current year (computed,
+  ///   never hardcoded). A reversed range returns nothing, so it is swapped.
+  /// - `sort` and `itemsPerPage` are ignored, so they aren't offered.
   static ApiRequest advancedSearch({
+    required VideoKind kind,
     String? videoTitle,
     String? staffTitle,
-    VideoKind? kind,
     String? categoryId,
     int? yearFrom,
     int? yearTo,
     int page = 0,
     DateTime? now,
   }) {
-    final toYear = yearTo ?? (now ?? DateTime.now()).year;
+    var from = yearFrom ?? firstYear;
+    var to = yearTo ?? (now ?? DateTime.now()).year;
+    if (from > to) (from, to) = (to, from);
     return ApiRequest(
       'AdvancedSearch',
       query: {
         'level': level,
         if (_has(videoTitle)) 'videoTitle': videoTitle!.trim(),
         if (_has(staffTitle)) 'staffTitle': staffTitle!.trim(),
-        if (kind != null) 'type': kind.searchType,
-        if (_has(categoryId)) 'category_id': categoryId!,
-        'year': '${yearFrom ?? 1900},$toYear',
-        'page': page,
+        'type': kind.searchType,
+        if (_has(categoryId)) 'category_id': categoryId!.trim(),
+        'year': '$from,$to',
+        'page': page < 0 ? 0 : page,
       },
     );
   }
@@ -241,13 +287,19 @@ abstract final class ApiEndpoints {
       ApiRequest('allVideoInfo/id/${_seg(id)}');
 
   /// Stream qualities for a movie or a single episode.
-  static ApiRequest streams(String id) =>
-      ApiRequest('transcoddedFiles/id/${_seg(id)}');
+  ///
+  /// A cache in front of the API sometimes serves this response after the
+  /// signed URLs inside it have expired. Pass [cacheBuster] (any unique
+  /// value, sent as `_`) to bypass that cache and get the server's current,
+  /// unexpired URLs. The server reuses a signature until it expires (at most
+  /// 7 days), so they may still expire within days or hours.
+  static ApiRequest streams(String id, {String? cacheBuster}) =>
+      ApiRequest('transcoddedFiles/id/${_seg(id)}', query: {'_': ?cacheBuster});
 
   static ApiRequest subtitles(String id) =>
       ApiRequest('translationFiles/id/${_seg(id)}');
 
-  /// Every episode of a series, unsorted.
+  /// Every episode of a series, unsorted. Pass the series ID (S1E1's `nb`).
   static ApiRequest seriesEpisodes(String seriesId) =>
       ApiRequest('videoSeason/id/${_seg(seriesId)}');
 
@@ -267,7 +319,8 @@ abstract final class ApiEndpoints {
     },
   );
 
-  /// Older "similar titles" endpoint. The website no longer calls it.
+  /// Older "similar titles" endpoint (up to 30 items). The website no longer
+  /// calls it. [kind] changes the results.
   static ApiRequest related(String id, VideoKind kind) =>
       ApiRequest('relatedVideos/id/${_seg(id)}/kind/${kind.code}/level/$level');
 
@@ -278,16 +331,18 @@ abstract final class ApiEndpoints {
   /// Most IDs `getVideosByIds` accepts; 41 or more answer 400.
   static const int maxIdsPerRequest = 40;
 
-  /// Several items at once. Body: `ids=[id1, id2, …]`. The response keeps
-  /// the request order; unknown numeric IDs are skipped, but a single
-  /// non-numeric ID makes the whole response empty. Send at most
-  /// [maxIdsPerRequest] numeric IDs.
+  /// Several items at once. POST only (GET answers 404). Form body
+  /// `ids=[id1, id2, …]`; without the brackets the answer is empty. The
+  /// response keeps the request order; unknown numeric IDs are skipped, but a
+  /// single non-numeric ID makes the whole response empty. Send at most
+  /// [maxIdsPerRequest] numeric IDs (more answer 400 "max array 40 item").
   static ApiRequest videosByIds(List<String> ids) => ApiRequest(
     'getVideosByIds',
     method: HttpMethod.post,
     form: {'ids': '[${ids.join(', ')}]'},
   );
 
+  /// A person's titles (all at once, not paged), with a localized role.
   static ApiRequest staff(String staffId, ApiLanguage lang) => ApiRequest(
     'staff/actorID/${_seg(staffId)}/lang/${lang.name}/level/$level',
   );

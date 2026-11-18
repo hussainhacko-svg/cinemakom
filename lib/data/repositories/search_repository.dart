@@ -20,7 +20,9 @@ class SearchRepository {
 
   /// Title search: the base64 title search plus `AdvancedSearch` for movies
   /// and for series, run in parallel, merged, de-duplicated and ranked (exact
-  /// match first). Throws only when all three requests fail.
+  /// match first). Like the website, `AdvancedSearch` gets the query as both
+  /// title and staff name (OR-ed), so an actor's or director's name finds
+  /// their titles too. Throws only when all three requests fail.
   Future<List<MediaItem>> search(String query) async {
     final q = query.trim();
     if (q.isEmpty) return const [];
@@ -30,6 +32,7 @@ class SearchRepository {
       _api.fetch(
         ApiEndpoints.advancedSearch(
           videoTitle: q,
+          staffTitle: q,
           kind: VideoKind.series,
           now: _clock(),
         ),
@@ -37,6 +40,7 @@ class SearchRepository {
       _api.fetch(
         ApiEndpoints.advancedSearch(
           videoTitle: q,
+          staffTitle: q,
           kind: VideoKind.movies,
           now: _clock(),
         ),
@@ -63,11 +67,14 @@ class SearchRepository {
     return rankSearchResults(q, mergeSearchResults(byTitle, series, movies));
   }
 
-  /// `AdvancedSearch` with filters. The year range defaults to 1900 → now.
+  /// `AdvancedSearch` with filters, 12 per page. The year range defaults to
+  /// 1900 → now. [kind] is required (the server returns only movies without
+  /// it). Pages can be one item short mid-list: stop paging on an empty page.
+  /// [categoryId] must be a real category ID (an unknown one is ignored).
   Future<List<MediaItem>> advancedSearch({
+    required VideoKind kind,
     String? title,
     String? staffName,
-    VideoKind? kind,
     String? categoryId,
     int? yearFrom,
     int? yearTo,

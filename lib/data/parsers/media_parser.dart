@@ -102,6 +102,9 @@ MediaItem? parseMediaItem(Object? json, {VideoKind? fallbackKind}) {
         map['categories'] ?? map['genres'] ?? map['subCategories'],
       ),
       duration: parseSeconds(map['duration']),
+      numbering: kind == VideoKind.series && episode != null
+          ? EpisodeNumbering.fromFlag(episode, readString(map['episode_flag']))
+          : null,
     );
   } catch (_) {
     return null;
@@ -192,26 +195,29 @@ List<VideoGroup> parseVideoGroups(Object? json) {
 
 /// `banner/level/0`. Banners are special: `imgObjUrl` is a wide cover
 /// (~2.7:1) and `imgMediumThumbObjUrl` is a relative path to the portrait
-/// poster.
-List<MediaItem> parseBanners(Object? json) => [
-  for (final item in parseMediaItems(json))
-    MediaItem(
-      id: item.id,
-      title: item.title,
-      otherTitle: item.otherTitle,
-      description: item.description,
-      posterUrl: item.posterUrl,
-      hdPosterUrl: null,
-      backdropUrl: item.backdropUrl,
-      year: item.year,
-      kind: item.kind,
-      rootSeriesId: item.rootSeriesId,
-      season: item.season,
-      episode: item.episode,
-      categories: item.categories,
-      duration: item.duration,
-    ),
-];
+/// poster. A series banner's `link` can name the episode to open
+/// (`?lastEpisodeVideoID=`), which becomes [MediaItem.linkedEpisodeId].
+List<MediaItem> parseBanners(Object? json) {
+  final links = <String, String>{};
+  for (final raw in asList(json)) {
+    final m = asMap(raw);
+    final id = m == null ? null : readId(m['nb']);
+    final episode = id == null ? null : bannerEpisodeId(readString(m!['link']));
+    if (id != null && episode != null) links[id] = episode;
+  }
+  return [
+    for (final item in parseMediaItems(json))
+      item.copyWith(clearHdPoster: true, linkedEpisodeId: links[item.id]),
+  ];
+}
+
+/// The `lastEpisodeVideoID` of a banner link such as
+/// `https://cinemana.shabakaty.cc/video/ar/797119?lastEpisodeVideoID=3157016`
+/// (both `.com` and `.cc` hosts occur).
+String? bannerEpisodeId(String? link) {
+  final uri = link == null ? null : Uri.tryParse(unescapeUrl(link));
+  return readId(uri?.queryParameters['lastEpisodeVideoID']);
+}
 
 /// `videosByCategory…`: `{info: [items], offset: 30}`. A bare list also works.
 /// Paging ends ([OffsetPage.nextOffset] is `null`) when the server returned
@@ -280,10 +286,12 @@ String? _httpUrl(JsonMap map, List<String> keys) {
 }
 
 /// A full image URL, a `vascin-…` path resolved against [imageHost], or
-/// `null` for anything else (bare file names, placeholders).
+/// `null` for anything else (bare file names, placeholders such as
+/// `loadingImages/loading.gif`).
 String? resolveImageUrl(String? raw) {
   if (raw == null) return null;
   final s = unescapeUrl(raw);
+  if (isPlaceholderImage(s)) return null;
   if (isHttpUrl(s)) return s;
   final path = s.startsWith('/') ? s.substring(1) : s;
   return path.startsWith('vascin-') ? '$imageHost$path' : null;

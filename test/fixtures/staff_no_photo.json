@@ -1,0 +1,107 @@
+{
+  "title": "Michael Greene",
+  "imgObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+  "imgThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+  "imgMediumThumbObjUrl": "https://cinemana.shabakaty.com/loadingImages/loading.gif",
+  "role": "Writers",
+  "items": [
+    {
+      "nb": "3089345",
+      "en_title": "Clika",
+      "ar_title": "كليكا",
+      "other_title": "",
+      "stars": "4.2",
+      "ar_content": "يسعى فنان موسيقي ينحدر من بلدة صغيرة للوصول للشهرة والعالمية واستغلال موجة الموسيقى الجديدة المكسيكية - الأمريكية، حينما ينتشر مقطع فيديو له على نطاق واسع.\n\n",
+      "en_content": "A small town musician pushes to carve out a place for himself in the new wave of Mexican-American music after a clip of him performing one of his songs goes viral.",
+      "mDate": "2026-01-23",
+      "year": "2026",
+      "kind": "1",
+      "season": "0",
+      "img": "7F338332-0079-C1B5-7EB3-0126493C2968_poster.jpg",
+      "imgThumb": "AD0FE25B-9556-B343-E4A9-1B7BD031A451_poster_thumb.jpg",
+      "imgMediumThumb": "FFA7021D-D904-8769-6060-0B40351553AF_poster_medium_thumb.jpg",
+      "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/7F338332-0079-C1B5-7EB3-0126493C2968_poster.jpg",
+      "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/FFA7021D-D904-8769-6060-0B40351553AF_poster_medium_thumb.jpg",
+      "filmRating": "4",
+      "seriesRating": "1",
+      "episodeNummer": "0",
+      "rate": "0",
+      "isSpecial": "0",
+      "itemDate": "2026-05-19 16:23:37",
+      "duration": "4964.7",
+      "imdbUrlRef": "https://www.imdb.com/title/tt28334938",
+      "rootSeries": "0",
+      "useParentImg": "0",
+      "spTranslationFile": "",
+      "showComments": "0",
+      "episode_flag": "0000",
+      "trailer": "https://www.youtube.com/watch?v=MonfrfdKzOc",
+      "audioStreamNumber": "0",
+      "parent_skipping": "1",
+      "collectionID": "0",
+      "isDeleted": "0",
+      "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/AD0FE25B-9556-B343-E4A9-1B7BD031A451_poster_thumb.jpg",
+      "categories": [
+        {
+          "en_title": "Drama",
+          "ar_title": "دراما"
+        },
+        {
+          "en_title": "Music",
+          "ar_title": "موسيقي"
+        }
+      ]
+    },
+    {
+      "nb": "3119279",
+      "en_title": "Eve of Destruction",
+      "ar_title": "حوّاء المدمّرة",
+      "other_title": "",
+      "stars": "5",
+      "ar_content": "فيلم خيال علمي وأكشن أمريكي عن روبوتة أنثى متطورة تُدعى Eve VIII، تفقد السيطرة وتتحول إلى آلة قتل، بينما يلاحقها ضابط متخصص لإيقافها. يشبه The Terminator كثيرًا، لكن المدمّرة فيه امرأة.",
+      "en_content": "Eve is a robot, modelled on \"her\" creator. Eve's armoury includes a nuclear bomb, which for unexplained reasons is on-board during Eve's testing. When things go wrong during the tests, Eve is lost in the big city. Enter the rescue team, which includes the real (human) Eve. They must find and disarm her before she goes \"bang\". Eve is programmed to protect herself at all costs, so when she runs into a problem, she resorts to her super strength; hence the destruction.",
+      "mDate": "1991-01-18",
+      "year": "1991",
+      "kind": "1",
+      "season": "0",
+      "img": "69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+      "imgThumb": "877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+      "imgMediumThumb": "4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+      "imgObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/69113DB6-5370-861C-B1E1-AC4B1BF13DFE_poster.jpg",
+      "imgMediumThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg",
+      "filmRating": "4",
+      "seriesRating": "1",
+      "episodeNummer": "0",
+      "rate": "0",
+      "isSpecial": "0",
+      "itemDate": "2026-11-16 14:05:55",
+      "duration": "6010.03",
+      "imdbUrlRef": "https://www.imdb.com/title/tt0101831",
+      "rootSeries": "0",
+      "useParentImg": "0",
+      "spTranslationFile": "",
+      "showComments": "0",
+      "episode_flag": "0000",
+      "trailer": "https://www.youtube.com/watch?v=les7e-vP1iQ",
+      "audioStreamNumber": "0",
+      "parent_skipping": "1",
+      "collectionID": "0",
+      "isDeleted": "0",
+      "imgThumbObjUrl": "https://cnth2.shabakaty.com/vascin-poster-images/877C0022-3875-B6BF-1A6A-2E7A8A538123_poster_thumb.jpg",
+      "categories": [
+        {
+          "en_title": "Action",
+          "ar_title": "اكشن"
+        },
+        {
+          "en_title": "Fantasy",
+          "ar_title": "خيالي"
+        },
+        {
+          "en_title": "Sci-Fi",
+          "ar_title": "خيال علمي"
+        }
+      ]
+    }
+  ]
+}

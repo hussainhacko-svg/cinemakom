@@ -39,6 +39,14 @@ void main() {
     expect(items.single.kind, VideoKind.series);
   });
 
+  test('catalog rejects sorts it ignores', () async {
+    final repo = CatalogRepository(F([]));
+    await expectLater(
+      repo.catalog(kind: VideoKind.movies, sort: SortOrder.titleAscending),
+      throwsArgumentError,
+    );
+  });
+
   test('genres merge main and sub categories without duplicates', () async {
     final repo = CatalogRepository(
       F([

@@ -50,23 +50,30 @@ class CatalogRepository {
   Future<List<MediaItem>> newlyAdded() async =>
       parseMediaItems(await _api.fetch(ApiEndpoints.newlyAdded()));
 
-  /// The main catalog. [page] is 0-based.
+  /// The main catalog: every movie or every series ("all genres"). [page] is
+  /// 0-based. Throws [ArgumentError] for a sort the catalog ignores
+  /// (title sorts only work per genre, with [videosByCategory]).
   Future<List<MediaItem>> catalog({
     required VideoKind kind,
     required SortOrder sort,
     int page = 0,
     int itemsPerPage = 30,
-  }) async => parseMediaItems(
-    await _api.fetch(
-      ApiEndpoints.catalog(
-        kind: kind,
-        sort: sort,
-        page: page,
-        itemsPerPage: itemsPerPage,
+  }) async {
+    if (!sort.worksOnCatalog) {
+      throw ArgumentError.value(sort, 'sort', 'not supported by the catalog');
+    }
+    return parseMediaItems(
+      await _api.fetch(
+        ApiEndpoints.catalog(
+          kind: kind,
+          sort: sort,
+          page: page,
+          itemsPerPage: itemsPerPage,
+        ),
       ),
-    ),
-    fallbackKind: kind,
-  );
+      fallbackKind: kind,
+    );
+  }
 
   /// Genres for the home rows and filters: the main genres first, then the
   /// sub-genres. Falls back to [fallbackGenres] when both requests fail or
@@ -103,7 +110,7 @@ class CatalogRepository {
         await _api.fetch(ApiEndpoints.categoryLanguages()),
       );
 
-  /// One page of a genre (30 items). Pass the returned
+  /// One page of a genre (30 items), with any [SortOrder]. Pass the returned
   /// [OffsetPage.nextOffset] to load the next page.
   Future<OffsetPage> videosByCategory({
     required String categoryId,

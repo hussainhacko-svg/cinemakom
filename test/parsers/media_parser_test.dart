@@ -148,6 +148,32 @@ void main() {
       }
     });
 
+    test('banner links name the episode to open', () {
+      expect(
+        bannerEpisodeId(
+          'https://cinemana.shabakaty.cc/video/ar/797119?lastEpisodeVideoID=3157016',
+        ),
+        '3157016',
+      );
+      expect(
+        bannerEpisodeId(
+          'https://cinemana.shabakaty.com/video/en/399243?showInfo=true',
+        ),
+        isNull,
+      );
+      expect(bannerEpisodeId(null), isNull);
+      final banners = parseBanners([
+        {
+          'nb': '797119',
+          'en_title': 'S',
+          'kind': '2',
+          'link': r'https:\/\/cinemana.shabakaty.com\/video\/en\/797119?lastEpisodeVideoID=3157016',
+        },
+        {'nb': '1', 'en_title': 'M', 'kind': '1', 'link': ''},
+      ]);
+      expect(banners.map((b) => b.linkedEpisodeId), ['3157016', null]);
+    });
+
     test('resolveImageUrl', () {
       expect(
         resolveImageUrl('vascin-poster-images/a.jpg'),
@@ -156,6 +182,18 @@ void main() {
       expect(resolveImageUrl('/vascin-x/b.png'), '${imageHost}vascin-x/b.png');
       expect(resolveImageUrl('ABC_poster.jpg'), isNull);
       expect(resolveImageUrl('defaultImages/loading.gif'), isNull);
+      expect(
+        resolveImageUrl(
+          'https://cinemana.shabakaty.com/loadingImages/loading.gif',
+        ),
+        isNull,
+      );
+      expect(
+        resolveImageUrl(
+          'https://cnth2.shabakaty.com/defaultImages/not_available.jpg',
+        ),
+        isNull,
+      );
       expect(resolveImageUrl('https://x/y.jpg'), 'https://x/y.jpg');
     });
 
@@ -166,6 +204,27 @@ void main() {
         'imgObjUrl': 'defaultImages/loading.gif',
       })!;
       expect(item.posterUrl, isNull);
+    });
+
+    test('episodes carry their numbering, movies none', () {
+      final ep = parseMediaItem({
+        'nb': '5',
+        'en_title': 'S',
+        'kind': '2',
+        'season': '1',
+        'episodeNummer': '807',
+        'episode_flag': '0010',
+      })!;
+      expect(ep.numbering!.numbers, [807, 808]);
+      final movie = parseMediaItem({
+        'nb': '6',
+        'en_title': 'M',
+        'kind': '1',
+        'season': '0',
+        'episodeNummer': '0',
+        'episode_flag': '0000',
+      })!;
+      expect(movie.numbering, isNull);
     });
   });
 

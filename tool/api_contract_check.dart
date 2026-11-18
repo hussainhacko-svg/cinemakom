@@ -16,6 +16,8 @@ import 'package:cinemakom/core/network/api_exception.dart';
 import 'package:cinemakom/data/parsers/category_parser.dart';
 import 'package:cinemakom/data/parsers/details_parser.dart';
 import 'package:cinemakom/data/parsers/media_parser.dart';
+import 'package:cinemakom/data/models/catalog_models.dart';
+import 'package:cinemakom/data/models/playback_models.dart';
 import 'package:cinemakom/data/parsers/playback_parser.dart';
 
 final _api = ApiClient();
@@ -259,7 +261,12 @@ Future<void> main() async {
   }
   _checkMediaList(
     'AdvancedSearch staffTitle',
-    await _get(ApiEndpoints.advancedSearch(staffTitle: 'Christopher Nolan')),
+    await _get(
+      ApiEndpoints.advancedSearch(
+        staffTitle: 'Christopher Nolan',
+        kind: VideoKind.movies,
+      ),
+    ),
   );
   final series = parseMediaItems(
     await _get(
@@ -421,6 +428,12 @@ Future<void> main() async {
     _ok(e.statusCode == 400, '${max + 1} IDs are rejected (limit unchanged)');
   }
 
+  await _searchContracts(now);
+  await _sortContracts();
+  await _pagingContracts(parsedGroups);
+  await _mediaContracts(topMovie.id);
+  await _metadataContracts(banners, episodesJson, topMovie.id);
+
   // ---- Parental level -------------------------------------------------------
   stdout.writeln('parental level');
   final level2 = await _get(const ApiRequest('banner/level/2'));
@@ -435,6 +448,371 @@ Future<void> main() async {
     '${_warnings == 0 ? '' : ', $_warnings warning(s)'}.',
   );
   exit(_failures == 0 ? 0 : 1);
+}
+
+// ---- Contracts added by the second deep dive (docs/API.md) -----------------
+
+List<Map<String, Object?>> _list(Object? json) => _rawItems(json);
+
+Set<String> _genres(Map<String, Object?> m) => {
+  for (final c in m['categories'] is List ? m['categories'] as List : const [])
+    if (c is Map) '${c['en_title']}',
+};
+
+Future<void> _searchContracts(DateTime now) async {
+  stdout.writeln('search semantics');
+  final seg = Uri.encodeComponent(ApiEndpoints.encodeTitleQuery('batman'));
+  final five = await _get(
+    ApiRequest(
+      'video/V/2/itemsPerPage/30/video_title_search/$seg'
+      '/itemsPerPage/5/pageNumber/0/level/0',
+    ),
+  );
+  _ok(
+    five is List && five.length <= 5 && five.isNotEmpty,
+    'title search: the second itemsPerPage is the page size',
+    '${five is List ? five.length : five}',
+  );
+  try {
+    await _api.fetch(
+      const ApiRequest(
+        'video/V/2/itemsPerPage/30/video_title_search/c3BpZGVyLW1hbg=='
+        '/itemsPerPage/30/pageNumber/0/level/0',
+      ),
+    );
+    _warn(false, 'raw "=" in the search segment now works');
+  } on ApiException catch (e) {
+    _ok(e.statusCode == 400, 'raw "=" padding answers 400 (so we encode it)');
+  }
+  final plus = parseMediaItems(await _get(ApiEndpoints.titleSearch('c++')));
+  _ok(plus.isNotEmpty, 'title search with "+" works');
+
+  final noType = _list(
+    await _get(
+      ApiRequest(
+        'AdvancedSearch',
+        query: {
+          'level': 0,
+          'videoTitle': 'friends',
+          'year': '1900,${now.year}',
+        },
+      ),
+    ),
+  );
+  _ok(
+    noType.isNotEmpty && noType.every((m) => '${m['kind']}' == '1'),
+    'AdvancedSearch without type returns movies only (kind is required)',
+  );
+  final both = parseMediaItems(
+    await _get(
+      ApiEndpoints.advancedSearch(
+        kind: VideoKind.movies,
+        videoTitle: 'inception',
+        staffTitle: 'Christopher Nolan',
+      ),
+    ),
+  );
+  final titles = both.map((i) => (i.title.en ?? '').toLowerCase()).toList();
+  _ok(
+    titles.any((t) => t.contains('inception')) &&
+        titles.any((t) => !t.contains('inception')),
+    'AdvancedSearch ORs videoTitle and staffTitle',
+    titles.take(4).join(', '),
+  );
+  final horror = _list(
+    await _get(
+      ApiEndpoints.advancedSearch(kind: VideoKind.movies, categoryId: '70'),
+    ),
+  );
+  _ok(
+    horror.isNotEmpty && horror.every((m) => _genres(m).contains('Horror')),
+    'AdvancedSearch category_id filters by one genre',
+  );
+  final reversed = await _get(
+    ApiRequest(
+      'AdvancedSearch',
+      query: {'level': 0, 'type': 'movies', 'year': '2020,2000'},
+    ),
+  );
+  _ok(
+    reversed is List && reversed.isEmpty,
+    'a reversed year range returns nothing (so the builder swaps it)',
+  );
+}
+
+Future<void> _sortContracts() async {
+  stdout.writeln('sort codes');
+  // The server sorts with its database collation (leading spaces and
+  // punctuation first), so allow a few pairs that Dart orders differently.
+  bool ordered(List<String> v, {required bool descending}) {
+    if (v.length < 2) return true;
+    var good = 0;
+    for (var i = 1; i < v.length; i++) {
+      final c = v[i - 1].compareTo(v[i]);
+      if (descending ? c >= 0 : c <= 0) good++;
+    }
+    return good / (v.length - 1) >= 0.85;
+  }
+
+  final catDesc = _list(
+    await _get(
+      ApiEndpoints.catalog(
+        kind: VideoKind.movies,
+        sort: SortOrder.recentlyAdded,
+      ),
+    ),
+  );
+  for (final (sort, descending) in [
+    (SortOrder.newestRelease, true),
+    (SortOrder.oldestRelease, false),
+  ]) {
+    final list = _list(
+      await _get(ApiEndpoints.catalog(kind: VideoKind.movies, sort: sort)),
+    );
+    _ok(
+      list.isNotEmpty &&
+          ordered([
+            for (final m in list) '${m['mDate']}',
+          ], descending: descending),
+      'catalog ${sort.code} orders by mDate',
+    );
+  }
+  final catTitle = _list(
+    await _get(
+      ApiRequest(
+        'video/V/2/itemsPerPage/30/level/0/videoKind/1'
+        '/sortParam/${SortOrder.titleAscending.code}/pageNumber/0',
+      ),
+    ),
+  );
+  _ok(
+    catTitle.isNotEmpty &&
+        catDesc.isNotEmpty &&
+        '${catTitle.first['nb']}' == '${catDesc.first['nb']}',
+    'catalog ignores title sorts (worksOnCatalog: false)',
+  );
+  for (final (sort, descending) in [
+    (SortOrder.titleAscending, false),
+    (SortOrder.titleDescending, true),
+  ]) {
+    final page = _list(
+      await _get(ApiEndpoints.videosByCategory(categoryId: '84', sort: sort)),
+    );
+    _ok(
+      page.isNotEmpty &&
+          ordered([
+            for (final m in page) '${m['en_title']}'.trim().toLowerCase(),
+          ], descending: descending),
+      'videosByCategory ${sort.code} sorts by title',
+    );
+  }
+  final unknown = _list(
+    await _get(
+      const ApiRequest(
+        'videosByCategory',
+        query: {
+          'categoryID': '84',
+          'orderby': 'no_such_sort',
+          'videoKind': 1,
+          'offset': 0,
+          'level': 0,
+        },
+      ),
+    ),
+  );
+  final recent = _list(
+    await _get(ApiEndpoints.videosByCategory(categoryId: '84')),
+  );
+  _warn(
+    unknown.isNotEmpty &&
+        recent.isNotEmpty &&
+        '${unknown.first['nb']}' != '${recent.first['nb']}',
+    'videosByCategory falls back to desc for unknown sorts now',
+  );
+}
+
+Future<void> _pagingContracts(List<VideoGroup> groups) async {
+  stdout.writeln('paging');
+  if (groups.isEmpty) return;
+  // The smallest group (the "4K" collections hold about 10 titles).
+  final group = groups.reduce(
+    (a, b) => a.items.length <= b.items.length ? a : b,
+  );
+  var page = 0;
+  var total = 0;
+  List<Object?> last = const [];
+  while (page < 100) {
+    final json = await _get(ApiEndpoints.videoGroupPage(group.id, page: page));
+    last = json is List ? json : const [];
+    total += last.length;
+    if (last.length < 12) break;
+    page++;
+  }
+  final after = await _get(
+    ApiEndpoints.videoGroupPage(group.id, page: page + 1),
+  );
+  _ok(
+    total > 0 && after is List && after.isEmpty,
+    'videoListPagination ends with a short page, then empty pages',
+    'group ${group.id}: $total items, ${page + 1} pages',
+  );
+  final big = await _get(ApiEndpoints.latestMovies(itemsPerPage: 100));
+  _ok(
+    big is List && big.length == 100,
+    'latestMovies accepts 100 items per page',
+  );
+}
+
+Future<void> _mediaContracts(String movieId) async {
+  stdout.writeln('streams freshness');
+  final now = DateTime.now().toUtc();
+  final fresh = parseVideoSources(
+    await _get(
+      ApiEndpoints.streams(
+        movieId,
+        cacheBuster: '${now.millisecondsSinceEpoch}',
+      ),
+    ),
+  );
+  _ok(
+    fresh.isNotEmpty &&
+        fresh.every(
+          (s) =>
+              s.isValidFor(const Duration(minutes: 1), now: now) &&
+              s.expiresAt!.isBefore(now.add(const Duration(days: 8))),
+        ),
+    'cache-busted transcoddedFiles gives unexpired URLs (≤ 7 days)',
+    fresh.map((s) => s.expiresAt).toSet().join(', '),
+  );
+  final cached = parseVideoSources(await _get(ApiEndpoints.streams(movieId)));
+  _warn(
+    cached.every((s) => s.isValidFor(const Duration(hours: 6), now: now)),
+    'the cached transcoddedFiles answer is stale right now (handled by '
+    'MediaRepository.streams)',
+  );
+  _ok(
+    fresh.every((s) => !s.url.contains('.m3u8') && s.container == 'mp4'),
+    'streams are progressive MP4 (no HLS)',
+  );
+
+  stdout.writeln('special subtitles');
+  final special = parseSubtitles(await _get(ApiEndpoints.subtitles('279230')));
+  final styled = special.where((t) => t.isStyled).toList();
+  _ok(
+    styled.length == 1 && styled.single.languageCode == 'ar',
+    'translationFiles lists the styled ass track (type "arabic")',
+    '$special',
+  );
+  final info = parseMediaDetails(await _get(ApiEndpoints.videoInfo('279230')));
+  _ok(
+    info != null && info.subtitles.where((t) => t.isStyled).length == 1,
+    'allVideoInfo lists the styled ass track (type "sp")',
+  );
+  if (styled.isNotEmpty) {
+    final body = await _download(styled.single.url);
+    final head = body == null ? '' : utf8.decode(body, allowMalformed: true);
+    _ok(
+      head.replaceFirst('﻿', '').startsWith('[Script Info]'),
+      'the ass file is a real ASS script',
+    );
+  }
+
+  stdout.writeln('seek-preview sheets');
+  final thumbs = await _get(ApiEndpoints.thumbnails(movieId));
+  final entries = [
+    if (thumbs is Map && thumbs['videoThumbnails'] is List)
+      for (final e in thumbs['videoThumbnails'] as List)
+        if (e is Map) e,
+  ];
+  _ok(
+    entries.isNotEmpty &&
+        entries.every((e) {
+          final h = parseIntLoose(e['height']) ?? -1;
+          return h >= 0 && h <= 680 && h % 68 == 0;
+        }),
+    'sheet height is 68 px per row, at most 680',
+  );
+  final preview = parseSeekPreview(thumbs);
+  if (preview != null && preview.sheets.isNotEmpty) {
+    final lastSheet = preview.sheets.last;
+    final png = await _download(lastSheet.url);
+    final height = png != null && png.length > 24
+        ? (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23]
+        : 0;
+    _ok(
+      height == lastSheet.rows * SeekPreview.frameHeight,
+      'the last sheet is as tall as its height field says',
+      'png $height, rows ${lastSheet.rows}',
+    );
+  }
+  final broken = await _get(ApiEndpoints.thumbnails('816721'));
+  final brokenEntries = broken is Map ? broken['videoThumbnails'] : null;
+  if (brokenEntries is List && brokenEntries.isNotEmpty) {
+    _ok(
+      brokenEntries.every((e) => e is Map && '${e['height']}' == '0') &&
+          parseSeekPreview(broken) == null,
+      'a sheet with height 0 is broken and dropped',
+    );
+  } else {
+    _warn(false, 'title 816721 has no broken sheet any more');
+  }
+}
+
+Future<void> _metadataContracts(
+  Object? banners,
+  Object? episodes,
+  String movieId,
+) async {
+  stdout.writeln('metadata');
+  final known = {'0000', '1000', '0001', '1001', '0010', '0020', '0100'};
+  final flags = {for (final e in _list(episodes)) '${e['episode_flag']}'};
+  _warn(
+    known.containsAll(flags),
+    'unknown episode_flag values',
+    '${flags.difference(known)}',
+  );
+  final linked = parseBanners(banners).where((b) => b.linkedEpisodeId != null);
+  if (linked.isNotEmpty) {
+    final b = linked.first;
+    final ep = parseMediaDetails(
+      await _get(ApiEndpoints.videoInfo(b.linkedEpisodeId!)),
+    );
+    _ok(
+      ep != null && ep.item.seriesId == b.id,
+      'a banner lastEpisodeVideoID is an episode of that series',
+      '${b.id} → ${b.linkedEpisodeId} (series ${ep?.item.seriesId})',
+    );
+  }
+  final cats = await _get(ApiEndpoints.categories());
+  final images = [for (final c in _list(cats)) '${c['imgObjUrl'] ?? ''}']
+      .where((u) => u.startsWith('http'));
+  _ok(
+    images.every((u) => isPlaceholderImage(u) || u.contains('/vascin-')),
+    'category images are real files or recognised placeholders',
+  );
+  final infoJson = await _get(ApiEndpoints.videoInfo(movieId));
+  final details = parseMediaDetails(infoJson);
+  for (final person in (details?.actors ?? const []).take(3)) {
+    final raw = await _get(ApiEndpoints.staff(person.id, ApiLanguage.en));
+    final img = raw is Map ? '${raw['imgObjUrl']}' : '';
+    _ok(
+      isPlaceholderImage(img) || img.contains('/vascin-staff-poster/'),
+      'staff image ${person.id} is a photo or a recognised placeholder',
+      img,
+    );
+  }
+  final ranges = infoJson is Map ? infoJson['introSkipping'] : null;
+  _ok(
+    ranges == null ||
+        (ranges is List &&
+            ranges.every(
+              (r) =>
+                  r is Map &&
+                  (parseDoubleLoose(r['end']) ?? 0) >
+                      (parseDoubleLoose(r['start']) ?? 0),
+            )),
+    'introSkipping ranges are numeric with end > start',
+  );
 }
 
 Future<int> _rangeStatus(String url) async {
