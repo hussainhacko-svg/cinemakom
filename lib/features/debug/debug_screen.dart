@@ -4,9 +4,11 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../data/models/media_item.dart';
 import '../../data/models/playback_models.dart';
+import '../../data/models/service_status.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/search_repository.dart';
+import '../../data/repositories/status_repository.dart';
 
 // Developer tool, only reachable in debug builds. Its labels are not
 // user-facing, so they are not localized.
@@ -59,6 +61,7 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
     final catalog = ref.read(catalogRepositoryProvider);
     final search = ref.read(searchRepositoryProvider);
     final media = ref.read(mediaRepositoryProvider);
+    final status = ref.read(statusRepositoryProvider);
     const lang = ApiLanguage.en;
 
     final movie = catalog.latestMovies().then((l) => l.first);
@@ -250,6 +253,12 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
           (s) => s.label,
         ),
       ),
+      _Probe('status page (Cinemana)', () async {
+        final health = await status.cinemanaHealth();
+        return _ProbeResult(health == ServiceHealth.unknown ? 0 : 1, [
+          health.name,
+        ]);
+      }),
       _Probe(
         'faqQuestion',
         () async => _list(await catalog.faq(), (f) => f.question.en ?? ''),

@@ -32,7 +32,7 @@ Status legend: ✅ used · ⚙️ works but unused · ❌ dead or broken · 🔒
 | `recommend.shabakaty.com` | "More like this", JSON POST, no login | ✅ |
 | `cnth2.shabakaty.com` | Posters, covers, staff photos, subtitles, seek-preview sprites. Posters aren't signed; subtitles are | ✅ |
 | `cdn.shabakaty.com` → `cndw1…6.shabakaty.com` | Video files. `cdn` answers **302** to a node; follow redirects | ✅ |
-| `shabakaty.statuspage.io` (`6b1m6vnfz2jk.statuspage.io/api/v2/…`) | Public Atlassian status page with a "Cinemana" component, used by the Android app | ⚙️ (product decision, §8) |
+| `6b1m6vnfz2jk.statuspage.io/api/v2/components.json` (`shabakaty.statuspage.io`) | Public Atlassian status page with a "Cinemana" group, used by the Android app | ✅ `StatusRepository.cinemanaHealth()`, only after API calls fail |
 | `thumbnail.shabakaty.com/api/series/seasonposters` | Season posters | ❌ 500, also on the website |
 | `rating.shabakaty.com` | User ratings | 🚫 ratings; also needs the bundle's app ID |
 | `cinemana.shabakaty.com/api/info/{ShabakatyInfo,userInfo}/`, `…/whatismyip`, `share./tv.shabakaty.com/whatismyip`, `shabakaty.com/clip/`, `hacheckphp.php` | Telemetry and ISP/IP checks (POSTs device info) | 🚫 never call |
@@ -311,6 +311,12 @@ A series has **no separate record**. It is represented by its **first episode (S
 | `staff/actorID/{id}/lang/{lang}/level/0` | W C | ✅ `staff()` | Not paged; extra path segments and parameters are ignored. Level 2 hides titles. The APK form `staff/actorID/{id}/level/{level}` (no `lang`) also works | Staff page (§3) |
 | `faqQuestion` | W C | ✅ `faq()` | 29 bilingual entries. `porder` is always 0. `categoryName` is in English only ("User Account Management", "Video Options"…) | `[{nb, en_title, ar_title, en_content, ar_content, categoryName, categoryNb, porder, priority, …}]` |
 
+### Service status
+
+| Endpoint | Source | Status | Verified parameters and behaviour | Response |
+|---|---|---|---|---|
+| `https://6b1m6vnfz2jk.statuspage.io/api/v2/components.json` | A | ✅ `serviceStatus()` | Public, no login or keys. A "Cinemana" group (`group: true`) has the components "API" and "Search Engine" (`group_id` = the group's `id`). The parser takes the worst status of the group and its components (`parseCinemanaHealth`). Call it only after API failures. `summary.json` and `status.json` also exist | `{page, components: [{id, name, status: operational \| degraded_performance \| under_maintenance \| partial_outage \| major_outage, group, group_id, components}]}` |
+
 ### Dead, excluded and login-only
 
 | Endpoint | Source | Status | Notes |
@@ -359,7 +365,7 @@ The app is native Kotlin (Retrofit/OkHttp, ExoPlayer). It was removed from Googl
 It has no endpoint the website lacks that returns data. App IDs, keys and tokens in it were not used or copied.
 
 ## 7. Keeping this reliable
-- **The parsers never throw.** They skip bad records, and `tool/api_contract_check.dart` checks that no *valid* record is skipped (parser yield = raw count). It also checks every behaviour this file documents and the code relies on: search encoding and page size, `AdvancedSearch` semantics, sort codes, paging ends, stream freshness, styled subtitles, sprite geometry, placeholders, banner links and intro ranges.
+- **The parsers never throw.** They skip bad records, and `tool/api_contract_check.dart` checks that no *valid* record is skipped (parser yield = raw count). It also checks every behaviour this file documents and the code relies on: search encoding and page size, `AdvancedSearch` semantics, sort codes, paging ends, stream freshness, styled subtitles, sprite geometry, placeholders, banner links, intro ranges and the status page.
 - **Fixtures are real responses** (lists trimmed to 6 items, signed URLs redacted). Parser tests run against them, plus inline edge cases. `series_episodes_finale` / `series_episodes_double` (Lucifer, One Piece), `subtitles_special` / `video_info_special` and `thumbnails_broken` (816721) use fixed long-lived IDs. `staff_no_photo` is discovered.
 - **When the API changes:**
   1. Run the contract check.
@@ -384,9 +390,9 @@ It has no endpoint the website lacks that returns data. App IDs, keys and tokens
 - Why `allVideoInfo` answers an empty 200 for a few series roots (e.g. 1184051) whose episodes still play. The app shows them as unavailable.
 - How often the API cache serves expired stream URLs. It was seen on 13 of 1,037 files, and the repository handles it.
 
-**Product decisions for the owner:**
-1. **Title sorts (A→Z, Z→A)** work only inside a genre, not on "all movies/series". Offer them only on genre pages?
-2. **Styled ASS subtitles** for anime: offer them as "Arabic (styled)" next to plain Arabic? They need libass (media_kit has it) and an Arabic fallback font.
-3. **Search by actor:** the search now also matches cast and crew names, like the website. Keep it?
-4. **Service status:** show an outage notice from the public status page when the API fails?
-5. **4K:** at 22 Mbit/s and 10 GB per hour, should 2160p be hidden on mobile data or by default?
+**Product decisions (made 2026-11-19, see `docs/PLAN.md` §4):**
+1. **Title sorts (A→Z, Z→A):** only on genre pages; the "All" lists don't offer them.
+2. **Styled ASS subtitles:** offered as an extra "Arabic (styled)" choice. Plain Arabic stays the default, and one Arabic fallback font is shipped for libass.
+3. **Search by actor:** kept. The query is sent as both title and staff name, like the website.
+4. **Service status:** the status page is checked only after API calls fail, to show "Cinemana is having problems" instead of a generic error.
+5. **4K:** treated like any other quality (no special limits).

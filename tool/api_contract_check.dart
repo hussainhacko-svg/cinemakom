@@ -19,6 +19,8 @@ import 'package:cinemakom/data/parsers/media_parser.dart';
 import 'package:cinemakom/data/models/catalog_models.dart';
 import 'package:cinemakom/data/models/playback_models.dart';
 import 'package:cinemakom/data/parsers/playback_parser.dart';
+import 'package:cinemakom/data/parsers/status_parser.dart';
+import 'package:cinemakom/data/models/service_status.dart';
 
 final _api = ApiClient();
 var _failures = 0;
@@ -433,6 +435,14 @@ Future<void> main() async {
   await _pagingContracts(parsedGroups);
   await _mediaContracts(topMovie.id);
   await _metadataContracts(banners, episodesJson, topMovie.id);
+
+  stdout.writeln('status page');
+  final health = parseCinemanaHealth(await _get(ApiEndpoints.serviceStatus()));
+  _ok(
+    health != ServiceHealth.unknown,
+    'the status page lists a Cinemana group',
+    health.name,
+  );
 
   // ---- Parental level -------------------------------------------------------
   stdout.writeln('parental level');

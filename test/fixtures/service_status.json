@@ -1,0 +1,105 @@
+{
+  "page": {
+    "id": "6b1m6vnfz2jk",
+    "name": "Shabakaty",
+    "url": "https://shabakaty.statuspage.io",
+    "time_zone": "Asia/Baghdad",
+    "updated_at": "2026-10-01T21:24:15.359+03:00"
+  },
+  "components": [
+    {
+      "id": "d3588dgs28cg",
+      "name": "Cinemana",
+      "status": "operational",
+      "created_at": "2021-09-11T16:17:02.517+03:00",
+      "updated_at": "2021-09-11T16:17:36.322+03:00",
+      "position": 1,
+      "description": null,
+      "showcase": false,
+      "start_date": null,
+      "group_id": null,
+      "page_id": "6b1m6vnfz2jk",
+      "group": true,
+      "only_show_if_degraded": false,
+      "components": [
+        "sg3ldfjzxxqv",
+        "t27p6gtlblr8"
+      ]
+    },
+    {
+      "id": "sg3ldfjzxxqv",
+      "name": "API",
+      "status": "operational",
+      "created_at": "2021-09-11T16:17:02.535+03:00",
+      "updated_at": "2026-10-01T21:24:15.356+03:00",
+      "position": 1,
+      "description": "API Servers",
+      "showcase": true,
+      "start_date": "2021-09-11",
+      "group_id": "d3588dgs28cg",
+      "page_id": "6b1m6vnfz2jk",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "9j7gyc0b5lrs",
+      "name": "API",
+      "status": "operational",
+      "created_at": "2021-09-18T12:27:40.360+03:00",
+      "updated_at": "2026-02-01T03:12:50.000+03:00",
+      "position": 1,
+      "description": "Share service",
+      "showcase": true,
+      "start_date": "2021-09-18",
+      "group_id": "273l5j2vqtm7",
+      "page_id": "6b1m6vnfz2jk",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "rhkqxy3x981k",
+      "name": "API",
+      "status": "operational",
+      "created_at": "2021-09-18T12:28:18.080+03:00",
+      "updated_at": "2023-03-07T12:35:36.000+03:00",
+      "position": 1,
+      "description": null,
+      "showcase": true,
+      "start_date": "2021-09-18",
+      "group_id": "16cxjk9cgnhj",
+      "page_id": "6b1m6vnfz2jk",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "164653xjk5cj",
+      "name": "API",
+      "status": "operational",
+      "created_at": "2021-09-18T12:28:42.167+03:00",
+      "updated_at": "2022-10-03T01:21:26.000+03:00",
+      "position": 1,
+      "description": null,
+      "showcase": true,
+      "start_date": "2021-09-18",
+      "group_id": "qtnqpwjsc6h0",
+      "page_id": "6b1m6vnfz2jk",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "t27p6gtlblr8",
+      "name": "Search Engine",
+      "status": "operational",
+      "created_at": "2021-09-11T16:18:09.992+03:00",
+      "updated_at": "2021-09-11T16:18:09.992+03:00",
+      "position": 2,
+      "description": null,
+      "showcase": true,
+      "start_date": "2021-09-11",
+      "group_id": "d3588dgs28cg",
+      "page_id": "6b1m6vnfz2jk",
+      "group": false,
+      "only_show_if_degraded": false
+    }
+  ]
+}

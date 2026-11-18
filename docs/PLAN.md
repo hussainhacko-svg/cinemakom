@@ -109,22 +109,30 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 ### 4.1 Core
 - [ ] **App shell:** five tabs (Home, Continue, Favorites, Downloads, Settings). Bottom `NavigationBar` below 600 dp width, `NavigationRail` at 600 dp and up.
 - [ ] **Home:** hero carousel from `banner` (wide covers), curated video groups, Featured, Latest movies, Latest series, Most watched (`views_desc`), New releases by year (`r_desc`), Recently added (`desc`), and genre rows. Load the above-the-fold sections first and the rest after.
-- [ ] **Genre detail:** paged grid (30 per page, offset paging that stops on a short page) with sort (recently added, newest release, most watched) and kind (movies or series). Use `fallbackGenres` when the genre lists fail to load.
+- [ ] **Genre detail:** paged grid (30 per page, offset paging that stops on a short page) with sort and kind (movies or series). Use `fallbackGenres` when the genre lists fail to load.
+  - Sorts: recently added, oldest added, newest release, oldest release, most watched, **A→Z and Z→A**.
+  - *Decision (2026-11-19):* A→Z / Z→A appear **only on genre pages**; the "All movies/series" lists don't offer them, because the catalog ignores title sorts (`SortOrder.worksOnCatalog`).
 - [ ] **Search:** 400 ms debounce, three requests in parallel (title search, AdvancedSearch movies, AdvancedSearch series), merged, de-duplicated and ranked. Never send an empty query. The year range is computed.
-- [ ] **Details** (bottom sheet on mobile, page or side panel on desktop): poster, synopsis, year, duration, genres, audio languages, trailer, IMDb link, season and episode picker. Episodes show as "Episode N" (the API has no episode titles) with the season image. Add to favorites, download.
+  - *Decision (2026-11-19):* search also matches **cast and crew names**, like the website (`staffTitle` = the query), with title matches ranked first.
+- [ ] **Details** (bottom sheet on mobile, page or side panel on desktop): poster, synopsis, year, duration, genres, audio languages, trailer (`trailerYoutubeId`), external link, season and episode picker. Add to favorites, download.
+  - Label the external link "IMDb" only when `imdbUrlIsImdb`; anime links go to MyAnimeList.
+  - Episodes show as "Episode N" from `Episode.numbering`: "Episodes 7 & 8" for double episodes, a "Final" badge for finales. Never use episode titles. Use the season image.
 - [ ] **Player:**
-  - quality selection (default from settings, closest match, 2160p when listed)
-  - subtitles (Arabic, English or off, default from settings; one track per language, SRT preferred)
+  - quality selection (default from settings, closest match).
+    - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour).
+  - subtitles (Arabic, English or off, default from settings; one plain track per language, SRT preferred)
+    - *Decision (2026-11-19):* anime titles with a styled ASS track also get **"Arabic (styled)"** as an extra choice. Plain Arabic stays the default. Ship one Arabic fallback font for libass. Downloads save the plain file, plus the styled one if it was chosen.
   - playback speed
   - aspect/fit modes
   - double-tap seek (mobile)
   - next episode
   - resume from saved position
   - brightness and volume swipe gestures (mobile only)
-  - always refetch stream URLs before playing (signed URLs expire after ~5 days)
+  - always fetch stream URLs right before playing (`MediaRepository.streams`, which refreshes stale ones); on a 403, fetch them again
+  - when the API fails, ask `StatusRepository.cinemanaHealth()` once. If Cinemana is reported down, say so instead of blaming the connection (*decision 2026-11-19*)
 - [ ] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
 - [ ] **Favorites:** add, remove and list.
-- [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file.
+- [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume.
 - [ ] **Settings:**
   - language (English or Arabic, default English. Arabic flips the layout to RTL)
   - default resolution (2160p/1080p/720p/480p/360p, default 1080p)
@@ -146,7 +154,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ### 4.3 Not possible or excluded
 - **Comments:** switched off server-wide (`showComments: false` everywhere).
-- **Collections, "Popular" (`popularFilms`), season posters:** the endpoints return nothing or fail with 500.
+- **Collections and franchises, "Popular" (`popularFilms`), season posters:** the endpoints return nothing or fail with 500.
 - **View counts:** `videoViewsNumber` is always 0.
 - **Ratings, likes, age ratings:** excluded by the no-ratings rule.
 - **Parental filtering, scene skipping, kids mode:** excluded by the zero-censorship rule.

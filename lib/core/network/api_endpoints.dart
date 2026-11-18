@@ -349,6 +349,17 @@ abstract final class ApiEndpoints {
 
   static ApiRequest faq() => const ApiRequest('faqQuestion');
 
+  // ---- Service status ---------------------------------------------------------
+
+  /// Shabakaty's public status page (Atlassian Statuspage, no login or
+  /// keys). The official Android app uses this host. Ask it only after API
+  /// calls fail, to tell "Cinemana is down" from "your connection is down".
+  static const String statusUrl =
+      'https://6b1m6vnfz2jk.statuspage.io/api/v2/components.json';
+
+  /// `{page, components: [{id, name, status, group, group_id, components}]}`.
+  static ApiRequest serviceStatus() => const ApiRequest(statusUrl);
+
   // ---- helpers ---------------------------------------------------------------
 
   static bool _has(String? s) => s != null && s.trim().isNotEmpty;

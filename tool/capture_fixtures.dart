@@ -263,6 +263,7 @@ Future<void> main(List<String> args) async {
   );
 
   await capture('faq', ApiEndpoints.faq());
+  await capture('service_status', ApiEndpoints.serviceStatus());
 
   stdout.writeln(
     failures.isEmpty
