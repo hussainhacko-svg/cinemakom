@@ -94,7 +94,7 @@ Use it sparingly. It is never a divider between every section.
   - **The hero** uses the banner cover, decoded at screen width × device pixel ratio.
 - **No** `BackdropFilter`, shadows, `Opacity` animations over images, or `saveLayer` effects. Round images with `ClipRRect` only where needed, and everything else with `BoxDecoration.borderRadius`.
 - **Lists:** horizontal rows use `ListView.builder` with a fixed `itemExtent` where possible. Use `const` widgets wherever possible.
-- **Fonts:** bundled in the app (no runtime downloads). Variable fonts where available; for IBM Plex Sans Arabic, only Regular, Medium and SemiBold.
+- **Fonts:** bundled in the app (no runtime downloads), each with its SIL OFL text in `assets/fonts/licenses/`, registered on the licenses page (`registerFontLicenses` in `main.dart`). Variable fonts where available; for IBM Plex Sans Arabic, only Regular, Medium and SemiBold.
 
 ## 7. Logo (final: mark 1, "Ticket")
 

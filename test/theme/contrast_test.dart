@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:cinemakom/app/theme/marquee_colors.dart';
 import 'package:cinemakom/app/theme/marquee_text.dart';
 import 'package:cinemakom/app/theme/marquee_theme.dart';
+import 'package:cinemakom/main.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -109,5 +111,23 @@ void main() {
     for (final a in assets) {
       expect(File(a).existsSync(), isTrue, reason: a);
     }
+  });
+
+  test('every bundled font has its OFL license next to it', () {
+    for (final file in fontLicenses.values) {
+      final text = File('assets/fonts/licenses/$file').readAsStringSync();
+      expect(text, contains('SIL Open Font License'), reason: file);
+    }
+  });
+
+  testWidgets('font licenses are registered for the licenses page', (
+    tester,
+  ) async {
+    registerFontLicenses();
+    final packages = <String>{};
+    await for (final entry in LicenseRegistry.licenses) {
+      packages.addAll(entry.packages);
+    }
+    expect(packages, containsAll(fontLicenses.keys));
   });
 }
