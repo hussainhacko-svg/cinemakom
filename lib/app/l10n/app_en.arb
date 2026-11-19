@@ -331,6 +331,19 @@
   "@roleWriter": {
     "description": "Crew role"
   },
+  "personTitleCount": "{count, plural, =0{No titles} =1{1 title} other{{count} titles}}",
+  "@personTitleCount": {
+    "description": "How many titles a person's page lists, under their name",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personUnavailable": "This person's page isn't available.",
+  "@personUnavailable": {
+    "description": "An actor or director page could not be found"
+  },
   "showMore": "More",
   "@showMore": {
     "description": "Expands the synopsis"

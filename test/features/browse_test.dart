@@ -7,6 +7,7 @@ import 'package:cinemakom/features/genre/genre_screen.dart';
 import 'package:cinemakom/features/home/home_providers.dart';
 import 'package:cinemakom/features/home/widgets/home_hero.dart';
 import 'package:cinemakom/features/search/search_screen.dart';
+import 'package:cinemakom/features/staff/staff_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -184,6 +185,44 @@ void main() {
       await push(tester, '/home/title/3119279');
       expect(find.text('EVE OF DESTRUCTION'), findsOneWidget);
       expect(find.byType(Wrap), findsWidgets);
+    });
+  });
+
+  group('person', () {
+    testWidgets('a cast member opens their page with their titles', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await push(tester, '/home/title/3119279');
+      await tester.scrollUntilVisible(
+        find.bySemanticsLabel('Gregory Hines, Actor'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      // Clear of the bottom bar.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Gregory Hines, Actor'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StaffScreen), findsOneWidget);
+      expect(find.text('GREGORY HINES'), findsOneWidget);
+      expect(find.text('Actor · 2 titles'), findsOneWidget);
+      expect(find.text('History of the World: Part I'), findsOneWidget);
+      // Inside the tab: the bar stays, and back returns to the title.
+      expect(find.byType(NavigationBar), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StaffScreen), findsNothing);
+      expect(find.text('EVE OF DESTRUCTION'), findsOneWidget);
+    });
+
+    testWidgets('an unknown person says so', (tester) async {
+      await pumpApp(
+        tester,
+        api: fixtureApi([FakeApiClient.path('staff/actorID/', const [])]),
+      );
+      await push(tester, '/home/person/1');
+      expect(find.text("This person's page isn't available."), findsOneWidget);
     });
   });
 

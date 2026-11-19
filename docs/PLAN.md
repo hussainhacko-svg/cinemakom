@@ -107,7 +107,8 @@ lib/
     player/                     # player_screen, player_controller (session, recovery), player_state,
                                 # quality, subtitles, widgets/ (controls_overlay, seek_bar, subtitle_layer)
     library/  downloads/        # placeholders until Phases 5 and 6
-    staff/  faq/                # to come
+    staff/                      # person page (actor, director, writer)
+    faq/                        # to come
     debug/                      # debug-build-only API check screen (Phase 1)
       # each: <feature>_screen.dart, widgets/, <feature>_providers.dart
 test/
@@ -176,7 +177,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ### 4.2 Extras the API supports
 - [x] **More like this** on details, from the recommendation service (`recommend.shabakaty.com`: same franchise, then shared cast), falling back to `relatedVideos`.
-- [ ] **Cast and crew** row on details (`actorsInfo`, `directorsInfo`, `writersInfo`). Tapping a person opens an **actor/director page** (`staff/actorID/...`). *The row is done (Phase 3); the people aren't tappable until the actor page exists.*
+- [x] **Cast and crew** row on details (`actorsInfo`, `directorsInfo`, `writersInfo`). Tapping a person opens an **actor/director page** (`staff/actorID/...`): photo, name, role and title count, then a poster grid of every title they're credited on (`StaffScreen`, `openPerson`, route `person/:id` in every tab). *Done 2026-11-19.*
 - [ ] **Skip intro** button in the player, from `introSkipping` (`MediaDetails.introRanges`), which can hold two ranges.
 - [ ] **Seek-bar previews** from `video_thumbnails` sprite sheets (`SeekPreview.frameAt`). Popular titles have them; hide the preview when a title has none.
 - [ ] **Season picker** that loads first (`videoSeasonNumber`), with episodes loaded per season.
@@ -272,7 +273,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** a download finishes, plays offline with subtitles, and survives an app restart in the middle.
 
 ### Phase 7: New features
-- The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4): cast and crew, actor pages, related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
+- The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4; cast and crew and actor pages are done): related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
 
 ### Phase 8: Polish and release
 - Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).

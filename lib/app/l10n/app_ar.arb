@@ -72,6 +72,8 @@
   "roleActor": "ممثل",
   "roleDirector": "مخرج",
   "roleWriter": "كاتب",
+  "personTitleCount": "{count, plural, =0{لا أعمال} =1{عمل واحد} =2{عملان} few{{count} أعمال} other{{count} عملًا}}",
+  "personUnavailable": "صفحة هذا الشخص غير متاحة.",
   "showMore": "المزيد",
   "showLess": "أقل",
   "movie": "فيلم",

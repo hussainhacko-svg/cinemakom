@@ -18,6 +18,7 @@ import '../features/onboarding/language_screen.dart';
 import '../features/player/player_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/staff/staff_screen.dart';
 import 'navigation.dart';
 import 'shell/app_shell.dart';
 
@@ -106,7 +107,7 @@ StatefulShellBranch _branch(
 );
 
 /// Pages any tab can open from its lists (see navigation.dart): details,
-/// a genre, and "See all". They open inside that tab.
+/// a genre, a person, and "See all". They open inside that tab.
 final _browse = <RouteBase>[
   GoRoute(
     path: 'title/:id',
@@ -120,6 +121,13 @@ final _browse = <RouteBase>[
     builder: (_, state) => GenreScreen(
       categoryId: state.pathParameters['id']!,
       genre: state.extra is Category ? state.extra! as Category : null,
+    ),
+  ),
+  GoRoute(
+    path: 'person/:id',
+    builder: (_, state) => StaffScreen(
+      id: state.pathParameters['id']!,
+      args: state.extra is PersonArgs ? state.extra! as PersonArgs : null,
     ),
   ),
   GoRoute(

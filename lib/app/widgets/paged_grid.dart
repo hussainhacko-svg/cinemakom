@@ -81,33 +81,12 @@ class PagedGridSlivers extends ConsumerWidget {
 
     return SliverMainAxisGroup(
       slivers: [
-        SliverPadding(
-          padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
-          sliver: SliverLayoutBuilder(
-            builder: (context, constraints) {
-              final columns = gridColumns(constraints.crossAxisExtent);
-              const spacing = MarqueeSpace.m;
-              final cellWidth =
-                  (constraints.crossAxisExtent - (columns - 1) * spacing) /
-                  columns;
-              return SliverGrid.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: spacing,
-                  mainAxisSpacing: MarqueeSpace.l,
-                  mainAxisExtent: PosterCard.heightFor(cellWidth),
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, i) {
-                  if (i >= items.length - _prefetchItems) prefetch();
-                  return PosterCard(
-                    item: items[i],
-                    onTap: () => openTitle(context, items[i]),
-                  );
-                },
-              );
-            },
-          ),
+        PosterGridSliver(
+          items: items,
+          gutter: gutter,
+          onBuild: (i) {
+            if (i >= items.length - _prefetchItems) prefetch();
+          },
         ),
         SliverToBoxAdapter(
           child: Padding(
@@ -133,4 +112,48 @@ class PagedGridSlivers extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// A poster grid of [items] (each opens its title), as one sliver with the
+/// page gutter. [onBuild] is told which index is being built.
+class PosterGridSliver extends StatelessWidget {
+  const PosterGridSliver({
+    super.key,
+    required this.items,
+    required this.gutter,
+    this.onBuild,
+  });
+
+  final List<MediaItem> items;
+  final double gutter;
+  final void Function(int index)? onBuild;
+
+  @override
+  Widget build(BuildContext context) => SliverPadding(
+    padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
+    sliver: SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final columns = gridColumns(constraints.crossAxisExtent);
+        const spacing = MarqueeSpace.m;
+        final cellWidth =
+            (constraints.crossAxisExtent - (columns - 1) * spacing) / columns;
+        return SliverGrid.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: MarqueeSpace.l,
+            mainAxisExtent: PosterCard.heightFor(cellWidth),
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, i) {
+            onBuild?.call(i);
+            return PosterCard(
+              item: items[i],
+              onTap: () => openTitle(context, items[i]),
+            );
+          },
+        );
+      },
+    ),
+  );
 }

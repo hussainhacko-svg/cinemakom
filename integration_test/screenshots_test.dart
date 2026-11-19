@@ -166,6 +166,8 @@ void main() {
     await _shot(tester, '23-phone-details-series', wait: 5000);
     await tester.drag(find.byType(Scrollable).last, const Offset(0, -600));
     await _shot(tester, '24-phone-details-episodes', wait: 3000);
+    await _push(tester, '/home/person/627'); // Jennifer Aniston
+    await _shot(tester, '28-phone-person', wait: 5000);
 
     await tester.tap(find.text('Search'));
     await _wait(tester, 2000);
@@ -198,6 +200,8 @@ void main() {
     await _shot(tester, '40-phone-home-ar-live', wait: 6000);
     await _push(tester, '/home/title/4328');
     await _shot(tester, '41-phone-details-ar', wait: 5000);
+    await _push(tester, '/home/person/627');
+    await _shot(tester, '42-phone-person-ar', wait: 5000);
   });
 
   testWidgets('desktop: player with live data', (tester) async {

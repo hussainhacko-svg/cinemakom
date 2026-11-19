@@ -1,14 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/navigation.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
-import '../../../app/widgets/media_image.dart';
 import '../../../app/widgets/section_header.dart';
 import '../../../data/models/media_details.dart';
+import '../../staff/widgets/person_photo.dart';
 
-/// "Cast and crew": round photos (or initials) with name and role. Actor
-/// pages come in Phase 7, so the people aren't tappable yet.
+/// "Cast and crew": round photos (or initials) with name and role. A person
+/// opens their page (`openPerson`).
 class CreditsRow extends StatelessWidget {
   const CreditsRow({super.key, required this.details, required this.gutter});
 
@@ -71,51 +72,32 @@ class _Person extends StatelessWidget {
       StaffRole.writer => l10n.roleWriter,
       StaffRole.other => '',
     };
-    final initials = credit.name
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w.characters.first.toUpperCase())
-        .join();
     return Semantics(
+      button: true,
       label: role.isEmpty ? credit.name : '${credit.name}, $role',
       excludeSemantics: true,
-      child: SizedBox(
-        width: 76,
-        child: Column(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: MarqueeColors.booth,
-                border: Border.fromBorderSide(
-                  BorderSide(color: MarqueeColors.velvet),
-                ),
+      child: InkWell(
+        onTap: () => openPerson(context, credit),
+        borderRadius: const BorderRadius.all(MarqueeRadius.card),
+        child: SizedBox(
+          width: 76,
+          child: Column(
+            children: [
+              PersonPhoto(name: credit.name, imageUrl: credit.imageUrl),
+              const SizedBox(height: 6),
+              Text(
+                credit.name,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: text.caption
+                    .copyWith(color: MarqueeColors.cream)
+                    .withWeight(FontWeight.w600),
               ),
-              clipBehavior: Clip.antiAlias,
-              alignment: Alignment.center,
-              child: credit.imageUrl == null
-                  ? Text(
-                      initials,
-                      style: text.label.copyWith(color: MarqueeColors.dust),
-                    )
-                  : MediaImage(url: credit.imageUrl),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              credit.name,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: text.caption
-                  .copyWith(color: MarqueeColors.cream)
-                  .withWeight(FontWeight.w600),
-            ),
-            if (role.isNotEmpty)
-              Text(role, style: text.caption.copyWith(fontSize: 11)),
-          ],
+              if (role.isNotEmpty)
+                Text(role, style: text.caption.copyWith(fontSize: 11)),
+            ],
+          ),
         ),
       ),
     );
