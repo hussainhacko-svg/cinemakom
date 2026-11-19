@@ -57,13 +57,6 @@ void main() {
       ).read(bannersProvider).value!;
       expect(banners, hasLength(heroBannerCap));
       expect(heroBannerCap, 10);
-      expect(
-        tester
-            .widget<PageView>(find.byType(PageView))
-            .childrenDelegate
-            .estimatedChildCount,
-        10,
-      );
     });
 
     testWidgets('the hero moves on by itself, but not under a finger', (
@@ -100,6 +93,37 @@ void main() {
       expect(shown('TENET'), 0);
       // A longer title doesn't move the page below.
       expect(tester.getSize(hero).height, height);
+    });
+
+    testWidgets('the hero loops forward from the last banner to the first', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      double shown(String title) => tester
+          .widget<AnimatedOpacity>(
+            find
+                .ancestor(
+                  of: find.text(title),
+                  matching: find.byType(AnimatedOpacity),
+                )
+                .first,
+          )
+          .opacity;
+      // The fixture has 6 banners: five advances reach the last, the sixth
+      // comes back round to the first.
+      final start = tester.getTopLeft(find.byType(PageView));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(seconds: 10));
+        await tester.pumpAndSettle();
+      }
+      expect(shown('TENET'), 1);
+      // Forward, not a rewind: the pages only ever moved one way.
+      final page = tester
+          .widget<PageView>(find.byType(PageView))
+          .controller!
+          .page!;
+      expect(page, greaterThan(10000));
+      expect(tester.getTopLeft(find.byType(PageView)), start);
     });
 
     testWidgets('a failing section offers a retry', (tester) async {

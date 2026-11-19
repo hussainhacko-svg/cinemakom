@@ -34,6 +34,13 @@ const _gap = MarqueeSpace.s;
 const _fadeOut = Interval(0, 0.5, curve: Curves.easeOut);
 const _fadeIn = Interval(0.5, 1, curve: Curves.easeOut);
 
+/// The carousel loops: its pages are endless, and page [_loopBase] is the
+/// first banner, so there's room to swipe back past it too.
+const _loopBase = 10000;
+
+/// The banner on endless page [page].
+int _bannerAt(int page, int count) => (page - _loopBase) % count;
+
 /// How long a banner stays before the carousel moves on.
 const _advanceAfter = Duration(seconds: 10);
 
@@ -56,7 +63,10 @@ class HomeHero extends ConsumerStatefulWidget {
 }
 
 class _HomeHeroState extends ConsumerState<HomeHero> {
-  var _pages = PageController(viewportFraction: _peekFraction);
+  var _pages = PageController(
+    viewportFraction: _peekFraction,
+    initialPage: _loopBase,
+  );
   int _index = 0;
   Timer? _timer;
   bool _held = false;
@@ -97,15 +107,30 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
     if (!_shown || _still || _held || _count < 2) return;
     _timer = Timer(_advanceAfter, () {
       if (!mounted || !_pages.hasClients) return;
-      _goTo((_index + 1) % _count);
+      // Always forward: after the last banner the first comes in next.
+      _toPage(_currentPage + 1);
     });
   }
 
-  void _goTo(int index) => _pages.animateToPage(
-    index,
+  int get _currentPage => _pages.hasClients
+      ? (_pages.page ?? _pages.initialPage.toDouble()).round()
+      : _pages.initialPage;
+
+  void _toPage(int page) => _pages.animateToPage(
+    page,
     duration: const Duration(milliseconds: 250),
     curve: Curves.easeOut,
   );
+
+  /// A bulb tap: to that banner, the short way round the loop.
+  void _goTo(int index) {
+    final count = _count;
+    if (count < 2) return;
+    var delta = index - _index;
+    if (delta > count / 2) delta -= count;
+    if (delta < -count / 2) delta += count;
+    _toPage(_currentPage + delta);
+  }
 
   void _hold(bool held) {
     _held = held;
@@ -117,7 +142,10 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
   PageController _controllerFor(double fraction) {
     if (_pages.viewportFraction != fraction) {
       final old = _pages;
-      _pages = PageController(viewportFraction: fraction, initialPage: _index);
+      _pages = PageController(
+        viewportFraction: fraction,
+        initialPage: _loopBase + _index,
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
     }
     return _pages;
@@ -241,8 +269,10 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
     );
   }
 
-  void _onPageChanged(int i) {
-    setState(() => _index = i);
+  void _onPageChanged(int page) {
+    final count = _count;
+    if (count == 0) return;
+    setState(() => _index = _bannerAt(page, count));
     _restartTimer();
   }
 }
@@ -299,36 +329,41 @@ class _Carousel extends StatelessWidget {
             controller: controller,
             padEnds: false,
             clipBehavior: clip,
-            itemCount: items.length,
+            // Endless when there's more than one banner (see _loopBase).
+            itemCount: items.length > 1 ? null : 1,
             onPageChanged: onPageChanged,
             // A banner fades as it slides out past the start edge, instead
             // of being cut off there.
-            itemBuilder: (context, i) => AnimatedBuilder(
-              animation: controller,
-              builder: (context, child) {
-                final page =
-                    controller.hasClients &&
-                        controller.position.hasContentDimensions
-                    ? controller.page ?? 0
-                    : controller.initialPage.toDouble();
-                final gone = (page - i).clamp(0.0, 1.0);
-                return Opacity(opacity: 1 - gone, child: child);
-              },
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(end: gap),
-                child: Semantics(
-                  button: true,
-                  label: context.titleOf(items[i]),
-                  child: GestureDetector(
-                    onTap: () => openTitle(context, items[i]),
-                    child: MediaImage(
-                      url: items[i].backdropUrl,
-                      borderRadius: _radius,
+            itemBuilder: (context, i) {
+              final item =
+                  items[items.length > 1 ? _bannerAt(i, items.length) : 0];
+              return AnimatedBuilder(
+                animation: controller,
+                builder: (context, child) {
+                  final page =
+                      controller.hasClients &&
+                          controller.position.hasContentDimensions
+                      ? controller.page ?? 0
+                      : controller.initialPage.toDouble();
+                  final gone = (page - i).clamp(0.0, 1.0);
+                  return Opacity(opacity: 1 - gone, child: child);
+                },
+                child: Padding(
+                  padding: EdgeInsetsDirectional.only(end: gap),
+                  child: Semantics(
+                    button: true,
+                    label: context.titleOf(item),
+                    child: GestureDetector(
+                      onTap: () => openTitle(context, item),
+                      child: MediaImage(
+                        url: item.backdropUrl,
+                        borderRadius: _radius,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -337,7 +372,8 @@ class _Carousel extends StatelessWidget {
 }
 
 /// The marquee bulbs, one per banner: the current one lit `bulb`, the rest
-/// `velvetStrong`. A tap on a bulb goes to its banner. The bulbs shrink so
+/// `velvetStrong`, centred over the hero. A tap on a bulb goes to its
+/// banner, the short way round the loop. The bulbs shrink so
 /// every banner gets one and the lit bulb walks along the row. When even
 /// the smallest bulbs don't fit, the row shows one page of them at a time
 /// and turns to the next page when the lit bulb runs off its end.
@@ -368,6 +404,7 @@ class _BulbPager extends StatelessWidget {
           final first = index ~/ perPage * perPage;
           final last = (first + perPage).clamp(0, count);
           return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (var i = first; i < last; i++)
                 GestureDetector(
@@ -376,9 +413,7 @@ class _BulbPager extends StatelessWidget {
                   child: SizedBox(
                     width: pitch,
                     height: size + 2 * MarqueeSpace.s,
-                    // The first bulb lines up with the banner's start edge.
                     child: Align(
-                      alignment: AlignmentDirectional.centerStart,
                       child: AnimatedContainer(
                         duration: still
                             ? Duration.zero
