@@ -164,11 +164,11 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - brightness and volume swipe gestures (mobile only)
   - always fetch stream URLs right before playing (`MediaRepository.streams`, which refreshes stale ones); on a 403, fetch them again
   - when the API fails, ask `StatusRepository.cinemanaHealth()` once. If Cinemana is reported down, say so instead of blaming the connection (*decision 2026-11-19*)
-- [x] **Library tab:** a [Continue watching | Favorites] segmented control (`lib/features/library`). *Done 2026-11-19.*
-- [x] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
+- [ ] **Library tab:** a [Continue watching | Favorites] segmented control (`lib/features/library`). *Built 2026-11-19, to check on the phone.*
+- [ ] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields. *Built 2026-11-19, to check on the phone.*
   - A finished episode shows the next one as "Up next", on Home and in the Library (`continueEntriesProvider`). After a series' last episode it leaves the list.
   - *Decision (2026-11-19):* a long press (or right click) offers **Remove from Continue watching**. It only hides the title (`continue_hidden` table) until it's watched again; the watch history and the episodes' watched marks stay.
-- [x] **Favorites:** add, remove and list. A bookmark (not a heart, so it can't read as a like; *decision 2026-11-19*): a pill on Details, an icon button on the Home hero. Stored in the drift `favorites` table, the last added first.
+- [ ] **Favorites:** add, remove and list. *Built 2026-11-19, to check on the phone.* A bookmark (not a heart, so it can't read as a like; *decision 2026-11-19*): a pill on Details, an icon button on the Home hero. Stored in the drift `favorites` table, the last added first.
 - [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume.
 - [x] **Settings:**
   - language (English or Arabic, default English. Arabic flips the layout to RTL)
@@ -187,7 +187,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 - [x] **"See all"** page for each video group (`videoListPagination`).
 - [x] **Genre × language filter** (`categoryLangFreqVideo` + `videosByCategoryAndLanguage`), e.g. Anime = Animation (57) × Japanese.
 - [ ] **Advanced search filters:** kind, genre (`category_id`), year range, actor or director name (`staffTitle`). No rating filter, no sort (the server ignores it).
-- [x] **Library refresh:** update favorites and history metadata with `POST getVideosByIds` (40 numeric IDs per request). Once per session, when the Library tab opens (`libraryRefreshProvider`); a failure keeps what's stored. The answer has no genres, so a favorite keeps the genre it was saved with.
+- [ ] **Library refresh:** update favorites and history metadata with `POST getVideosByIds` (40 numeric IDs per request). Once per session, when the Library tab opens (`libraryRefreshProvider`); a failure keeps what's stored. The answer has no genres, so a favorite keeps the genre it was saved with. *Built 2026-11-19, to check on the phone.*
 - [ ] **FAQ / help** screen in Settings (`faqQuestion`).
 
 ### 4.3 Not possible or excluded
@@ -202,7 +202,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
-> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Phase 4 (player) is done** (M0–M9, PLAYER.md §15; Windows not run yet). The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Phase 4 (player) is done** (M0–M9, PLAYER.md §15; Windows not run yet). **Phase 5 (library) is built, to check on the phone.** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
 
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 
@@ -260,9 +260,10 @@ Each phase ends with something that runs. **Every phase is tested on Android and
   - No picture-in-picture for now.
 - **Done when:** a movie and a full series play smoothly on Android, Linux and Windows, and every target in PLAYER.md §1 is met.
 
-### Phase 5: Library ✅ *(done 2026-11-19)*
+### Phase 5: Library *(built 2026-11-19, to check on the phone)*
 - drift `favorites` table (`watch_history` already exists from Phase 4), the Library tab (Continue watching and Favorites), and a background metadata refresh with `getVideosByIds`.
 - **Done when:** history and favorites survive a restart and resume works. Checked by the drift repository tests (including the upgrade of a schema 1 database), the Library widget tests and `integration_test/screenshots_test.dart` on Linux (phone, desktop, Arabic).
+- **To check on the phone** (release APK installed over the current app, so its database is upgraded): existing Continue watching entries are still there; finishing an episode shows "Up next" on Home and in the Library; Favorite works from Details and the hero; a long press removes a card; everything survives a force-stop and relaunch.
 
 ### Phase 6: Downloads
 - background_downloader for video plus subtitle, with the headers.
