@@ -2,11 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/marquee_colors.dart';
+import '../../../app/theme/marquee_text.dart';
+import '../../../data/models/playback_models.dart';
+import 'seek_preview_frame.dart';
 
 /// The seek bar: `bulb` played, `velvetStrong` buffered, `velvet` track,
 /// with a `bulb` thumb (DESIGN.md §8). It always runs left to right, in
 /// Arabic too (PLAYER.md §2). Only this widget repaints when the position
 /// moves.
+///
+/// While dragging, or with the mouse over it, a bubble above the bar shows
+/// the frame from [preview] and the time there (PLAYER.md §7.8); the time
+/// alone when there's no frame.
 class SeekBar extends StatefulWidget {
   const SeekBar({
     super.key,
@@ -15,6 +22,7 @@ class SeekBar extends StatefulWidget {
     required this.duration,
     required this.onSeek,
     this.onScrub,
+    this.preview,
     this.semanticLabel,
   });
 
@@ -25,6 +33,7 @@ class SeekBar extends StatefulWidget {
 
   /// While dragging: the time under the thumb, or `null` when the drag ends.
   final ValueChanged<Duration?>? onScrub;
+  final SeekPreview? preview;
   final String? semanticLabel;
 
   @override
@@ -34,6 +43,11 @@ class SeekBar extends StatefulWidget {
 class _SeekBarState extends State<SeekBar> {
   /// The thumb's place while dragging, 0–1.
   double? _drag;
+
+  /// The mouse's place over the bar, 0–1.
+  double? _hover;
+
+  static const _height = 44.0;
 
   Duration _at(double fraction) => widget.duration * fraction.clamp(0.0, 1.0);
 
@@ -61,39 +75,136 @@ class _SeekBarState extends State<SeekBar> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          return Semantics(
-            label: widget.semanticLabel,
-            slider: true,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: enabled
-                  ? (d) => widget.onSeek(_at(_fraction(d.localPosition, width)))
-                  : null,
-              onHorizontalDragStart: enabled
-                  ? (d) => _scrub(_fraction(d.localPosition, width))
-                  : null,
-              onHorizontalDragUpdate: enabled
-                  ? (d) => _scrub(_fraction(d.localPosition, width))
-                  : null,
-              onHorizontalDragEnd: enabled ? (_) => _end() : null,
-              onHorizontalDragCancel: enabled ? _end : null,
-              child: SizedBox(
-                height: 44,
-                width: double.infinity,
-                child: RepaintBoundary(
-                  child: CustomPaint(
-                    painter: _SeekBarPainter(
-                      position: widget.position,
-                      buffered: widget.buffered,
-                      duration: widget.duration,
-                      drag: _drag,
-                    ),
+          final at = _drag ?? _hover;
+          final bar = MouseRegion(
+            onHover: enabled
+                ? (e) =>
+                      setState(() => _hover = _fraction(e.localPosition, width))
+                : null,
+            onExit: (_) {
+              if (_hover != null) setState(() => _hover = null);
+            },
+            child: _bar(enabled, width),
+          );
+          // Always a Stack: wrapping the bar only while dragging would
+          // rebuild its gesture detector and drop the drag.
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              bar,
+              if (at != null && enabled)
+                _Bubble(
+                  at: _at(at),
+                  x: _SeekBarPainter.thumbX(at, width),
+                  barWidth: width,
+                  frame: widget.preview?.frameAt(_at(at)),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _bar(bool enabled, double width) => Semantics(
+    label: widget.semanticLabel,
+    slider: true,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: enabled
+          ? (d) => widget.onSeek(_at(_fraction(d.localPosition, width)))
+          : null,
+      onHorizontalDragStart: enabled
+          ? (d) => _scrub(_fraction(d.localPosition, width))
+          : null,
+      onHorizontalDragUpdate: enabled
+          ? (d) => _scrub(_fraction(d.localPosition, width))
+          : null,
+      onHorizontalDragEnd: enabled ? (_) => _end() : null,
+      onHorizontalDragCancel: enabled ? _end : null,
+      child: SizedBox(
+        height: _height,
+        width: double.infinity,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _SeekBarPainter(
+              position: widget.position,
+              buffered: widget.buffered,
+              duration: widget.duration,
+              drag: _drag,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// The frame and the time above the bar, centred on [x] and kept within
+/// the bar's width.
+class _Bubble extends StatelessWidget {
+  const _Bubble({
+    required this.at,
+    required this.x,
+    required this.barWidth,
+    required this.frame,
+  });
+
+  final Duration at;
+  final double x;
+  final double barWidth;
+  final SeekFrame? frame;
+
+  static const _width = 120.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = this.frame;
+    final left = (x - _width / 2).clamp(
+      0.0,
+      (barWidth - _width).clamp(0.0, double.infinity),
+    );
+    return Positioned(
+      left: left,
+      bottom: _SeekBarState._height - MarqueeSpace.xs,
+      width: _width,
+      child: IgnorePointer(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (frame != null) ...[
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  border: Border.fromBorderSide(
+                    BorderSide(color: MarqueeColors.velvet),
+                  ),
+                  borderRadius: BorderRadius.all(SeekPreviewFrame.radius),
+                ),
+                child: SeekPreviewFrame(frame: frame),
+              ),
+              const SizedBox(height: MarqueeSpace.xs),
+            ],
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                color: MarqueeColors.booth,
+                borderRadius: BorderRadius.all(Radius.circular(999)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: MarqueeSpace.s,
+                  vertical: 2,
+                ),
+                child: Text(
+                  formatClock(at),
+                  style: MarqueeText.of(context).label.copyWith(
+                    color: MarqueeColors.cream,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -114,6 +225,10 @@ class _SeekBarPainter extends CustomPainter {
 
   static const _track = 4.0;
   static const _thumb = 7.0;
+
+  /// Where the thumb sits for [fraction] on a bar [width] wide.
+  static double thumbX(double fraction, double width) =>
+      _thumb + (width - _thumb * 2) * fraction;
 
   double _of(Duration d) => duration <= Duration.zero
       ? 0

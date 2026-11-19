@@ -564,5 +564,9 @@
   "playerStillWatching": "Still watching?",
   "@playerStillWatching": {
     "description": "Up next card after 3 automatic episodes: playback paused until someone answers"
+  },
+  "playerSkipIntro": "Skip intro",
+  "@playerSkipIntro": {
+    "description": "Player: jump to the end of the intro (shown while the playhead is inside one)"
   }
 }

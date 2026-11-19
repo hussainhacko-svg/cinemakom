@@ -10,6 +10,8 @@ import 'package:cinemakom/features/player/player_screen.dart';
 import 'package:cinemakom/features/player/widgets/chip_menus.dart';
 import 'package:cinemakom/features/player/widgets/controls_overlay.dart';
 import 'package:cinemakom/features/player/widgets/seek_bar.dart';
+import 'package:cinemakom/features/player/widgets/seek_preview_frame.dart';
+import 'package:cinemakom/features/player/widgets/skip_intro_button.dart';
 import 'package:cinemakom/features/player/widgets/subtitle_layer.dart';
 import 'package:cinemakom/features/player/widgets/up_next_card.dart';
 import 'package:cinemakom/features/details/widgets/episode_list.dart';
@@ -52,6 +54,12 @@ Future<void> openEpisode(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
 }
+
+/// The fade of the controls (Skip intro has its own).
+final controlsFade = find.ancestor(
+  of: find.byType(ControlsOverlay),
+  matching: find.byType(AnimatedOpacity),
+);
 
 final choiceMenu = find.byWidgetPredicate((w) => w is ChoiceMenu);
 
@@ -98,14 +106,7 @@ void main() {
     engine.emitReady();
     await tester.pump();
 
-    double opacity() => tester
-        .widget<AnimatedOpacity>(
-          find.descendant(
-            of: find.byType(PlayerScreen),
-            matching: find.byType(AnimatedOpacity),
-          ),
-        )
-        .opacity;
+    double opacity() => tester.widget<AnimatedOpacity>(controlsFade).opacity;
     expect(opacity(), 1);
     await tester.pump(const Duration(seconds: 4));
     expect(opacity(), 0);
@@ -141,14 +142,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(choiceMenu, findsNothing);
-    final opacity = tester
-        .widget<AnimatedOpacity>(
-          find.descendant(
-            of: find.byType(PlayerScreen),
-            matching: find.byType(AnimatedOpacity),
-          ),
-        )
-        .opacity;
+    final opacity = tester.widget<AnimatedOpacity>(controlsFade).opacity;
     expect(opacity, 0);
   });
 
@@ -400,5 +394,89 @@ void main() {
     engine.emitReady(duration: const Duration(minutes: 22));
     await tester.pump();
     expect(find.text('Season 5 · Episode 1'), findsOneWidget);
+  });
+  testWidgets('Skip intro: up by itself for 8 s, then with the controls', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openMovie(tester);
+    // The fixture movie's intro runs 0–27.1 s.
+    engine.emitReady(at: const Duration(seconds: 2));
+    await tester.pump();
+    final skip = find.byType(SkipIntroButton);
+    bool shown() => tester.widget<SkipIntroButton>(skip).visible;
+    expect(find.text('Skip intro'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 4));
+    expect(tester.widget<AnimatedOpacity>(controlsFade).opacity, 0);
+    expect(shown(), isTrue);
+    await tester.pump(const Duration(seconds: 5));
+    expect(shown(), isFalse);
+
+    await tester.tapAt(const Offset(422, 195));
+    await tester.pump();
+    expect(shown(), isTrue);
+    await tester.tap(find.text('Skip intro'));
+    await tester.pump();
+    expect(engine.seeks.last, const Duration(milliseconds: 27121));
+    expect(skip, findsNothing);
+  });
+
+  testWidgets('dragging the seek bar shows the frame and the time', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    await pumpApp(
+      tester,
+      engine: engine,
+      width: 844,
+      height: 390,
+      api: fixtureApi([
+        FakeApiClient.fixtureAt('video_thumbnails/', 'thumbnails'),
+      ]),
+    );
+    await openMovie(tester);
+    engine.emitReady(
+      duration: const Duration(hours: 1),
+      at: const Duration(minutes: 1),
+    );
+    await tester.pump();
+
+    final bar = tester.getRect(find.byType(SeekBar));
+    final drag = await tester.startGesture(
+      bar.centerLeft + const Offset(20, 0),
+    );
+    await tester.pump();
+    await drag.moveTo(bar.center);
+    await tester.pump();
+    // 6 sheets of 100 frames, one every 10 s: frames up to 100 min.
+    expect(find.byType(SeekPreviewFrame), findsOneWidget);
+    expect(find.text('30:00'), findsOneWidget);
+    await drag.up();
+    await tester.pump();
+    expect(find.byType(SeekPreviewFrame), findsNothing);
+    expect(engine.seeks.last, const Duration(minutes: 30));
+  });
+
+  testWidgets('without previews the seek bar shows the time alone', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openMovie(tester);
+    engine.emitReady(duration: const Duration(hours: 1));
+    await tester.pump();
+
+    final bar = tester.getRect(find.byType(SeekBar));
+    final drag = await tester.startGesture(
+      bar.centerLeft + const Offset(20, 0),
+    );
+    await tester.pump();
+    await drag.moveTo(bar.center);
+    await tester.pump();
+    expect(find.byType(SeekPreviewFrame), findsNothing);
+    expect(find.text('30:00'), findsOneWidget);
+    await drag.up();
   });
 }

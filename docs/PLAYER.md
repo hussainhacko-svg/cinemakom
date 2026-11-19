@@ -176,6 +176,7 @@ Every error message goes in the ARB files.
 - While the playhead is inside an intro range (`SkipRange.contains`), show **Skip intro** (outlined pill, at the end side above the seek bar, as in the design). It jumps to the range's `end`.
 - The button stays visible even when the controls are hidden, and for 8 s at most per range, then folds into the controls.
 - Desktop: **S** skips. On a two-range title (cold open, then intro) each range gets its own button.
+- *Built (M6):* `PlayerState.intro` (the range under the playhead) and `introPinned` change only when the playhead enters or leaves a range, so the button costs nothing per tick. A range is pinned once per load: seeking back into it shows the button with the controls only. The Up next card wins if both would show.
 
 ### 7.6 Resume and history (drift)
 - **Table `watch_history`:**
@@ -206,6 +207,7 @@ Every error message goes in the ARB files.
 ### 7.8 Seek-bar previews
 - When dragging the thumb or hovering the bar (desktop), show the frame from `SeekPreview.frameAt` above the thumb (120×68, radius 6, with the time under it). No frame (title without sprites, broken sheet, past the last sheet) = the time alone.
 - Sheets load through the shared headers and the image cache. Prefetch the sheet under the playhead and the next one when the player opens. The frame is drawn with `drawImageRect`, not by cropping a widget.
+- *Built (M6):* `seek_preview_frame.dart` (`seekSheetImage` is the one provider for both the prefetch and the frame, so the frame comes from the cache). Sheets are decoded at full size (1200 px), because the cells are in source pixels. The bubble stays inside the bar's width. *Bug found while building:* wrapping the bar in a `Stack` only while dragging rebuilt its gesture detector and dropped the drag, so the bar is always inside the `Stack`.
 
 ### 7.9 Buffering and loading
 - Opening and seeking outside the buffer: `BulbLoader` in the centre, controls still usable.

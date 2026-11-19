@@ -11,6 +11,7 @@ import '../../core/player/exo_player_engine.dart';
 import '../../core/player/media_kit_engine.dart';
 import '../../core/player/player_engine.dart';
 import '../../core/storage/preferences.dart';
+import '../../data/models/media_details.dart' show SkipRange;
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
@@ -109,6 +110,14 @@ class PlayerController extends Notifier<PlayerState> {
   Timer? _countdown;
   int _autoEpisodes = 0;
 
+  /// Skip intro (PLAYER.md §7.5): the ranges whose button was already
+  /// pinned, and the timer that folds it into the controls.
+  final _introsPinned = <SkipRange>{};
+  Timer? _introTimer;
+
+  /// How long Skip intro stays up by itself in each range.
+  static const introPinnedFor = Duration(seconds: 8);
+
   /// Session choices: they win over Settings for the next episodes.
   int? _chosenHeight;
   SubtitleOption? _chosenSubtitle;
@@ -155,6 +164,7 @@ class PlayerController extends Notifier<PlayerState> {
     _session++;
     _watchdog?.cancel();
     _countdown?.cancel();
+    _introTimer?.cancel();
     for (final s in _subscriptions) {
       s.cancel();
     }
@@ -183,6 +193,8 @@ class PlayerController extends Notifier<PlayerState> {
     _upNextHidden = false;
     _countdown?.cancel();
     _countdown = null;
+    _introTimer?.cancel();
+    _introsPinned.clear();
     _resumeAt = start ?? Duration.zero;
     position.value = _resumeAt;
     buffered.value = Duration.zero;
@@ -199,6 +211,8 @@ class PlayerController extends Notifier<PlayerState> {
       duration: Duration.zero,
       playing: false,
       upNext: UpNext.none,
+      clearIntro: true,
+      introPinned: false,
     );
 
     final repo = _repo;
@@ -311,6 +325,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
     if (state.phase == PlayerPhase.ready) {
       _updateUpNext();
+      _updateIntro();
       _resumeAt = p;
       final recoveredAt = _recoveredAt;
       if (recoveredAt != null && p - recoveredAt >= recoveredAfter) {
@@ -415,6 +430,37 @@ class PlayerController extends Notifier<PlayerState> {
       _stallTicks = 0;
       unawaited(_recover());
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Skip intro (PLAYER.md §7.5)
+
+  /// Follows the intro range under the playhead. Entering a range for the
+  /// first time pins the button for [introPinnedFor].
+  void _updateIntro() {
+    final at = position.value;
+    final range = state.phase == PlayerPhase.ready
+        ? state.introRanges.where((r) => r.contains(at)).firstOrNull
+        : null;
+    if (range == state.intro) return;
+    _introTimer?.cancel();
+    final pin = range != null && _introsPinned.add(range);
+    state = state.copyWith(
+      intro: range,
+      clearIntro: range == null,
+      introPinned: pin,
+    );
+    if (pin) {
+      _introTimer = Timer(introPinnedFor, () {
+        if (ref.mounted) state = state.copyWith(introPinned: false);
+      });
+    }
+  }
+
+  /// Jumps to the end of the intro under the playhead (Skip intro, S).
+  Future<void> skipIntro() async {
+    final range = state.intro;
+    if (range != null) await seek(range.end);
   }
 
   // ---------------------------------------------------------------------------
@@ -569,6 +615,7 @@ class PlayerController extends Notifier<PlayerState> {
     await engine.seek(clamped);
     saveProgress();
     _updateUpNext();
+    _updateIntro();
   }
 
   /// From the beginning, after an automatic resume.

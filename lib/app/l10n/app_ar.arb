@@ -120,5 +120,6 @@
   "playerUpNext": "التالي",
   "playerPlayNow": "شغّل الآن",
   "playerHide": "إخفاء",
-  "playerStillWatching": "هل ما زلت تشاهد؟"
+  "playerStillWatching": "هل ما زلت تشاهد؟",
+  "playerSkipIntro": "تخطَّ المقدمة"
 }

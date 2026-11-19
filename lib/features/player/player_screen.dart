@@ -11,6 +11,7 @@ import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/bulb_loader.dart';
 import '../../app/widgets/error_view.dart';
+import '../../app/widgets/media_image.dart' show networkImagesProvider;
 import '../../core/network/api_exception.dart';
 import '../../core/platform/orientation.dart';
 import '../../core/platform/platform_info.dart';
@@ -25,6 +26,8 @@ import 'up_next.dart';
 import 'widgets/controls_overlay.dart';
 import 'widgets/episodes_panel.dart';
 import 'widgets/seek_bar.dart' show formatClock;
+import 'widgets/seek_preview_frame.dart';
+import 'widgets/skip_intro_button.dart';
 import 'widgets/subtitle_layer.dart';
 import 'widgets/up_next_card.dart';
 
@@ -336,6 +339,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           }
         });
       })
+      ..listen(provider.select((s) => s.seekPreview), (_, preview) {
+        if (preview != null) _prefetch(preview);
+      })
       ..listen(provider.select((s) => s.subtitleFailed), (_, failed) {
         if (!failed) return;
         ScaffoldMessenger.of(context)
@@ -355,6 +361,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       });
   }
 
+  /// The sprite sheet under the playhead and the next one, so the first
+  /// scrub shows frames at once (PLAYER.md §7.8).
+  void _prefetch(SeekPreview preview) {
+    if (!ref.read(networkImagesProvider)) return;
+    final urls = preview.sheetUrls;
+    final here = preview.frameAt(_controller.position.value)?.url;
+    final from = here == null ? 0 : urls.indexOf(here).clamp(0, urls.length);
+    for (final url in urls.skip(from).take(2)) {
+      unawaited(
+        precacheImage(seekSheetImage(url), context, onError: (_, _) {}),
+      );
+    }
+  }
+
   Map<ShortcutActivator, VoidCallback> get _shortcuts => {
     const SingleActivator(LogicalKeyboardKey.space): () {
       _input();
@@ -367,6 +387,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     const SingleActivator(LogicalKeyboardKey.arrowRight): () {
       _input();
       _controller.seekBy(const Duration(seconds: 10));
+    },
+    const SingleActivator(LogicalKeyboardKey.keyS): () {
+      _input();
+      _controller.skipIntro();
     },
     const SingleActivator(LogicalKeyboardKey.keyN): () {
       _input();
@@ -474,6 +498,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     upNext: state.upNext,
                     onPlayNow: controller.playNext,
                     onHide: controller.hideUpNext,
+                  )
+                else if (state.intro != null &&
+                    phase == PlayerPhase.ready &&
+                    !failed)
+                  SkipIntroButton(
+                    visible: state.introPinned || _visible,
+                    onPressed: () {
+                      _controller.noteActivity();
+                      _controller.skipIntro();
+                    },
                   ),
                 if (toast != null && !busy && !failed)
                   IgnorePointer(

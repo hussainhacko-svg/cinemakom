@@ -58,6 +58,8 @@ class PlayerState {
     this.seekPreview,
     this.resumedFrom,
     this.upNext = UpNext.none,
+    this.intro,
+    this.introPinned = false,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -99,6 +101,13 @@ class PlayerState {
   /// The "Up next" card and its countdown (PLAYER.md §7.7).
   final UpNext upNext;
 
+  /// The intro range under the playhead, for Skip intro (PLAYER.md §7.5).
+  final SkipRange? intro;
+
+  /// Skip intro shows even with the controls hidden: the first seconds in
+  /// each range. After that it shows with the controls only.
+  final bool introPinned;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -133,6 +142,9 @@ class PlayerState {
     Duration? resumedFrom,
     bool clearResumedFrom = false,
     UpNext? upNext,
+    SkipRange? intro,
+    bool clearIntro = false,
+    bool? introPinned,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -155,5 +167,7 @@ class PlayerState {
     seekPreview: clearSeekPreview ? null : (seekPreview ?? this.seekPreview),
     resumedFrom: clearResumedFrom ? null : (resumedFrom ?? this.resumedFrom),
     upNext: upNext ?? this.upNext,
+    intro: clearIntro ? null : (intro ?? this.intro),
+    introPinned: introPinned ?? this.introPinned,
   );
 }

@@ -16,6 +16,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../fixture.dart';
 import '../../repositories/fake_api_client.dart';
 import 'fake_engine.dart';
 
@@ -677,6 +678,71 @@ void main() {
         final movie = start(async);
         movie.engine.emitReady(duration: length, at: last5s);
         expect(movie.state.upNext, UpNext.none);
+      });
+    });
+  });
+  group('Skip intro (PLAYER.md §7.5)', () {
+    /// The fixture movie with a cold open (0–12 s) and an intro (230–291 s).
+    Env twoIntros(FakeAsync async) => start(
+      async,
+      routes: [
+        F.path('allVideoInfo/', {
+          ...fixture('video_info_movie')! as Map<String, Object?>,
+          'introSkipping': [
+            {'start': '0', 'end': '11.9', 'control_level': '3'},
+            {'start': '230', 'end': '291', 'control_level': '3'},
+          ],
+        }),
+      ],
+    );
+
+    test('each range gets its own button, pinned for 8 s', () {
+      fakeAsync((async) {
+        final env = twoIntros(async);
+        env.engine.emitReady(at: const Duration(seconds: 1));
+        final cold = env.state.intro!;
+        expect(cold.end, const Duration(milliseconds: 11900));
+        expect(env.state.introPinned, isTrue);
+
+        env.engine.emitPosition(const Duration(seconds: 20));
+        expect(env.state.intro, isNull);
+
+        env.engine.emitPosition(const Duration(seconds: 231));
+        expect(env.state.intro!.start, const Duration(seconds: 230));
+        expect(env.state.introPinned, isTrue);
+        env.flush(PlayerController.introPinnedFor);
+        expect(env.state.introPinned, isFalse);
+        expect(env.state.intro, isNotNull);
+
+        // Back into the first range: the button shows with the controls only.
+        env.engine.emitPosition(const Duration(seconds: 2));
+        expect(env.state.intro, cold);
+        expect(env.state.introPinned, isFalse);
+      });
+    });
+
+    test('Skip intro jumps to the end of the range', () {
+      fakeAsync((async) {
+        final env = twoIntros(async);
+        env.engine.emitReady(at: const Duration(seconds: 240));
+        env.controller.skipIntro();
+        env.flush();
+        expect(env.engine.seeks.last, const Duration(seconds: 291));
+        expect(env.state.intro, isNull);
+      });
+    });
+
+    test('nothing shows on a title without intro ranges', () {
+      fakeAsync((async) {
+        final env = start(
+          async,
+          routes: [F.fixtureAt('allVideoInfo/', 'video_info_special')],
+        );
+        env.engine.emitReady(at: const Duration(seconds: 5));
+        expect(env.state.intro, isNull);
+        env.controller.skipIntro();
+        env.flush();
+        expect(env.engine.seeks, isEmpty);
       });
     });
   });
