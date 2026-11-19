@@ -10,15 +10,16 @@ import '../../app/l10n/app_localizations.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/bulb_loader.dart';
-import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/error_view.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/platform/platform_info.dart';
+import '../../core/storage/preferences.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import 'player_controller.dart';
 import 'player_state.dart';
-import 'subtitles.dart';
+import 'quality.dart';
+import 'widgets/chip_menus.dart';
 import 'widgets/controls_overlay.dart';
 import 'widgets/subtitle_layer.dart';
 
@@ -38,6 +39,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   static const _hideAfter = Duration(seconds: 3);
   static const _bufferingDelay = Duration(milliseconds: 300);
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  static const _toastFor = Duration(milliseconds: 1200);
 
   bool _visible = true;
   bool _menuOpen = false;
@@ -45,6 +47,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _showBuffering = false;
   Timer? _hideTimer;
   Timer? _bufferingTimer;
+  Timer? _toastTimer;
+
+  /// A short note in the middle of the screen ("Fill" after the fit chip).
+  ({IconData icon, String label})? _toast;
 
   PlayerController get _controller =>
       ref.read(playerControllerProvider(widget.request).notifier);
@@ -66,6 +72,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void dispose() {
     _hideTimer?.cancel();
     _bufferingTimer?.cancel();
+    _toastTimer?.cancel();
     unawaited(_wakelock(on: false));
     if (isMobile) {
       SystemChrome.setPreferredOrientations(const []);
@@ -101,70 +108,146 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  Future<void> _menu<T>(
-    String title,
-    List<Choice<T>> choices,
-    T selected,
-    ValueChanged<T> onPick,
-  ) async {
+  /// Opens a menu; the controls stay up while it's open.
+  Future<T?> _menu<T>(
+    Rect anchor,
+    WidgetBuilder builder, {
+    double width = 340,
+  }) async {
     _menuOpen = true;
     _show();
-    final picked = await showChoicePicker<T>(
+    final picked = await showPlayerMenu<T>(
       context,
-      title: title,
-      choices: choices,
-      selected: selected,
+      anchor: anchor,
+      builder: builder,
+      width: width,
     );
     _menuOpen = false;
-    if (picked != null) onPick(picked);
-    _scheduleHide();
+    if (mounted) _scheduleHide();
+    return picked;
   }
 
   void _back() {
     if (context.canPop()) context.pop();
   }
 
-  // ---------------------------------------------------------------------------
-  // Menus
-
-  void _subtitleMenu(AppLocalizations l10n) => _menu<SubtitleOption>(
-    l10n.playerSubtitles,
-    [for (final o in _state.subtitles) Choice(o, subtitleLabel(l10n, o))],
-    _state.subtitle,
-    _controller.selectSubtitle,
-  );
-
-  void _qualityMenu(AppLocalizations l10n) {
-    final current = _state.quality;
-    if (current == null) return;
-    _menu<VideoSource>(
-      l10n.playerQuality,
-      [
-        for (final s in _state.sources)
-          Choice(s, s.height == 2160 ? l10n.quality4kCaption : s.label),
-      ],
-      current,
-      _controller.selectQuality,
-    );
+  void _showToast(IconData icon, String label) {
+    _toastTimer?.cancel();
+    setState(() => _toast = (icon: icon, label: label));
+    _toastTimer = Timer(_toastFor, () {
+      if (mounted) setState(() => _toast = null);
+    });
   }
 
-  void _speedMenu(AppLocalizations l10n) => _menu<double>(
-    l10n.playerSpeed,
-    [for (final s in _speeds) Choice(s, speedLabel(s))],
-    _state.speed,
-    _controller.setSpeed,
+  // ---------------------------------------------------------------------------
+  // Menus (PLAYER.md §8)
+
+  void _subtitleMenu(Rect anchor) => _menu<void>(
+    anchor,
+    (_) => SubtitleMenu(request: widget.request),
+    width: SubtitleMenu.popoverWidth,
   );
 
-  void _fitMenu(AppLocalizations l10n) => _menu<VideoFit>(
-    l10n.playerScreenFit,
-    [
-      Choice(VideoFit.fit, l10n.playerFit),
-      Choice(VideoFit.fill, l10n.playerFill),
-      Choice(VideoFit.stretch, l10n.playerStretch),
-    ],
-    _state.fit,
-    _controller.setFit,
-  );
+  Future<void> _qualityMenu(AppLocalizations l10n, Rect anchor) async {
+    final current = _state.quality;
+    if (current == null) return;
+    final picked = await _menu<VideoSource>(
+      anchor,
+      (_) => ChoiceMenu(
+        title: l10n.playerQuality,
+        selected: current,
+        choices: [
+          for (final s in _state.sources)
+            MenuChoice(
+              s,
+              s.label,
+              caption: s.height == 2160 ? l10n.quality4kCaption : null,
+            ),
+        ],
+      ),
+    );
+    if (picked != null) await _controller.selectQuality(picked);
+  }
+
+  Future<void> _speedMenu(AppLocalizations l10n, Rect anchor) async {
+    final picked = await _menu<double>(
+      anchor,
+      (_) => ChoiceMenu(
+        title: l10n.playerSpeed,
+        selected: _state.speed,
+        choices: [for (final s in _speeds) MenuChoice(s, speedLabel(s))],
+      ),
+    );
+    if (picked != null) await _controller.setSpeed(picked);
+  }
+
+  Future<void> _fitMenu(AppLocalizations l10n, Rect anchor) async {
+    final picked = await _menu<VideoFit>(
+      anchor,
+      (_) => ChoiceMenu(
+        title: l10n.playerScreenFit,
+        selected: _state.fit,
+        choices: [
+          for (final f in VideoFit.values) MenuChoice(f, fitLabel(l10n, f)),
+        ],
+      ),
+    );
+    if (picked != null) _controller.setFit(picked);
+  }
+
+  void _cycleFit(AppLocalizations l10n) {
+    final fit = _controller.cycleFit();
+    _showToast(fitIcon(fit), fitLabel(l10n, fit));
+    _show();
+  }
+
+  /// Narrow screens: one menu with each chip and its value; a pick opens
+  /// that chip's menu in the same place.
+  Future<void> _moreMenu(AppLocalizations l10n, Rect anchor) async {
+    final state = _state;
+    final quality = state.quality;
+    final picked = await _menu<_ChipMenu>(
+      anchor,
+      (_) => ChoiceMenu(
+        title: l10n.playerMore,
+        choices: [
+          if (state.subtitles.length > 1)
+            MenuChoice(
+              _ChipMenu.subtitles,
+              l10n.playerSubtitles,
+              trailing: subtitleLabel(l10n, state.subtitle),
+            ),
+          if (quality != null && state.sources.length > 1)
+            MenuChoice(
+              _ChipMenu.quality,
+              l10n.playerQuality,
+              trailing: qualityChipLabel(quality),
+            ),
+          MenuChoice(
+            _ChipMenu.speed,
+            l10n.playerSpeed,
+            trailing: speedLabel(state.speed),
+          ),
+          MenuChoice(
+            _ChipMenu.fit,
+            l10n.playerScreenFit,
+            trailing: fitLabel(l10n, state.fit),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || picked == null) return;
+    switch (picked) {
+      case _ChipMenu.subtitles:
+        _subtitleMenu(anchor);
+      case _ChipMenu.quality:
+        await _qualityMenu(l10n, anchor);
+      case _ChipMenu.speed:
+        await _speedMenu(l10n, anchor);
+      case _ChipMenu.fit:
+        await _fitMenu(l10n, anchor);
+    }
+  }
 
   // ---------------------------------------------------------------------------
 
@@ -224,7 +307,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(playerControllerProvider(widget.request));
+    final subtitleScale = ref.watch(
+      settingsProvider.select((s) => s.subtitleSize.scale),
+    );
     final controller = _controller;
+    final toast = _toast;
     _listen(l10n);
 
     final phase = state.phase;
@@ -256,6 +343,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 SubtitleLayer(
                   lines: controller.subtitleLines,
                   lifted: _visible,
+                  scale: subtitleScale,
                 ),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -272,10 +360,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       controller: controller,
                       busy: busy || failed,
                       onBack: _back,
-                      onSubtitles: () => _subtitleMenu(l10n),
-                      onQuality: () => _qualityMenu(l10n),
-                      onSpeed: () => _speedMenu(l10n),
-                      onFit: () => _fitMenu(l10n),
+                      onSubtitles: _subtitleMenu,
+                      onQuality: (anchor) => _qualityMenu(l10n, anchor),
+                      onSpeed: (anchor) => _speedMenu(l10n, anchor),
+                      onFit: () => _cycleFit(l10n),
+                      onMore: (anchor) => _moreMenu(l10n, anchor),
                       onScrub: (at) {
                         _scrubbing = at != null;
                         if (_scrubbing) {
@@ -297,6 +386,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 if (failed)
                   _Failure(error: state.error, onRetry: controller.retry),
+                if (toast != null && !busy && !failed)
+                  IgnorePointer(
+                    child: _Toast(icon: toast.icon, label: toast.label),
+                  ),
               ],
             ),
           ),
@@ -305,6 +398,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 }
+
+enum _ChipMenu { subtitles, quality, speed, fit }
 
 /// Keeps the screen on while playing. A missing plugin (tests, odd
 /// platforms) just means no wakelock.
@@ -337,6 +432,40 @@ class _Busy extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A short note above the centre buttons, e.g. "Fill" after the fit chip.
+class _Toast extends StatelessWidget {
+  const _Toast({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: const Alignment(0, -0.45),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: MarqueeColors.booth,
+        border: Border.all(color: MarqueeColors.velvet),
+        borderRadius: const BorderRadius.all(Radius.circular(999)),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: MarqueeSpace.l,
+          vertical: MarqueeSpace.s,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: MarqueeColors.cream),
+            const SizedBox(width: MarqueeSpace.s),
+            Text(label, style: MarqueeText.of(context).label),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// API errors go through [ErrorView] (it asks the status page once); stream

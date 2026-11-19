@@ -11,6 +11,7 @@ void main() {
       expect(settings.effectiveLanguage, AppLanguage.english);
       expect(settings.defaultQuality, PreferredQuality.p1080);
       expect(settings.defaultSubtitle, SubtitlePreference.arabic);
+      expect(settings.subtitleSize, SubtitleSize.medium);
     });
 
     test('reads stored values', () {
@@ -19,11 +20,13 @@ void main() {
           PreferenceKeys.language: 'ar',
           PreferenceKeys.defaultQuality: 2160,
           PreferenceKeys.defaultSubtitle: 'off',
+          PreferenceKeys.subtitleSize: 'large',
         }),
       );
       expect(settings.language, AppLanguage.arabic);
       expect(settings.defaultQuality, PreferredQuality.p2160);
       expect(settings.defaultSubtitle, SubtitlePreference.off);
+      expect(settings.subtitleSize, SubtitleSize.large);
     });
 
     test('unknown or mistyped values fall back to the defaults', () {
@@ -32,6 +35,7 @@ void main() {
           PreferenceKeys.language: 'fr',
           PreferenceKeys.defaultQuality: 1440,
           PreferenceKeys.defaultSubtitle: 42,
+          PreferenceKeys.subtitleSize: 'huge',
         }),
       );
       expect(settings, const AppSettings());
@@ -57,6 +61,7 @@ void main() {
       await notifier.setLanguage(AppLanguage.arabic);
       await notifier.setDefaultQuality(PreferredQuality.p720);
       await notifier.setDefaultSubtitle(SubtitlePreference.english);
+      await notifier.setSubtitleSize(SubtitleSize.small);
 
       expect(
         container.read(settingsProvider),
@@ -64,12 +69,14 @@ void main() {
           language: AppLanguage.arabic,
           defaultQuality: PreferredQuality.p720,
           defaultSubtitle: SubtitlePreference.english,
+          subtitleSize: SubtitleSize.small,
         ),
       );
       expect(store.values, {
         PreferenceKeys.language: 'ar',
         PreferenceKeys.defaultQuality: 720,
         PreferenceKeys.defaultSubtitle: 'english',
+        PreferenceKeys.subtitleSize: 'small',
       });
       // A restart reads back the same settings.
       expect(readSettings(store), container.read(settingsProvider));

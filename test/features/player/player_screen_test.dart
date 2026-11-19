@@ -3,7 +3,10 @@ import 'package:cinemakom/app/router.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
+import 'package:cinemakom/features/player/widgets/chip_menus.dart';
+import 'package:cinemakom/features/player/widgets/controls_overlay.dart';
 import 'package:cinemakom/features/player/widgets/seek_bar.dart';
+import 'package:cinemakom/features/player/widgets/subtitle_layer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +26,8 @@ Future<void> openMovie(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
 }
+
+final choiceMenu = find.byWidgetPredicate((w) => w is ChoiceMenu);
 
 void main() {
   testWidgets('Play opens the player full screen, and back returns', (
@@ -99,12 +104,124 @@ void main() {
     engine.emitReady(at: const Duration(minutes: 3));
     await tester.pump();
 
+    final chip = tester.getRect(
+      find.ancestor(of: find.text('1080p'), matching: find.byType(TextButton)),
+    );
     await tester.tap(find.text('1080p'));
     await tester.pump(const Duration(milliseconds: 400));
+    // From 600 dp: a popover under the chip, not a sheet.
+    expect(find.byType(BottomSheet), findsNothing);
+    final menu = tester.getRect(choiceMenu.first);
+    expect(menu.top, greaterThan(chip.bottom));
+    expect(menu.right, closeTo(chip.right, 1));
+
     await tester.tap(find.text('720p').last);
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    expect(choiceMenu, findsNothing);
     expect(engine.opened, hasLength(2));
     expect(engine.opened.last.start, const Duration(minutes: 3));
+  });
+
+  testWidgets('the subtitle menu: sync, size, then another track', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
+    await pumpApp(tester, engine: engine, store: store, width: 844, height: 390);
+    await openMovie(tester);
+    engine.emitReady();
+    await tester.pump();
+
+    await tester.tap(find.text('Arabic'));
+    await tester.pump(const Duration(milliseconds: 400));
+    final menu = find.byType(SubtitleMenu);
+    expect(menu, findsOneWidget);
+    expect(find.text('0 s'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Show subtitles later'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Show subtitles later'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Show subtitles later'));
+    await tester.pump();
+    expect(find.text('+1.5 s'), findsOneWidget);
+    expect(engine.subtitleDelay, const Duration(milliseconds: 1500));
+    await tester.tap(find.byTooltip('Show subtitles earlier'));
+    await tester.pump();
+    expect(find.text('+1 s'), findsOneWidget);
+
+    // Size is the Settings value, and the Flutter layer follows it.
+    await tester.tap(find.descendant(of: menu, matching: find.text('Large')));
+    await tester.pump();
+    expect(store.values[PreferenceKeys.subtitleSize], 'large');
+    expect(engine.subtitleScale, 1.2);
+    expect(tester.widget<SubtitleLayer>(find.byType(SubtitleLayer)).scale, 1.2);
+
+    // Playback goes on and the controls stay while the menu is open.
+    await tester.pump(const Duration(seconds: 5));
+    expect(menu, findsOneWidget);
+    expect(find.byTooltip('Pause'), findsOneWidget);
+
+    await tester.tap(find.descendant(of: menu, matching: find.text('Reset')));
+    await tester.pump();
+    expect(engine.subtitleDelay, Duration.zero);
+
+    await tester.tap(find.descendant(of: menu, matching: find.text('English')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(menu, findsNothing);
+    expect(engine.subtitles.last!.language, 'en');
+    expect(find.text('English'), findsOneWidget);
+  });
+
+  testWidgets('the fit chip cycles with a short note', (tester) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openMovie(tester);
+    engine.emitReady();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Screen fit'));
+    await tester.pump();
+    expect(find.text('Fill'), findsOneWidget);
+    expect(find.byIcon(Icons.crop_free), findsWidgets);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Fill'), findsNothing);
+
+    await tester.tap(find.byTooltip('Screen fit'));
+    await tester.pump();
+    expect(find.text('Stretch'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('below 480 dp the chips fold into one menu', (tester) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 460, height: 300);
+    ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+        .read(routerProvider)
+        .push('/watch/3119279');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    engine.emitReady();
+    await tester.pump();
+
+    expect(find.text('1080p'), findsNothing);
+    await tester.tap(find.byTooltip('More options'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // Below 600 dp menus are bottom sheets.
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('1080p'), findsOneWidget);
+
+    await tester.tap(find.text('Speed'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text(speedLabel(1.5)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(engine.rate, 1.5);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('a title without streams says so, with Try again', (

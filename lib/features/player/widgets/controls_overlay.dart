@@ -8,11 +8,15 @@ import '../player_controller.dart';
 import '../player_state.dart';
 import '../quality.dart';
 import '../subtitles.dart';
+import 'chip_menus.dart' show anchorOf;
 import 'seek_bar.dart';
+
+/// Opens a chip's menu under [anchor] (the chip's place on screen).
+typedef MenuOpener = void Function(Rect anchor);
 
 /// The player's controls over a 60% `night` scrim (DESIGN.md §8):
 /// - top: back, title and episode, then the subtitle, quality, speed and fit
-///   chips;
+///   chips (one "⋯" chip below [narrowWidth]);
 /// - centre: back 10 s, play/pause, forward 10 s;
 /// - bottom: elapsed time, the seek bar, remaining time, Next episode.
 ///
@@ -29,6 +33,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onQuality,
     required this.onSpeed,
     required this.onFit,
+    required this.onMore,
     required this.onScrub,
     this.trailing = const [],
   });
@@ -39,16 +44,24 @@ class ControlsOverlay extends StatelessWidget {
   /// Loading or buffering: the play button makes room for the loader.
   final bool busy;
   final VoidCallback onBack;
-  final VoidCallback onSubtitles;
-  final VoidCallback onQuality;
-  final VoidCallback onSpeed;
+  final MenuOpener onSubtitles;
+  final MenuOpener onQuality;
+  final MenuOpener onSpeed;
+
+  /// Cycles Fit → Fill → Stretch (PLAYER.md §7.4).
   final VoidCallback onFit;
+
+  /// The "⋯" chip on narrow screens.
+  final MenuOpener onMore;
   final ValueChanged<Duration?> onScrub;
 
   /// Extra top-bar buttons (fullscreen on desktop, the lock on mobile).
   final List<Widget> trailing;
 
   static const _seekStep = Duration(seconds: 10);
+
+  /// Below this width the chips fold into one "⋯" chip (PLAYER.md §8).
+  static const narrowWidth = 480.0;
 
   @override
   Widget build(BuildContext context) {
@@ -93,32 +106,36 @@ class ControlsOverlay extends StatelessWidget {
           ),
         ),
         const SizedBox(width: MarqueeSpace.s),
-        _Chip(
-          icon: Icons.subtitles_outlined,
-          label: subtitleLabel(l10n, state.subtitle),
-          tooltip: l10n.playerSubtitles,
-          onPressed: state.subtitles.length > 1 ? onSubtitles : null,
-        ),
-        if (quality != null)
+        if (width < narrowWidth)
           _Chip(
-            label: qualityChipLabel(quality),
-            tooltip: l10n.playerQuality,
-            onPressed: state.sources.length > 1 ? onQuality : null,
+            icon: Icons.more_horiz,
+            tooltip: l10n.playerMore,
+            onPressed: onMore,
+          )
+        else ...[
+          _Chip(
+            icon: Icons.subtitles_outlined,
+            label: subtitleLabel(l10n, state.subtitle),
+            tooltip: l10n.playerSubtitles,
+            onPressed: state.subtitles.length > 1 ? onSubtitles : null,
           ),
-        _Chip(
-          label: speedLabel(state.speed),
-          tooltip: l10n.playerSpeed,
-          onPressed: onSpeed,
-        ),
-        _Chip(
-          icon: switch (state.fit) {
-            VideoFit.fit => Icons.fit_screen_outlined,
-            VideoFit.fill => Icons.crop_free,
-            VideoFit.stretch => Icons.aspect_ratio,
-          },
-          tooltip: l10n.playerScreenFit,
-          onPressed: onFit,
-        ),
+          if (quality != null)
+            _Chip(
+              label: qualityChipLabel(quality),
+              tooltip: l10n.playerQuality,
+              onPressed: state.sources.length > 1 ? onQuality : null,
+            ),
+          _Chip(
+            label: speedLabel(state.speed),
+            tooltip: l10n.playerSpeed,
+            onPressed: onSpeed,
+          ),
+          _Chip(
+            icon: fitIcon(state.fit),
+            tooltip: l10n.playerScreenFit,
+            onPressed: (_) => onFit(),
+          ),
+        ],
         ...trailing,
       ],
     );
@@ -249,7 +266,7 @@ class _Chip extends StatelessWidget {
   final IconData? icon;
   final String? label;
   final String tooltip;
-  final VoidCallback? onPressed;
+  final MenuOpener? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -267,23 +284,37 @@ class _Chip extends StatelessWidget {
     );
     final text = label;
     final glyph = icon;
-    final Widget button = text == null
-        ? TextButton(
-            onPressed: onPressed,
-            style: style,
-            child: Icon(glyph, size: 20),
-          )
-        : glyph == null
-        ? TextButton(onPressed: onPressed, style: style, child: Text(text))
-        : TextButton.icon(
-            onPressed: onPressed,
-            style: style,
-            icon: Icon(glyph, size: 18),
-            label: Text(text),
-          );
+    final open = onPressed;
     return Padding(
       padding: const EdgeInsetsDirectional.only(start: MarqueeSpace.s),
-      child: Tooltip(message: tooltip, child: button),
+      child: Tooltip(
+        message: tooltip,
+        child: Builder(
+          builder: (context) {
+            final onPressed = open == null
+                ? null
+                : () => open(anchorOf(context));
+            return text == null
+                ? TextButton(
+                    onPressed: onPressed,
+                    style: style,
+                    child: Icon(glyph, size: 20),
+                  )
+                : glyph == null
+                ? TextButton(
+                    onPressed: onPressed,
+                    style: style,
+                    child: Text(text),
+                  )
+                : TextButton.icon(
+                    onPressed: onPressed,
+                    style: style,
+                    icon: Icon(glyph, size: 18),
+                    label: Text(text),
+                  );
+          },
+        ),
+      ),
     );
   }
 }
@@ -311,12 +342,26 @@ class _SeekButton extends StatelessWidget {
   );
 }
 
-/// "1×", "1.25×".
+IconData fitIcon(VideoFit fit) => switch (fit) {
+  VideoFit.fit => Icons.fit_screen_outlined,
+  VideoFit.fill => Icons.crop_free,
+  VideoFit.stretch => Icons.aspect_ratio,
+};
+
+/// "Fit", "Fill", "Stretch".
+String fitLabel(AppLocalizations l10n, VideoFit fit) => switch (fit) {
+  VideoFit.fit => l10n.playerFit,
+  VideoFit.fill => l10n.playerFill,
+  VideoFit.stretch => l10n.playerStretch,
+};
+
+/// "1×", "1.25×". Wrapped in a left-to-right isolate, or Arabic text
+/// shows "×1".
 String speedLabel(double speed) {
   final s = speed == speed.roundToDouble()
       ? speed.toStringAsFixed(0)
       : speed.toString();
-  return '$s×';
+  return '\u2066$s×\u2069';
 }
 
 /// The subtitle menu and chip label for [option].

@@ -102,6 +102,15 @@ class PlayerController extends Notifier<PlayerState> {
       engine.subtitleText.listen(_onSubtitleText),
     ]);
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    // The size setting also sizes styled (libass) subtitles; the Flutter
+    // layer reads it itself.
+    unawaited(
+      engine.setSubtitleScale(ref.read(settingsProvider).subtitleSize.scale),
+    );
+    ref.listen(
+      settingsProvider.select((s) => s.subtitleSize),
+      (_, size) => unawaited(engine.setSubtitleScale(size.scale)),
+    );
     ref.onDispose(_dispose);
     Future.microtask(
       () => _load(
@@ -431,6 +440,18 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   void setFit(VideoFit fit) => state = state.copyWith(fit: fit);
+
+  /// Fit → Fill → Stretch → Fit (the fit chip). Returns the new fit.
+  VideoFit cycleFit() {
+    const order = VideoFit.values;
+    final next = order[(order.indexOf(state.fit) + 1) % order.length];
+    setFit(next);
+    return next;
+  }
+
+  /// Moves the subtitle delay by [step] (the Sync buttons).
+  Future<void> nudgeSubtitleDelay(Duration step) =>
+      setSubtitleDelay(state.subtitleDelay + step);
 
   /// Switches quality at the current position, keeping play/pause, speed and
   /// the subtitle. The choice holds for the next episodes too.

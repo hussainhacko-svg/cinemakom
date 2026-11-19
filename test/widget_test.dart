@@ -158,6 +158,13 @@ void main() {
       expect(find.text('Off'), findsOneWidget);
       expect(store.values[PreferenceKeys.defaultQuality], 2160);
       expect(store.values[PreferenceKeys.defaultSubtitle], 'off');
+
+      await tester.tap(find.text('Subtitle size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Large'));
+      await tester.pumpAndSettle();
+      expect(find.text('Large'), findsOneWidget);
+      expect(store.values[PreferenceKeys.subtitleSize], 'large');
     });
 
     testWidgets('settings survive a restart', (tester) async {

@@ -445,5 +445,54 @@
   "quality4kCaption": "4K · about 10 GB per hour",
   "@quality4kCaption": {
     "description": "The 2160p choice in the quality menu"
+  },
+  "settingsSubtitleSize": "Subtitle size",
+  "@settingsSubtitleSize": {
+    "description": "Settings row: how big subtitles are drawn"
+  },
+  "subtitleSizeSmall": "Small",
+  "@subtitleSizeSmall": {
+    "description": "Subtitle size choice"
+  },
+  "subtitleSizeMedium": "Medium",
+  "@subtitleSizeMedium": {
+    "description": "Subtitle size choice (the default)"
+  },
+  "subtitleSizeLarge": "Large",
+  "@subtitleSizeLarge": {
+    "description": "Subtitle size choice"
+  },
+  "playerSubtitleSize": "Size",
+  "@playerSubtitleSize": {
+    "description": "Subtitle menu: the size row"
+  },
+  "playerSubtitleSync": "Sync",
+  "@playerSubtitleSync": {
+    "description": "Subtitle menu: the delay row"
+  },
+  "playerSyncEarlier": "Show subtitles earlier",
+  "@playerSyncEarlier": {
+    "description": "Subtitle menu: -0.5 s button"
+  },
+  "playerSyncLater": "Show subtitles later",
+  "@playerSyncLater": {
+    "description": "Subtitle menu: +0.5 s button"
+  },
+  "playerSyncReset": "Reset",
+  "@playerSyncReset": {
+    "description": "Subtitle menu: sets the delay back to 0"
+  },
+  "playerSyncSeconds": "{value} s",
+  "@playerSyncSeconds": {
+    "description": "Subtitle delay, e.g. '+1.5 s'. value has Western digits and a sign",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "playerMore": "More options",
+  "@playerMore": {
+    "description": "Player: the menu that holds the chips on narrow screens"
   }
 }

@@ -319,6 +319,67 @@ void main() {
     });
   });
 
+  test('a quality switch keeps speed, subtitle delay and fit', () {
+    fakeAsync((async) {
+      final env = start(async);
+      env.engine.emitReady(at: const Duration(minutes: 4));
+      env.controller
+        ..setSpeed(1.25)
+        ..nudgeSubtitleDelay(const Duration(milliseconds: 500))
+        ..nudgeSubtitleDelay(const Duration(milliseconds: 500))
+        ..setFit(VideoFit.fill);
+      env.flush();
+      env.controller.selectQuality(
+        env.state.sources.firstWhere((s) => s.height == 480),
+      );
+      env.flush();
+
+      expect(env.engine.opened.last.start, const Duration(minutes: 4));
+      expect(env.engine.opened.last.play, isTrue);
+      expect(env.state.speed, 1.25);
+      expect(env.engine.rate, 1.25);
+      expect(env.state.subtitleDelay, const Duration(seconds: 1));
+      expect(env.engine.subtitleDelay, const Duration(seconds: 1));
+      expect(env.state.fit, VideoFit.fill);
+      expect(env.engine.subtitles.last!.language, 'ar');
+    });
+  });
+
+  test('the subtitle delay steps, resets and stays within a minute', () {
+    fakeAsync((async) {
+      final env = start(async);
+      env.controller.nudgeSubtitleDelay(const Duration(milliseconds: -500));
+      env.flush();
+      expect(env.engine.subtitleDelay, const Duration(milliseconds: -500));
+      env.controller.setSubtitleDelay(const Duration(minutes: 5));
+      env.flush();
+      expect(env.state.subtitleDelay, const Duration(seconds: 60));
+      env.controller.setSubtitleDelay(Duration.zero);
+      env.flush();
+      expect(env.engine.subtitleDelay, Duration.zero);
+    });
+  });
+
+  test('the fit cycles Fit, Fill, Stretch', () {
+    fakeAsync((async) {
+      final env = start(async);
+      expect(env.state.fit, VideoFit.fit);
+      expect(env.controller.cycleFit(), VideoFit.fill);
+      expect(env.controller.cycleFit(), VideoFit.stretch);
+      expect(env.controller.cycleFit(), VideoFit.fit);
+    });
+  });
+
+  test('the subtitle size setting sizes libass, also when it changes', () {
+    fakeAsync((async) {
+      final env = start(async, prefs: {PreferenceKeys.subtitleSize: 'small'});
+      expect(env.engine.subtitleScale, 0.85);
+      env.c.read(settingsProvider.notifier).setSubtitleSize(SubtitleSize.large);
+      env.flush();
+      expect(env.engine.subtitleScale, 1.2);
+    });
+  });
+
   test('closing the player disposes the engine', () {
     fakeAsync((async) {
       final env = start(async);

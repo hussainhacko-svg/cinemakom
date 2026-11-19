@@ -12,6 +12,7 @@ class FakeEngine implements PlayerEngine {
   final seeks = <Duration>[];
   double rate = 1;
   Duration subtitleDelay = Duration.zero;
+  double subtitleScale = 1;
   bool isPlaying = false;
   bool disposed = false;
 
@@ -110,7 +111,7 @@ class FakeEngine implements PlayerEngine {
   @override
   Future<void> setSubtitleDelay(Duration delay) async => subtitleDelay = delay;
   @override
-  Future<void> setSubtitleScale(double scale) async {}
+  Future<void> setSubtitleScale(double scale) async => subtitleScale = scale;
 
   @override
   Widget buildVideo({BoxFit fit = BoxFit.contain}) => const SizedBox.expand();

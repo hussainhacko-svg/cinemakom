@@ -45,6 +45,18 @@ enum PreferredQuality {
 /// The default subtitle language.
 enum SubtitlePreference { arabic, english, off }
 
+/// How big subtitles are drawn (PLAYER.md §7.2). [scale] sizes the Flutter
+/// layer and libass (`sub-scale`) alike.
+enum SubtitleSize {
+  small(0.85),
+  medium(1),
+  large(1.2);
+
+  const SubtitleSize(this.scale);
+
+  final double scale;
+}
+
 /// The user's settings. [language] is null until the first-launch picker
 /// has been answered.
 class AppSettings {
@@ -52,11 +64,13 @@ class AppSettings {
     this.language,
     this.defaultQuality = PreferredQuality.p1080,
     this.defaultSubtitle = SubtitlePreference.arabic,
+    this.subtitleSize = SubtitleSize.medium,
   });
 
   final AppLanguage? language;
   final PreferredQuality defaultQuality;
   final SubtitlePreference defaultSubtitle;
+  final SubtitleSize subtitleSize;
 
   /// The language the UI shows: English until one has been chosen.
   AppLanguage get effectiveLanguage => language ?? AppLanguage.english;
@@ -67,10 +81,12 @@ class AppSettings {
     AppLanguage? language,
     PreferredQuality? defaultQuality,
     SubtitlePreference? defaultSubtitle,
+    SubtitleSize? subtitleSize,
   }) => AppSettings(
     language: language ?? this.language,
     defaultQuality: defaultQuality ?? this.defaultQuality,
     defaultSubtitle: defaultSubtitle ?? this.defaultSubtitle,
+    subtitleSize: subtitleSize ?? this.subtitleSize,
   );
 
   @override
@@ -78,10 +94,12 @@ class AppSettings {
       other is AppSettings &&
       other.language == language &&
       other.defaultQuality == defaultQuality &&
-      other.defaultSubtitle == defaultSubtitle;
+      other.defaultSubtitle == defaultSubtitle &&
+      other.subtitleSize == subtitleSize;
 
   @override
-  int get hashCode => Object.hash(language, defaultQuality, defaultSubtitle);
+  int get hashCode =>
+      Object.hash(language, defaultQuality, defaultSubtitle, subtitleSize);
 }
 
 /// Key-value storage for settings. Reads are synchronous (the values are
@@ -151,8 +169,9 @@ abstract final class PreferenceKeys {
   static const language = 'language';
   static const defaultQuality = 'defaultQuality';
   static const defaultSubtitle = 'defaultSubtitle';
+  static const subtitleSize = 'subtitleSize';
 
-  static const all = {language, defaultQuality, defaultSubtitle};
+  static const all = {language, defaultQuality, defaultSubtitle, subtitleSize};
 }
 
 /// Reads [AppSettings] from [store]. Unknown or missing values fall back to
@@ -170,6 +189,11 @@ AppSettings readSettings(PreferenceStore store) {
     defaultSubtitle:
         SubtitlePreference.values.asNameMap()[subtitle] ??
         defaults.defaultSubtitle,
+    subtitleSize:
+        SubtitleSize.values.asNameMap()[store.getString(
+          PreferenceKeys.subtitleSize,
+        )] ??
+        defaults.subtitleSize,
   );
 }
 
@@ -209,5 +233,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
   Future<void> setDefaultSubtitle(SubtitlePreference subtitle) async {
     state = state.copyWith(defaultSubtitle: subtitle);
     await _store.setString(PreferenceKeys.defaultSubtitle, subtitle.name);
+  }
+
+  Future<void> setSubtitleSize(SubtitleSize size) async {
+    state = state.copyWith(subtitleSize: size);
+    await _store.setString(PreferenceKeys.subtitleSize, size.name);
   }
 }

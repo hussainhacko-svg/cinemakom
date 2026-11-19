@@ -15,7 +15,7 @@ import 'package:cinemakom/app/router.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter/rendering.dart';
-import 'package:material_ui/material_ui.dart' show Scrollable, TextField;
+import 'package:material_ui/material_ui.dart' show Icons, Scrollable, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -220,5 +220,37 @@ void main() {
       await tester.tap(find.byTooltip('Pause'));
     }
     await _shot(tester, '51-desktop-player-paused', wait: 1500);
+
+    // The chip menus are popovers on wide screens (PLAYER.md §8).
+    await tester.tap(find.byIcon(Icons.subtitles_outlined));
+    await _wait(tester, 500);
+    await tester.tap(find.byTooltip('Show subtitles later'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Show subtitles later'));
+    await _shot(tester, '52-desktop-subtitle-menu', wait: 800);
+    await tester.tapAt(const Offset(200, 650));
+    await _wait(tester, 500);
+    await tester.tap(find.byTooltip('Quality'));
+    await _shot(tester, '53-desktop-quality-menu', wait: 800);
+  });
+
+  testWidgets('phone landscape: player menus in Arabic', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'ar'}),
+      const Size(844, 390),
+    );
+    await _push(tester, '/home/title/191463');
+    await _wait(tester, 4000);
+    await tester.tap(find.byIcon(Icons.play_arrow_rounded).first);
+    await _wait(tester, 4000);
+    await tester.tapAt(const Offset(422, 195));
+    await _wait(tester, 300);
+    if (find.byIcon(Icons.pause).evaluate().isNotEmpty) {
+      await tester.tap(find.byIcon(Icons.pause));
+    }
+    await _shot(tester, '54-phone-player-ar', wait: 1000);
+    await tester.tap(find.byIcon(Icons.subtitles_outlined));
+    await _shot(tester, '55-phone-subtitle-menu-ar', wait: 800);
   });
 }

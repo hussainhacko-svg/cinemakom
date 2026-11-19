@@ -96,5 +96,16 @@
   "playerFit": "ملاءمة",
   "playerFill": "ملء",
   "playerStretch": "تمديد",
-  "quality4kCaption": "4K · نحو 10 غيغابايت في الساعة"
+  "quality4kCaption": "4K · نحو 10 غيغابايت في الساعة",
+  "settingsSubtitleSize": "حجم الترجمة",
+  "subtitleSizeSmall": "صغير",
+  "subtitleSizeMedium": "متوسط",
+  "subtitleSizeLarge": "كبير",
+  "playerSubtitleSize": "الحجم",
+  "playerSubtitleSync": "المزامنة",
+  "playerSyncEarlier": "إظهار الترجمة أبكر",
+  "playerSyncLater": "إظهار الترجمة لاحقًا",
+  "playerSyncReset": "إعادة الضبط",
+  "playerSyncSeconds": "{value} ث",
+  "playerMore": "خيارات أكثر"
 }

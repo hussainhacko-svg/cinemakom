@@ -13,7 +13,8 @@ import '../../app/widgets/tab_page.dart';
 import '../../core/storage/preferences.dart';
 import 'widgets/settings_group.dart';
 
-/// Settings: language, default quality and subtitles, help (DESIGN.md §8).
+/// Settings: language, default quality, subtitles and subtitle size, help
+/// (DESIGN.md §8).
 /// Changes apply at once and are saved.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -59,6 +60,9 @@ class SettingsScreen extends ConsumerWidget {
     final subtitles = [
       for (final s in SubtitlePreference.values)
         Choice(s, subtitleLabel(l10n, s)),
+    ];
+    final sizes = [
+      for (final s in SubtitleSize.values) Choice(s, subtitleSizeLabel(l10n, s)),
     ];
 
     return TabPage(
@@ -114,6 +118,16 @@ class SettingsScreen extends ConsumerWidget {
                       subtitles,
                       settings.defaultSubtitle,
                       notifier.setDefaultSubtitle,
+                    ),
+                  ),
+                  SettingsRow(
+                    label: l10n.settingsSubtitleSize,
+                    value: subtitleSizeLabel(l10n, settings.subtitleSize),
+                    onTap: () => pick(
+                      l10n.settingsSubtitleSize,
+                      sizes,
+                      settings.subtitleSize,
+                      notifier.setSubtitleSize,
                     ),
                   ),
                 ],
@@ -175,3 +189,9 @@ String subtitleLabel(AppLocalizations l10n, SubtitlePreference s) =>
       SubtitlePreference.english => l10n.subtitleEnglish,
       SubtitlePreference.off => l10n.subtitleOff,
     };
+
+String subtitleSizeLabel(AppLocalizations l10n, SubtitleSize s) => switch (s) {
+  SubtitleSize.small => l10n.subtitleSizeSmall,
+  SubtitleSize.medium => l10n.subtitleSizeMedium,
+  SubtitleSize.large => l10n.subtitleSizeLarge,
+};
