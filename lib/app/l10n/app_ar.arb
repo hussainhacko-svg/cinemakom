@@ -112,6 +112,7 @@
   "downloadPause": "إيقاف مؤقت",
   "downloadResume": "استئناف",
   "downloadCancel": "إلغاء التنزيل",
+  "downloadCancelTitle": "إلغاء هذا التنزيل؟ سيُحذف ما نُزّل حتى الآن.",
   "downloadDelete": "حذف التنزيل",
   "downloadDeleteAll": "حذف كل الحلقات",
   "downloadEpisodeCount": "{count, plural, =1{حلقة واحدة} =2{حلقتان} few{{count} حلقات} other{{count} حلقة}}",

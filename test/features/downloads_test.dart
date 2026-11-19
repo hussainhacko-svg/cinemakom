@@ -59,6 +59,7 @@ Download _row(
   int? episode,
   int bytes = 2 * 1024 * 1024 * 1024,
   DownloadProblem? problem,
+  String? dir,
 }) => Download(
   videoId: id,
   titleId: titleId,
@@ -68,7 +69,7 @@ Download _row(
   kind: season == null ? VideoKind.movies : VideoKind.series,
   quality: '1080p',
   baseDirectory: 'root',
-  directory: _dir,
+  directory: dir ?? _dir,
   fileName: '$id.mp4',
   status: status,
   problem: problem,
@@ -180,6 +181,53 @@ void main() {
     expect(find.byType(SavedSeriesScreen), findsOneWidget);
     expect(find.text('Season 1 · Episode 1'), findsOneWidget);
     expect(find.text('Season 1 · Episode 2'), findsOneWidget);
+  });
+
+  testWidgets('cancel asks first; a series row long-presses to delete all', (
+    tester,
+  ) async {
+    final downloader = FakeDownloader();
+    // Its own folder: deleting a series removes the series' folder.
+    final own = Directory.systemTemp.createTempSync('dl-series').path;
+    final store = MemoryDownloadStore([
+      _row(
+        'run',
+        title: 'Tenet',
+        titleId: 'run',
+        status: DownloadStatus.running,
+        dir: own,
+      ),
+      for (final e in [1, 2])
+        _row(
+          'e$e',
+          titleId: '4328',
+          title: 'Friends',
+          season: 1,
+          episode: e,
+          dir: own,
+        ),
+    ]);
+    downloader.knownStates['run'] = DownloaderState.running;
+    await pumpApp(tester, downloads: store, downloader: downloader);
+    await _openDownloads(tester);
+
+    await tester.tap(find.byTooltip('Cancel download'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text("Cancel this download? What's downloaded so far is lost."),
+      findsOneWidget,
+    );
+    expect(downloader.canceled, isEmpty);
+    await tester.tap(find.text('Cancel download').last);
+    await tester.pumpAndSettle();
+    expect(downloader.canceled, ['run']);
+
+    await tester.longPress(find.text('Friends'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete all episodes'));
+    await _io(tester);
+    expect(store.rows.keys, isNot(contains('e1')));
+    expect(store.rows.keys, isNot(contains('e2')));
   });
 
   testWidgets('a downloaded movie plays from disk, with no stream request', (

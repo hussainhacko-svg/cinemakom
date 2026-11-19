@@ -6,7 +6,6 @@ import '../../app/l10n/app_localizations.dart';
 import '../../app/navigation.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
-import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/media_image.dart';
 import '../../app/widgets/media_text.dart';
 import '../../app/widgets/progress_line.dart';
@@ -40,14 +39,14 @@ class DownloadsScreen extends ConsumerWidget {
   }
 }
 
-class _Lists extends StatelessWidget {
+class _Lists extends ConsumerWidget {
   const _Lists({required this.all, required this.gutter});
 
   final List<Download> all;
   final double gutter;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeText.of(context);
     final active = all.where((d) => d.status.isActive).toList();
@@ -57,7 +56,16 @@ class _Lists extends StatelessWidget {
     for (final d in done) {
       (titles[d.titleId] ??= []).add(d);
     }
-    final used = done.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
+    // Finished files, and what unfinished ones have on disk so far.
+    final progress =
+        ref.watch(downloadProgressProvider).value ??
+        const <String, DownloadProgress>{};
+    var used = done.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
+    for (final d in active) {
+      final p = progress[d.videoId];
+      final total = p?.expectedBytes ?? d.totalBytes;
+      if (p != null && total != null) used += (total * p.fraction).round();
+    }
     return ListView(
       padding: EdgeInsetsDirectional.fromSTEB(
         gutter,
@@ -210,7 +218,7 @@ class _ActiveRow extends ConsumerWidget {
         ),
         IconButton(
           tooltip: l10n.downloadCancel,
-          onPressed: () => repo.cancel(d.videoId),
+          onPressed: () => confirmCancel(context, ref, d),
           icon: const Icon(Icons.close_rounded, size: 22),
         ),
       ],
@@ -229,7 +237,14 @@ class _ActiveRow extends ConsumerWidget {
             style: text.caption,
           ),
         const SizedBox(height: MarqueeSpace.s),
-        ProgressLine(value: fraction),
+        // Full width, so the track shows how much is left.
+        SizedBox(
+          width: double.infinity,
+          child: ProgressLine(
+            value: fraction,
+            track: MarqueeColors.velvetStrong,
+          ),
+        ),
         const SizedBox(height: MarqueeSpace.xs),
         Text(
           status,
@@ -276,7 +291,14 @@ class _TitleRow extends ConsumerWidget {
       onTap: () => series
           ? context.push('/downloads/saved/${first.titleId}')
           : openPlayer(context, first.request),
-      onMenu: series ? null : () => showDownloadMenu(context, ref, first),
+      onMenu: series
+          ? () => confirmDeleteTitle(
+              context,
+              ref,
+              first.titleId,
+              context.titleOf(first.item),
+            )
+          : () => showDownloadMenu(context, ref, first),
       trailing: [
         if (series)
           const Padding(
@@ -392,17 +414,15 @@ class SavedSeriesScreen extends ConsumerWidget {
                     alignment: AlignmentDirectional.centerStart,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final sure = await showChoicePicker<bool>(
-                          context,
-                          title: title,
-                          selected: false,
-                          choices: [Choice(true, l10n.downloadDeleteAll)],
-                        );
-                        if (sure != true) return;
-                        await ref
-                            .read(downloadsRepositoryProvider)
-                            .deleteTitle(titleId);
-                        if (context.mounted) context.pop();
+                        if (await confirmDeleteTitle(
+                              context,
+                              ref,
+                              titleId,
+                              title,
+                            ) &&
+                            context.mounted) {
+                          context.pop();
+                        }
                       },
                       icon: const Icon(Icons.delete_outline_rounded, size: 18),
                       label: Text(l10n.downloadDeleteAll),

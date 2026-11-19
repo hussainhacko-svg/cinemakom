@@ -356,3 +356,40 @@ class SeasonDownloadButton extends ConsumerWidget {
     label: Text(AppLocalizations.of(context).downloadSeason),
   );
 }
+
+/// Asks before throwing away an unfinished download, then cancels it.
+Future<void> confirmCancel(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final sure = await showChoicePicker<bool>(
+    context,
+    title: l10n.downloadCancelTitle,
+    selected: false,
+    choices: [Choice(true, l10n.downloadCancel)],
+  );
+  if (sure != true) return;
+  await ref.read(downloadsRepositoryProvider).cancel(d.videoId);
+}
+
+/// Asks, then deletes every downloaded episode of [titleId]. True when
+/// deleted.
+Future<bool> confirmDeleteTitle(
+  BuildContext context,
+  WidgetRef ref,
+  String titleId,
+  String title,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final sure = await showChoicePicker<bool>(
+    context,
+    title: title,
+    selected: false,
+    choices: [Choice(true, l10n.downloadDeleteAll)],
+  );
+  if (sure != true) return false;
+  await ref.read(downloadsRepositoryProvider).deleteTitle(titleId);
+  return true;
+}

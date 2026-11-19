@@ -540,6 +540,10 @@
   "@downloadCancel": {
     "description": "Stops and removes an unfinished download"
   },
+  "downloadCancelTitle": "Cancel this download? What's downloaded so far is lost.",
+  "@downloadCancelTitle": {
+    "description": "Asks before cancelling an unfinished download"
+  },
   "downloadDelete": "Delete download",
   "@downloadDelete": {
     "description": "Removes a finished download from the device"
