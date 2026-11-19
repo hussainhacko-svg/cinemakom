@@ -367,11 +367,11 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 
 **Real phone with mpv (answered 2026-11-19, then replaced by decision 7):** video rendered, but 4K stuttered (§5 `framedrop`). `MediaKitEngine` still creates a new `Player` per file on Android (`recreatePerFile`), which only matters if Android ever goes back to mpv.
 
-**Real-phone checks for ExoPlayer** (owner's device, release APK). Done: 4K is smooth and the controls draw over the video. **Still to check (M7):**
+**Real-phone checks for ExoPlayer** (owner's device, release APK). Done: 4K is smooth and the controls draw over the video. The list below is from M2–M7:
 1. Airplane mode for a few seconds mid-play: ExoPlayer resumes by itself, or the player shows "Reconnecting…" and comes back at the same position.
 2. ✅ Airplane mode for a minute, while playing and while paused: the player recovers at the same position (paused stays paused), never at 0:00. *Confirmed on the owner's phone 2026-11-19, after the `errorsStopPlayback` fix (§6).*
 3. An expired or forged URL signature (debug build): the player fetches fresh URLs and plays.
-4. A quality switch and an episode switch keep the picture.
+4. ✅ A quality switch and an episode switch keep the picture. *Checked by the owner with M3 and M5.*
 
 `integration_test/player_engine_test.dart -d <phone>` runs the live engine checks (playback, quality switch, 4K, subtitles) on ExoPlayer. The mpv spike and 4K tests were removed at M9.
 
@@ -416,4 +416,11 @@ No frame came near 16.7 ms, the §1 target (60 fps); the controls nearly hold 12
 | Works everywhere | Android and Linux, touch and keyboard/mouse, English and Arabic (RTL pass on Linux screenshots). **Windows not run yet** (no machine); iOS comes with Phase 6 |
 
 **Tests:** `integration_test/player_test.dart` (the player end to end on the live API: a movie and an episode) passes on Linux. The M0 spike and the mpv 4K test were removed.
+
+**Still open after M9** (none of them block Phase 6):
+- **Windows:** never run (no machine). Check every shortcut in §9.2, the mouse, full screen and playback.
+- **iOS:** comes with Phase 6. The mpv "mobile" values in §5 were measured on Android before decision 7; check them there, along with audio_session (silent switch, interruptions) and the gestures (`volume_controller`, `screen_brightness`, §14).
+- **§13 checks 1 and 3 on the phone:** a few seconds of airplane mode mid-play, and a forged URL signature (debug build). The code paths are covered by unit tests.
+- **The manual checks before release (§11)** that are left: a 2-hour 4K movie on desktop, and a full anime season playing through by itself on the phone (plain subtitles; styled ones are desktop only).
+- **Later, outside this plan (§12):** picture-in-picture, casting, background audio, lock-screen controls, long-press for 2×.
 
