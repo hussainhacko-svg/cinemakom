@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Streaming app: every screen talks to the Cinemana API. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Downloads (PLAN.md Phase 6): progress notifications (asked for at
+         the first download on Android 13+), and user-initiated transfers
+         so a long download isn't cut at WorkManager's 9 minutes on
+         Android 14+ (background_downloader, doc/parameters.md priority). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS"/>
     <application
         android:label="Cinemakom"
         android:name="${applicationName}"
@@ -32,6 +38,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <service
+            android:name="com.bbflight.background_downloader.UIDTJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true"
+            android:foregroundServiceType="dataSync" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

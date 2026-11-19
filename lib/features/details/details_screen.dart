@@ -20,6 +20,7 @@ import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
 import '../../data/repositories/library_repository.dart';
+import '../downloads/download_actions.dart';
 import '../library/widgets/favorite_button.dart';
 import 'details_providers.dart';
 import 'widgets/credits_row.dart';
@@ -122,6 +123,10 @@ class DetailsScreen extends ConsumerWidget {
               initialSeason: args?.item.rootSeriesId != null
                   ? args?.item.season
                   : null,
+              trailing: (episode) =>
+                  EpisodeDownloadButton(series: item, episode: episode),
+              seasonAction: (season) =>
+                  SeasonDownloadButton(series: item, season: season),
             ),
           if (record != null) CreditsRow(details: record, gutter: gutter),
           _MoreLikeThis(id: id),
@@ -198,6 +203,7 @@ class _Header extends ConsumerWidget {
       children: [
         _PlayButton(item: item),
         FavoritePill(item: item),
+        if (!item.isSeries) DownloadPill(item: item),
         if (trailer != null)
           OutlinedButton.icon(
             onPressed: () => _open(trailer),

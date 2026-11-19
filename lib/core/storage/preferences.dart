@@ -71,6 +71,7 @@ class AppSettings {
     this.defaultSubtitle = SubtitlePreference.arabic,
     this.subtitleSize = SubtitleSize.medium,
     this.screenRotation = ScreenRotation.portrait,
+    this.downloadFolder,
   });
 
   final AppLanguage? language;
@@ -78,6 +79,10 @@ class AppSettings {
   final SubtitlePreference defaultSubtitle;
   final SubtitleSize subtitleSize;
   final ScreenRotation screenRotation;
+
+  /// Desktop: the folder downloads go to; `null` means the default
+  /// (`~/Videos/Cinemakom`).
+  final String? downloadFolder;
 
   /// The language the UI shows: English until one has been chosen.
   AppLanguage get effectiveLanguage => language ?? AppLanguage.english;
@@ -90,12 +95,14 @@ class AppSettings {
     SubtitlePreference? defaultSubtitle,
     SubtitleSize? subtitleSize,
     ScreenRotation? screenRotation,
+    String? downloadFolder,
   }) => AppSettings(
     language: language ?? this.language,
     defaultQuality: defaultQuality ?? this.defaultQuality,
     defaultSubtitle: defaultSubtitle ?? this.defaultSubtitle,
     subtitleSize: subtitleSize ?? this.subtitleSize,
     screenRotation: screenRotation ?? this.screenRotation,
+    downloadFolder: downloadFolder ?? this.downloadFolder,
   );
 
   @override
@@ -105,7 +112,8 @@ class AppSettings {
       other.defaultQuality == defaultQuality &&
       other.defaultSubtitle == defaultSubtitle &&
       other.subtitleSize == subtitleSize &&
-      other.screenRotation == screenRotation;
+      other.screenRotation == screenRotation &&
+      other.downloadFolder == downloadFolder;
 
   @override
   int get hashCode => Object.hash(
@@ -114,6 +122,7 @@ class AppSettings {
     defaultSubtitle,
     subtitleSize,
     screenRotation,
+    downloadFolder,
   );
 }
 
@@ -194,6 +203,9 @@ abstract final class PreferenceKeys {
   /// Recent searches, a JSON list of strings, newest first.
   static const searchHistory = 'searchHistory';
 
+  /// Desktop: where downloads go (an absolute path).
+  static const downloadFolder = 'downloadFolder';
+
   static const all = {
     language,
     defaultQuality,
@@ -202,6 +214,7 @@ abstract final class PreferenceKeys {
     screenRotation,
     playerVolume,
     searchHistory,
+    downloadFolder,
   };
 }
 
@@ -230,6 +243,10 @@ AppSettings readSettings(PreferenceStore store) {
           PreferenceKeys.screenRotation,
         )] ??
         defaults.screenRotation,
+    downloadFolder: switch (store.getString(PreferenceKeys.downloadFolder)) {
+      final f? when f.trim().isNotEmpty => f,
+      _ => null,
+    },
   );
 }
 
@@ -279,5 +296,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
   Future<void> setScreenRotation(ScreenRotation rotation) async {
     state = state.copyWith(screenRotation: rotation);
     await _store.setString(PreferenceKeys.screenRotation, rotation.name);
+  }
+
+  /// New downloads go to [folder]; the ones already saved stay where they
+  /// are.
+  Future<void> setDownloadFolder(String folder) async {
+    state = state.copyWith(downloadFolder: folder);
+    await _store.setString(PreferenceKeys.downloadFolder, folder);
   }
 }

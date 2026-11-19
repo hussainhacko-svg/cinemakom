@@ -37,6 +37,8 @@ class EpisodeList extends ConsumerStatefulWidget {
     required this.onPlay,
     this.initialSeason,
     this.currentId,
+    this.trailing,
+    this.seasonAction,
   });
 
   final String seriesId;
@@ -50,6 +52,13 @@ class EpisodeList extends ConsumerStatefulWidget {
 
   /// The episode playing now, marked in `bulb` (the player's panel).
   final String? currentId;
+
+  /// Shown at the end of each row (Details: the download button).
+  final Widget Function(Episode episode)? trailing;
+
+  /// Shown above the rows, for the season on screen (Details: Download
+  /// season).
+  final Widget Function(List<Episode> season)? seasonAction;
 
   @override
   ConsumerState<EpisodeList> createState() => _EpisodeListState();
@@ -181,6 +190,13 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
               onSelect: (b) => setState(() => _block = b),
             ),
           ],
+          if (widget.seasonAction case final action?) ...[
+            const SizedBox(height: MarqueeSpace.m),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: action(inSeason),
+            ),
+          ],
           const SizedBox(height: MarqueeSpace.m),
           for (final e in shown)
             _EpisodeRow(
@@ -189,6 +205,7 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
               current: e.id == widget.currentId,
               numeralWidth: numeralWidth,
               onTap: () => widget.onPlay(e),
+              trailing: widget.trailing?.call(e),
             ),
         ],
       );
@@ -289,9 +306,11 @@ class _EpisodeRow extends StatelessWidget {
     required this.onTap,
     this.progress,
     this.current = false,
+    this.trailing,
   });
 
   final Episode episode;
+  final Widget? trailing;
   final WatchProgress? progress;
   final bool current;
   final double numeralWidth;
@@ -381,6 +400,7 @@ class _EpisodeRow extends StatelessWidget {
                     size: 22,
                     color: MarqueeColors.bulb,
                   ),
+                ?trailing,
               ],
             ),
           ),

@@ -79,7 +79,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(
             AppRoutes.downloads,
             const DownloadsScreen(),
-            routes: _browse,
+            routes: [
+              ..._browse,
+              // One series' downloaded episodes.
+              GoRoute(
+                path: 'saved/:id',
+                builder: (_, state) =>
+                    SavedSeriesScreen(titleId: state.pathParameters['id']!),
+              ),
+            ],
           ),
           _branch(
             AppRoutes.settings,

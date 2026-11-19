@@ -393,6 +393,216 @@
   "@favoritesEmpty": {
     "description": "Library: empty Favorites"
   },
+  "download": "Download",
+  "@download": {
+    "description": "Details: downloads a movie"
+  },
+  "downloadSeason": "Download season",
+  "@downloadSeason": {
+    "description": "Details: queues every episode of the season shown"
+  },
+  "downloadEpisode": "Download episode",
+  "@downloadEpisode": {
+    "description": "Tooltip of an episode row's download button"
+  },
+  "downloadQualityTitle": "Download quality",
+  "@downloadQualityTitle": {
+    "description": "Title of the quality picker before a download"
+  },
+  "downloadChoice": "{quality} · {size}",
+  "@downloadChoice": {
+    "description": "A quality in the download picker with its file size",
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadChoiceEach": "{quality} · about {size} each",
+  "@downloadChoiceEach": {
+    "description": "A quality in the season download picker",
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadSeasonQueued": "{count, plural, =0{Every episode is already downloaded} =1{1 episode added to downloads} other{{count} episodes added to downloads}}",
+  "@downloadSeasonQueued": {
+    "description": "After Download season",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadAdded": "Added to downloads",
+  "@downloadAdded": {
+    "description": "After a download starts"
+  },
+  "downloadStartFailed": "Couldn't start the download.",
+  "@downloadStartFailed": {
+    "description": "A download couldn't be queued"
+  },
+  "downloaded": "Downloaded",
+  "@downloaded": {
+    "description": "Details: the movie is on this device"
+  },
+  "downloadingStatus": "Downloading",
+  "@downloadingStatus": {
+    "description": "Details: the movie is downloading"
+  },
+  "downloadsDownloading": "Downloading",
+  "@downloadsDownloading": {
+    "description": "Downloads tab: section of unfinished downloads"
+  },
+  "downloadsOnDevice": "On this device",
+  "@downloadsOnDevice": {
+    "description": "Downloads tab: section of finished downloads"
+  },
+  "downloadsEmpty": "Movies and episodes you download show up here, and play without a connection.",
+  "@downloadsEmpty": {
+    "description": "Downloads tab: nothing downloaded"
+  },
+  "downloadsUsed": "{size} used by Cinemakom",
+  "@downloadsUsed": {
+    "description": "Downloads tab: storage used by finished downloads",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadQueued": "Waiting",
+  "@downloadQueued": {
+    "description": "A download waiting for a slot"
+  },
+  "downloadPaused": "Paused",
+  "@downloadPaused": {
+    "description": "A paused download"
+  },
+  "downloadOf": "{done} of {total}",
+  "@downloadOf": {
+    "description": "Downloaded size of the whole, e.g. 1.2 GB of 3 GB",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadSpeed": "{speed}/s",
+  "@downloadSpeed": {
+    "description": "Download speed, e.g. 4.1 MB/s",
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadProblemNetwork": "Stopped: no connection",
+  "@downloadProblemNetwork": {
+    "description": "A download failed for the network"
+  },
+  "downloadProblemSpace": "Not enough space on this device",
+  "@downloadProblemSpace": {
+    "description": "A download failed for disk space"
+  },
+  "downloadProblemUnavailable": "Not available for download right now",
+  "@downloadProblemUnavailable": {
+    "description": "The server refused the download"
+  },
+  "downloadProblemStorage": "Couldn't save the file",
+  "@downloadProblemStorage": {
+    "description": "Writing the file failed"
+  },
+  "downloadProblemUnknown": "The download stopped",
+  "@downloadProblemUnknown": {
+    "description": "A download failed for another reason"
+  },
+  "downloadPause": "Pause",
+  "@downloadPause": {
+    "description": "Pauses a download"
+  },
+  "downloadResume": "Resume",
+  "@downloadResume": {
+    "description": "Resumes a download"
+  },
+  "downloadCancel": "Cancel download",
+  "@downloadCancel": {
+    "description": "Stops and removes an unfinished download"
+  },
+  "downloadDelete": "Delete download",
+  "@downloadDelete": {
+    "description": "Removes a finished download from the device"
+  },
+  "downloadDeleteAll": "Delete all episodes",
+  "@downloadDeleteAll": {
+    "description": "Removes every downloaded episode of a series"
+  },
+  "downloadEpisodeCount": "{count, plural, =1{1 episode} other{{count} episodes}}",
+  "@downloadEpisodeCount": {
+    "description": "How many episodes of a series are downloaded",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeDownloading": "Downloading",
+  "@noticeDownloading": {
+    "description": "System notification while downloading"
+  },
+  "noticeDownloaded": "Downloaded",
+  "@noticeDownloaded": {
+    "description": "System notification when a download finishes"
+  },
+  "noticeFailed": "Download stopped",
+  "@noticeFailed": {
+    "description": "System notification when a download fails"
+  },
+  "noticePaused": "Download paused",
+  "@noticePaused": {
+    "description": "System notification when a download is paused"
+  },
+  "settingsDownloads": "Downloads",
+  "@settingsDownloads": {
+    "description": "Settings group (desktop)"
+  },
+  "settingsDownloadFolder": "Download folder",
+  "@settingsDownloadFolder": {
+    "description": "Settings row: where downloads are saved (desktop)"
+  },
+  "settingsDownloadFolderNote": "New downloads go here. Finished ones stay where they are.",
+  "@settingsDownloadFolderNote": {
+    "description": "Under the download folder row"
+  },
+  "sizeGb": "{size} GB",
+  "@sizeGb": {
+    "description": "A file size in gigabytes",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeMb": "{size} MB",
+  "@sizeMb": {
+    "description": "A file size in megabytes",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "showMore": "More",
   "@showMore": {
     "description": "Expands the synopsis"

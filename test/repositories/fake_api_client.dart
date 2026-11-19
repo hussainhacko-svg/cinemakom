@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cinemakom/core/network/api_client.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/network/api_exception.dart';
@@ -47,6 +49,24 @@ class FakeApiClient implements ApiClient {
   @override
   Future<String> fetchText(String url) async =>
       '${await fetch(ApiRequest(url))}';
+
+  /// Answered by a route for the path `size:<url>` (an `int`), else `null`.
+  @override
+  Future<int?> contentLength(String url) async {
+    try {
+      final value = await fetch(ApiRequest('size:$url'));
+      return value is int ? value : null;
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Writes what a route answers for [url] to [path].
+  @override
+  Future<void> downloadFile(String url, String path) async {
+    final body = await fetch(ApiRequest(url));
+    await File(path).writeAsString('$body');
+  }
 }
 
 const offline = ApiException(ApiErrorKind.network, message: 'offline');

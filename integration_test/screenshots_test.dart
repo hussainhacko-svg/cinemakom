@@ -17,6 +17,10 @@ import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/watch_progress.dart';
+import 'package:cinemakom/core/downloads/downloader.dart';
+import 'package:cinemakom/data/models/download.dart';
+import 'package:cinemakom/data/repositories/download_store.dart';
+import 'package:cinemakom/data/repositories/downloads_repository.dart';
 import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter/rendering.dart';
@@ -26,6 +30,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:cinemakom/features/player/widgets/seek_bar.dart';
+
+import '../test/helpers/fake_downloader.dart';
 
 final _dir = Directory(
   Platform.isAndroid || Platform.isIOS
@@ -64,6 +70,8 @@ Future<void> _pump(
   MemoryPreferenceStore store,
   Size size, {
   LibraryRepository? library,
+  DownloadStore? downloads,
+  Downloader? downloader,
 }) async {
   tester.view
     ..physicalSize = size * 2
@@ -76,6 +84,10 @@ Future<void> _pump(
         preferenceStoreProvider.overrideWith((ref) => store),
         if (library != null)
           libraryRepositoryProvider.overrideWithValue(library),
+        if (downloads != null)
+          downloadStoreProvider.overrideWithValue(downloads),
+        if (downloader != null)
+          downloaderProvider.overrideWithValue(downloader),
       ],
       child: const CinemakomApp(),
     ),
@@ -269,6 +281,124 @@ void main() {
     await _shot(tester, '63-phone-library-continue-ar', wait: 5000);
     await _push(tester, '/library/title/3119279');
     await _shot(tester, '64-phone-details-favorite-ar', wait: 4000);
+  });
+
+  // Downloads in memory, with a fake engine that reports progress.
+  (MemoryDownloadStore, FakeDownloader) savedDownloads() {
+    const gb = 1024 * 1024 * 1024;
+    const poster = 'https://cnth2.shabakaty.com/vascin-poster-images/';
+    Download row(
+      String id,
+      String title,
+      String image, {
+      String? titleId,
+      DownloadStatus status = DownloadStatus.complete,
+      int? season,
+      int? episode,
+      int bytes = 2 * gb,
+      DownloadProblem? problem,
+      String quality = '1080p',
+    }) => Download(
+      videoId: id,
+      titleId: titleId ?? id,
+      title: LocalizedText(en: title),
+      posterUrl: '$poster$image',
+      season: season,
+      episode: episode,
+      kind: season == null ? VideoKind.movies : VideoKind.series,
+      quality: quality,
+      baseDirectory: 'root',
+      directory: Directory.systemTemp.path,
+      fileName: '$id.mp4',
+      status: status,
+      problem: problem,
+      totalBytes: bytes,
+      addedAt: DateTime(2026, 11, 19),
+    );
+    const friends =
+        '571730E3-AF79-2C62-E85F-968A41836EAC_poster_medium_thumb.jpg';
+    final store = MemoryDownloadStore([
+      row(
+        '3157703',
+        'The Beast',
+        'EC21480E-8A60-E47C-05A8-1C2FC08888DC_poster_medium_thumb.jpg',
+        status: DownloadStatus.running,
+        bytes: 3 * gb,
+      ),
+      row(
+        '3158531',
+        'Heartland',
+        '5F822ED6-2C66-ADCB-8B9C-12AE905FAAAE_poster_medium_thumb.jpg',
+        status: DownloadStatus.failed,
+        problem: DownloadProblem.noSpace,
+      ),
+      row(
+        '3119279',
+        'Eve of Destruction',
+        '4E5E5E90-65C3-D435-FEF5-F40D6D3A7BE4_poster_medium_thumb.jpg',
+        quality: '720p',
+        bytes: 283327732,
+      ),
+      for (var e = 1; e <= 3; e++)
+        row(
+          'f$e',
+          'Friends',
+          friends,
+          titleId: '4328',
+          season: 1,
+          episode: e,
+          bytes: 94415700,
+          quality: '360p',
+        ),
+    ]);
+    final downloader = FakeDownloader()
+      ..knownStates['3157703'] = DownloaderState.running;
+    return (store, downloader);
+  }
+
+  const beastProgress = DownloaderProgress(
+    '3157703',
+    fraction: 0.42,
+    bytesPerSecond: 4.3 * 1024 * 1024,
+    timeLeft: Duration(minutes: 7),
+  );
+
+  testWidgets('phone: downloads', (tester) async {
+    final (store, downloader) = savedDownloads();
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      phone,
+      downloads: store,
+      downloader: downloader,
+    );
+    await _wait(tester, 1500);
+    downloader.send(beastProgress);
+    await tester.tap(find.text('Downloads'));
+    await _shot(tester, '70-phone-downloads', wait: 4000);
+    await tester.tap(find.text('Friends'));
+    await _shot(tester, '71-phone-downloads-series', wait: 3000);
+    await _push(tester, '/downloads/title/4328');
+    await _wait(tester, 4000);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+    await _shot(tester, '72-phone-details-episodes-download', wait: 3000);
+    await _push(tester, '/downloads/title/3158531');
+    await _shot(tester, '73-phone-details-movie-download', wait: 4000);
+  });
+
+  testWidgets('phone: downloads in Arabic', (tester) async {
+    final (store, downloader) = savedDownloads();
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'ar'}),
+      phone,
+      downloads: store,
+      downloader: downloader,
+    );
+    await _wait(tester, 1500);
+    downloader.send(beastProgress);
+    await tester.tap(find.text('التنزيلات'));
+    await _shot(tester, '74-phone-downloads-ar', wait: 4000);
   });
 
   testWidgets('desktop: browsing with live data', (tester) async {

@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:cinemakom/data/repositories/download_store.dart';
+import 'package:cinemakom/data/repositories/downloads_repository.dart';
 import 'package:cinemakom/core/platform/full_screen.dart';
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/widgets/media_image.dart';
@@ -14,6 +18,7 @@ import 'package:material_ui/material_ui.dart';
 import '../fixture.dart';
 import '../features/player/fake_engine.dart';
 import '../repositories/fake_api_client.dart';
+import 'fake_downloader.dart';
 
 typedef Route = (bool Function(ApiRequest), Object? Function(ApiRequest));
 
@@ -89,6 +94,8 @@ Future<void> pumpApp(
   FakeApiClient? api,
   FakeEngine? engine,
   MemoryLibraryRepository? library,
+  MemoryDownloadStore? downloads,
+  FakeDownloader? downloader,
   FakeFullScreen? fullScreen,
   double width = 390,
   double height = 844,
@@ -114,6 +121,16 @@ Future<void> pumpApp(
           library ?? MemoryLibraryRepository(),
         ),
         fullScreenProvider.overrideWithValue(fullScreen ?? FakeFullScreen()),
+        downloadStoreProvider.overrideWithValue(
+          downloads ?? MemoryDownloadStore(),
+        ),
+        downloaderProvider.overrideWithValue(downloader ?? FakeDownloader()),
+        downloadRootProvider.overrideWithValue(
+          () async => (
+            baseDirectory: 'root',
+            directory: Directory.systemTemp.createTempSync('dl-root').path,
+          ),
+        ),
       ],
       child: const CinemakomApp(),
     ),

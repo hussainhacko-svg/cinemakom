@@ -7,6 +7,8 @@ import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/playback_request.dart';
 import 'package:cinemakom/data/models/watch_progress.dart';
+import 'package:cinemakom/data/repositories/download_store.dart';
+import 'package:cinemakom/data/repositories/downloads_repository.dart';
 import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/features/player/player_controller.dart';
 import 'package:cinemakom/features/player/player_state.dart';
@@ -17,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../fixture.dart';
+import '../../helpers/fake_downloader.dart';
 import '../../repositories/fake_api_client.dart';
 import 'fake_engine.dart';
 
@@ -73,6 +76,7 @@ Env start(
   Map<String, Object> prefs = const {},
   FakeEngine? fake,
   MemoryLibraryRepository? library,
+  MemoryDownloadStore? downloads,
 }) {
   final engine = fake ?? FakeEngine();
   final api = F([
@@ -95,6 +99,10 @@ Env start(
       libraryRepositoryProvider.overrideWithValue(
         library ?? MemoryLibraryRepository(),
       ),
+      downloadStoreProvider.overrideWithValue(
+        downloads ?? MemoryDownloadStore(),
+      ),
+      downloaderProvider.overrideWithValue(FakeDownloader()),
     ],
   );
   c.read(preferenceStoreProvider.future);

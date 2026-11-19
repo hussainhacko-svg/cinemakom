@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart' show getDirectoryPath;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/tab_page.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/storage/preferences.dart';
+import '../../data/repositories/downloads_repository.dart' show defaultDesktopFolder;
 import 'widgets/settings_group.dart';
 
 /// Settings: language, screen rotation (phones and tablets), default
@@ -148,6 +150,38 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+              if (isDesktop) ...[
+                const SizedBox(height: MarqueeSpace.xxl),
+                SettingsGroup(
+                  title: l10n.settingsDownloads,
+                  rows: [
+                    SettingsRow(
+                      label: l10n.settingsDownloadFolder,
+                      value: settings.downloadFolder ?? defaultDesktopFolder(),
+                      onTap: () async {
+                        final folder = await getDirectoryPath(
+                          initialDirectory:
+                              settings.downloadFolder ?? defaultDesktopFolder(),
+                          confirmButtonText: l10n.settingsDownloadFolder,
+                        );
+                        if (folder != null) {
+                          await notifier.setDownloadFolder(folder);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    top: MarqueeSpace.s,
+                    start: MarqueeSpace.xs,
+                  ),
+                  child: Text(
+                    l10n.settingsDownloadFolderNote,
+                    style: text.caption,
+                  ),
+                ),
+              ],
               const SizedBox(height: MarqueeSpace.xxl),
               SettingsGroup(
                 title: l10n.settingsHelp,

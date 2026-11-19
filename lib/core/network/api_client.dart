@@ -109,6 +109,56 @@ class ApiClient {
     }
   }
 
+  /// The size in bytes of the file at an absolute [url] (a stream), or
+  /// `null` when the server doesn't say. The CDN answers HEAD with 403 (the
+  /// URLs are signed for GET), so this asks for the first byte and reads
+  /// the total from `Content-Range` (docs/API.md §3, File sizes).
+  Future<int?> contentLength(String url) async {
+    await _slots.acquire();
+    try {
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(
+          headers: {'Range': 'bytes=0-0'},
+          responseType: ResponseType.bytes,
+        ),
+      );
+      final range = response.headers.value('content-range');
+      final total = range == null ? null : int.tryParse(range.split('/').last);
+      return total ??
+          int.tryParse(response.headers.value('content-length') ?? '');
+    } on DioException {
+      return null;
+    } finally {
+      _slots.release();
+    }
+  }
+
+  /// Saves the file at an absolute [url] (a subtitle) to [path] with the
+  /// shared headers, retried once like [fetch]. Throws [ApiException].
+  Future<void> downloadFile(String url, String path) async {
+    Future<void> once() async {
+      try {
+        await _dio.download(url, path);
+      } on DioException catch (e) {
+        throw _mapDioError(e, url);
+      }
+    }
+
+    await _slots.acquire();
+    try {
+      try {
+        await once();
+      } on ApiException catch (e) {
+        if (!_isRetryable(ApiRequest(url), e)) rethrow;
+        await Future<void>.delayed(retryDelay);
+        await once();
+      }
+    } finally {
+      _slots.release();
+    }
+  }
+
   static bool _isRetryable(ApiRequest request, ApiException e) =>
       request.method == HttpMethod.get &&
       (e.kind == ApiErrorKind.network ||

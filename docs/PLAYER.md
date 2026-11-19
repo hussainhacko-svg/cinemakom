@@ -342,7 +342,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 - **Picture-in-picture:** not chosen for now. Android could add it later with a small native change (ExoPlayer makes it easier than mpv did). iOS PiP isn't possible with media_kit's mpv backend.
 - **Casting, background audio, lock-screen controls:** later, if wanted. `audio_session` is a first step toward them.
 - **Audio track switching:** every file has one audio track (API.md §3).
-- **Offline playback:** Phase 6 adds `LocalSource`. The player is built for it already.
+- **Offline playback (built in Phase 6, 2026-11-19):** `PlayerController._load` asks `DownloadsRepository.playable` first. A finished download plays `file://…` with its saved subtitles and no stream request; ExoPlayer opens it with `VideoPlayerController.file`, and its subtitle loader reads `file:` URLs from disk. Details, previews and episodes wait at most 3 s (`offlineWait`), so a dead connection never holds up playback, and without a connection Next episode uses the downloaded episodes. Recovery reopens the file instead of fetching URLs. Checked live on Linux (`integration_test/downloads_test.dart`).
 - **Long-press for 2× speed:** an idea for later.
 
 ## 13. M0 results (2026-11-19)

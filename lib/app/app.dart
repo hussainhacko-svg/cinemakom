@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cupertino_ui/cupertino_ui.dart'
     show GlobalCupertinoLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart'
@@ -5,8 +7,10 @@ import 'package:flutter_localizations/flutter_localizations.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../core/downloads/downloader.dart';
 import '../core/platform/orientation.dart';
 import '../core/storage/preferences.dart';
+import '../data/repositories/downloads_repository.dart';
 import 'l10n/app_localizations.dart';
 import 'router.dart';
 import 'splash_screen.dart';
@@ -59,9 +63,47 @@ class CinemakomApp extends ConsumerWidget {
         // The one and only theme (docs/DESIGN.md). Arabic only drops tracking.
         theme: buildMarqueeTheme(arabic: language == AppLanguage.arabic),
         routerConfig: ref.watch(routerProvider),
+        builder: (context, child) => _Downloads(child: child!),
       ),
     );
   }
+}
+
+/// Starts the downloads engine once (it catches up with downloads that ran
+/// while the app was closed) and keeps its notification texts in the UI
+/// language.
+class _Downloads extends ConsumerStatefulWidget {
+  const _Downloads({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_Downloads> createState() => _DownloadsState();
+}
+
+class _DownloadsState extends ConsumerState<_Downloads> {
+  Locale? _locale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _locale) return;
+    final first = _locale == null;
+    _locale = locale;
+    final l10n = AppLocalizations.of(context);
+    final notices = DownloadNotices(
+      running: l10n.noticeDownloading,
+      complete: l10n.noticeDownloaded,
+      failed: l10n.noticeFailed,
+      paused: l10n.noticePaused,
+    );
+    final downloads = ref.read(downloadsRepositoryProvider);
+    unawaited(first ? downloads.start(notices) : downloads.setNotices(notices));
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Applies the Settings screen-rotation choice on start and when it changes

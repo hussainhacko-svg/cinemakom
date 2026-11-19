@@ -84,6 +84,9 @@ lib/
       preferences.dart          # language, default resolution, default subtitle
     platform/
       platform_info.dart        # isDesktop / isMobile / isAndroid helpers
+    downloads/
+      downloader.dart           # Downloader interface (tests use test/helpers/fake_downloader.dart)
+      background_file_downloader.dart  # the only file that imports background_downloader
     player/
       player_engine.dart        # PlayerEngine interface (tests use test/features/player/fake_engine.dart)
       media_kit_engine.dart     # the only file that imports media_kit: mpv options, headers, errors
@@ -101,13 +104,14 @@ lib/
       media_repository.dart     # details, episodes, seasons, streams, subtitles, related, skip ranges, getVideosByIds, staff pages
       status_repository.dart    # cinemanaHealth(): public status page, asked only after API calls fail
       library_repository.dart   # favorites + continue watching (drift)
-      downloads_repository.dart # background_downloader + drift
+      download_store.dart       # the drift downloads table (MemoryDownloadStore for tests)
+      downloads_repository.dart # queue, subtitles, events, fresh-URL resume, offline lookups
   features/
     home/  search/  genre/  details/  browse/ ("See all")  onboarding/ (language picker)  settings/
     player/                     # player_screen, player_controller (session, recovery), player_state,
                                 # quality, subtitles, widgets/ (controls_overlay, seek_bar, subtitle_layer)
     library/                    # Library tab, Continue cards (Home uses them too), Favorite buttons
-    downloads/                  # placeholder until Phase 6
+    downloads/                  # Downloads tab, a series' episodes, Download buttons and menus
     staff/                      # person page (actor, director, writer)
     faq/                        # to come
     debug/                      # debug-build-only API check screen (Phase 1)
@@ -169,7 +173,8 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - A finished episode shows the next one as "Up next", on Home and in the Library (`continueEntriesProvider`). After a series' last episode it leaves the list.
   - *Decision (2026-11-19):* a long press (or right click) offers **Remove from Continue watching**. It only hides the title (`continue_hidden` table) until it's watched again; the watch history and the episodes' watched marks stay.
 - [ ] **Favorites:** add, remove and list. *Built 2026-11-19, to check on the phone.* A bookmark (not a heart, so it can't read as a like; *decision 2026-11-19*): a pill on Details, an icon button on the Home hero. Stored in the drift `favorites` table, the last added first.
-- [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume.
+- [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume. *Built 2026-11-19, to check on the phone.*
+  - *Decisions (2026-11-19):* the quality is asked each time, with file sizes. Series get a button per episode and **Download season**. Downloads use any network (no Wi-Fi-only setting). Each download also saves the plain Arabic and English subtitles, and the styled one where the player draws it (not Android). At most 2 run at a time.
 - [x] **Settings:**
   - language (English or Arabic, default English. Arabic flips the layout to RTL)
   - default resolution (2160p/1080p/720p/480p/360p, default 1080p)
@@ -202,7 +207,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
-> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Phase 4 (player) is done** (M0–M9, PLAYER.md §15; Windows not run yet). **Phase 5 (library) is built, to check on the phone.** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Phase 4 (player) is done** (M0–M9, PLAYER.md §15; Windows not run yet). **Phases 5 (library) and 6 (downloads) are built, to check on the phone.** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
 
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 
@@ -265,7 +270,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** history and favorites survive a restart and resume works. Checked by the drift repository tests (including the upgrade of a schema 1 database), the Library widget tests and `integration_test/screenshots_test.dart` on Linux (phone, desktop, Arabic).
 - **To check on the phone** (release APK installed over the current app, so its database is upgraded): existing Continue watching entries are still there; finishing an episode shows "Up next" on Home and in the Library; Favorite works from Details and the hero; a long press removes a card; everything survives a force-stop and relaunch.
 
-### Phase 6: Downloads
+### Phase 6: Downloads *(built 2026-11-19, to check on the phone)*
 - background_downloader for video plus subtitle, with the headers.
 - Progress, speed, pause/resume/cancel, notifications on mobile.
 - Storage location per platform:
@@ -275,6 +280,13 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - Offline playback, delete, and grouping by series.
 - iOS background download limits (URLSession) need testing on a real device.
 - **Done when:** a download finishes, plays offline with subtitles, and survives an app restart in the middle.
+- *Built (2026-11-19):*
+  - `lib/core/downloads/` (`Downloader`, with `BackgroundFileDownloader` the only file importing background_downloader), the drift `downloads` table (schema 3), and `DownloadsRepository` (queue, subtitles, events, fresh-URL resume, restart catch-up, delete). Downloads, Details buttons, and the desktop folder in Settings (file_selector).
+  - Engine events, user actions and startup run one at a time, so a late progress event can't undo a finished or paused download.
+  - The CDN needs `Range: bytes=0-` for pause and resume to work (API.md §3).
+  - Partial files: not in Android's cache dir (it can be evicted), and on desktop next to the download folder, not in `/tmp`.
+  - Checked: unit and widget tests, and `integration_test/downloads_test.dart` on Linux with the live CDN (download, pause, resume from the partial file, offline playback, delete).
+- **To check on the phone:** a download with the screen off and the app in the background (notification with progress); pause and resume; force-stop mid-download, then reopen (it continues or shows Try again); airplane mode, then play the download with subtitles; Download season; delete. Windows and iOS (URLSession limits) are still to try.
 
 ### Phase 7: New features
 - The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4; cast and crew, actor pages and the library refresh are done): related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.

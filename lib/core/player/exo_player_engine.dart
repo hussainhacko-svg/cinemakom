@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -115,14 +116,23 @@ class ExoPlayerEngine implements PlayerEngine {
     _subtitleId++;
     _setCaptions(const []);
 
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(source.uri),
-      httpHeaders: source.headers,
-      viewType: VideoViewType.textureView,
-      // Audio focus is AudioFocus's (audio_session): a second request from
-      // ExoPlayer would take focus from it (PLAYER.md §9.1).
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    );
+    // Audio focus is AudioFocus's (audio_session): a second request from
+    // ExoPlayer would take focus from it (PLAYER.md §9.1).
+    final options = VideoPlayerOptions(mixWithOthers: true);
+    final uri = Uri.parse(source.uri);
+    // A downloaded file (Phase 6) plays from disk.
+    final controller = uri.isScheme('file')
+        ? VideoPlayerController.file(
+            File.fromUri(uri),
+            viewType: VideoViewType.textureView,
+            videoPlayerOptions: options,
+          )
+        : VideoPlayerController.networkUrl(
+            uri,
+            httpHeaders: source.headers,
+            viewType: VideoViewType.textureView,
+            videoPlayerOptions: options,
+          );
     try {
       await controller.initialize();
       if (id != _openId || _disposed) {

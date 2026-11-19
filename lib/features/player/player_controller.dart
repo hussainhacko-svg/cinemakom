@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,7 @@ import '../../data/models/media_details.dart' show SkipRange;
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
+import '../../data/repositories/downloads_repository.dart';
 import '../../data/repositories/library_repository.dart';
 import '../../data/repositories/media_repository.dart';
 import 'player_state.dart';
@@ -28,7 +30,12 @@ import 'up_next.dart';
 final playerEngineFactoryProvider = Provider<PlayerEngine Function()>((ref) {
   if (isAndroid) {
     final api = ref.read(apiClientProvider);
-    return () => ExoPlayerEngine(loadText: api.fetchText);
+    return () => ExoPlayerEngine(
+      // Downloaded subtitles are files (Phase 6).
+      loadText: (url) => url.startsWith('file:')
+          ? File.fromUri(Uri.parse(url)).readAsString().then(_dropBom)
+          : api.fetchText(url),
+    );
   }
   return MediaKitEngine.new;
 });
@@ -96,6 +103,13 @@ class PlayerController extends Notifier<PlayerState> {
   int _attempt = 0;
   Duration? _recoveredAt;
   bool _recovering = false;
+
+  /// Playing a downloaded file: no stream URLs to refresh (Phase 6).
+  bool _local = false;
+
+  /// How long a downloaded file waits for details, previews and episodes
+  /// (it plays without them when offline).
+  static const offlineWait = Duration(seconds: 3);
 
   /// Between a load starting and the new file being opened, the old file
   /// may still play: its positions must not become the new start point.
@@ -227,15 +241,43 @@ class PlayerController extends Notifier<PlayerState> {
     );
 
     final repo = _repo;
+    final downloads = ref.read(downloadsRepositoryProvider);
     final saved = start == null
         ? _quietly(_library.progress(videoId), null)
         : Future<WatchProgress?>.value();
-    final streams = repo.streams(videoId);
-    final details = _quietly(repo.details(videoId), null);
-    final tracks = _quietly(repo.subtitles(videoId), const <SubtitleTrack>[]);
-    final preview = _quietly(repo.seekPreview(videoId), null);
+    // A downloaded file plays from disk, with its saved subtitles.
+    final local = await _quietly(downloads.playable(videoId), null);
+    if (!_isCurrent(session)) return;
+    _local = local != null;
+    Future<T> online<T>(Future<T> future, T fallback) => _quietly(
+      local == null ? future : future.timeout(offlineWait),
+      fallback,
+    );
+    final streams = local == null
+        ? repo.streams(videoId)
+        : Future.value([
+            VideoSource(
+              url: Uri.file(local.path).toString(),
+              name: local.quality,
+              resolution: local.quality,
+            ),
+          ]);
+    final details = online(repo.details(videoId), null);
+    final tracks = local == null
+        ? _quietly(repo.subtitles(videoId), const <SubtitleTrack>[])
+        : Future.value(local.subtitles);
+    final preview = online(repo.seekPreview(videoId), null);
+    final seriesId = request.item.seriesId;
     final episodes = request.isSeries && state.episodes.isEmpty
-        ? _quietly(repo.episodes(request.item.seriesId), const <Episode>[])
+        ? online(repo.episodes(seriesId), const <Episode>[]).then(
+            // Offline: the downloaded episodes, so Next still works.
+            (list) async => list.isEmpty && local != null
+                ? await _quietly(
+                    downloads.downloadedEpisodes(seriesId),
+                    const <Episode>[],
+                  )
+                : list,
+          )
         : Future.value(state.episodes);
 
     final List<VideoSource> sources;
@@ -270,7 +312,7 @@ class PlayerController extends Notifier<PlayerState> {
     )!;
     final options = subtitleOptions([
       for (final t
-          in loadedTracks.isNotEmpty
+          in loadedTracks.isNotEmpty || local != null
               ? loadedTracks
               : loadedDetails?.subtitles ?? const <SubtitleTrack>[])
         if (engine.supportsStyledSubtitles || !t.isStyled) t,
@@ -582,10 +624,12 @@ class PlayerController extends Notifier<PlayerState> {
     if (!_isCurrent(session)) return;
 
     // Any open failure may be an expired URL (mpv doesn't say), so always
-    // get fresh ones.
+    // get fresh ones. A downloaded file is simply opened again.
     final List<VideoSource> sources;
     try {
-      sources = await _repo.streams(state.videoId, fresh: true);
+      sources = _local
+          ? state.sources
+          : await _repo.streams(state.videoId, fresh: true);
     } on Object catch (e) {
       if (_isCurrent(session)) _fail(e);
       return;
@@ -808,3 +852,6 @@ class PlayerController extends Notifier<PlayerState> {
     return _load(episode.id, episode: episode);
   }
 }
+
+String _dropBom(String text) =>
+    text.startsWith('\uFEFF') ? text.substring(1) : text;

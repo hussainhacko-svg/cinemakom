@@ -26,6 +26,7 @@ fvm dart run tool/api_contract_check.dart  # live API contract check
 fvm flutter test integration_test/screenshots_test.dart -d linux  # PNGs of the main screens in build/screenshots, for design review
 fvm flutter test integration_test/player_engine_test.dart -d linux  # live player check (real media_kit)
 fvm flutter test integration_test/player_test.dart -d linux  # the player end to end (live API, real engine)
+fvm flutter test integration_test/downloads_test.dart -d linux  # downloads end to end (live CDN, ~50 MB): pause, resume, offline play
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/player_perf_test.dart  # 4K player frame times and memory on the phone. Also wipes the app's data
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/scroll_perf_test.dart  # frame times on the phone at 120 Hz. Uninstalls the app first, wiping its data
 fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flutter-apk/ (phones: app-arm64-v8a-release.apk)
@@ -34,7 +35,7 @@ fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flu
 
 ## Architecture rules
 - Folders are organized by feature: `lib/core` (network, storage, platform), `lib/data` (models, parsers, repositories), `lib/features/<feature>` (screen, widgets, providers). See PLAN.md §3.
-- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit (desktop, iOS) and video_player/ExoPlayer (Android). **Downloads:** background_downloader.
+- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit (desktop, iOS) and video_player/ExoPlayer (Android). **Downloads:** background_downloader, behind `Downloader` (`lib/core/downloads`; `background_file_downloader.dart` is the only file that imports it). `DownloadsRepository` owns the queue, events and offline lookups; the player plays a finished download from disk by itself.
 - **Only `lib/core/network` builds URLs or sets headers.** Screens and widgets never call Dio directly. They go through repositories.
 - **One shared header map** (`User-Agent`, `Referer`, `Origin`, see API.md) is used for API calls, images, video streams and downloads. Never copy it somewhere else.
 - **The JSON is inconsistent.** IDs and titles come under several different key names. Parse with the tolerant helpers in `lib/data/parsers`, not generated `fromJson`. Parsers must skip bad items and never throw.
