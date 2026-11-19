@@ -103,16 +103,16 @@ Set in `media_kit_engine.dart`, once per player.
 | Option | Value | Why |
 |---|---|---|
 | `bufferSize` | 64 MB mobile, 192 MB desktop | 32 MB holds about 12 s of 4K (22 Mbit/s). Read-ahead must cover several seconds of 4K |
+| `ytdl` | `no` | Otherwise mpv runs its youtube-dl hook on every failed URL (seen in M0): a slow, useless subprocess |
 | `network-timeout` | `20` | The default 5 s drops slow CDN nodes on the tail read that non-fast-start files need |
-| `stream-lavf-o` | `reconnect=1,reconnect_on_network_error=1,reconnect_delay_max=5` | Reconnects at the HTTP layer before we see an error |
-| `demuxer-readahead-secs` / `cache-secs` | 20 / 60 (desktop), 20 / 30 (mobile) | Fast seeks near the playhead without filling a phone's disk |
-| `cache-on-disk` | `yes` desktop, `no` mobile (memory cache only) | Keeps phone storage free. Revisit after the spike |
+| `demuxer-readahead-secs` / `cache-secs` | 20 / 60 (desktop), 20 / 30 (mobile) | Fast seeks near the playhead without filling a phone's memory |
+| `cache-on-disk` | `yes` desktop, **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0) |
 | `hwdec` | `auto` (default) | 4K H.264 needs hardware decoding on phones. Fall back to `no` once on decoder errors |
 | `libass` | `true` | Needed for the styled ASS track, and on Android it's the only way to give libass a font (§7.2) |
-| `sub-visibility` | toggled per track at runtime | Plain tracks are drawn by Flutter, styled tracks by libass (§7.2) |
+| `sub-visibility` | toggled per track at runtime | Plain tracks are drawn by Flutter, styled tracks by libass (§7.2). Works at runtime (M0) |
 | `title` | the media title | Window and task-switcher title on desktop |
 
-`network-timeout`, the reconnect options and the cache sizes are starting values. The spike (§10, M0) confirms them on Android and Linux.
+There are no HTTP reconnect options. On Linux, mpv 0.42 reads over its curl backend, which resumes a cut connection by itself ("retrying from <offset>"). Android's ffmpeg does the same ("Will reconnect at …"). The controller's own recovery (§6) covers the rest.
 
 ## 6. Playback flow
 
@@ -127,8 +127,10 @@ Set in `media_kit_engine.dart`, once per player.
 
 | What happens | What the player does |
 |---|---|
-| The stream answers 403, or mpv can't open it | Remember the position, call `streams(id, fresh: true)`, reopen the same quality at that position. Once per minute at most; after that, show the error |
-| The network drops mid-play | mpv reconnects first. If playback stays stalled for 15 s, reopen at the last position with backoff (2, 5, 10 s). Show "Reconnecting…" over the loader |
+| The stream answers 403, or mpv can't open it | Remember the position, call `streams(id, fresh: true)`, reopen the same quality at that position. Once per minute at most; after that, show the error. **mpv doesn't report the HTTP status reliably** (M0: "Failed to open <url>." on every platform, sometimes "HTTP error 403" in the log), so every open failure is treated as a possibly expired URL |
+| An open fails | media_kit sends "Failed to open …" on its error stream, **but `buffering` stays `true` and nothing else changes** (M0). The controller leaves the loading state itself |
+| **The file "completes" early** | When a reconnect fails mid-play (for example the URL expired), mpv plays out its buffer and **reports `completed` with no error**: 0:16 of a 2:29:17 film in M0. A completion counts only when the position is within 5 s of the duration. Otherwise it's a stream failure and goes through recovery. Without this rule, autoplay would jump to the next episode |
+| The network drops mid-play | mpv reconnects first (M0). If playback is "playing" but the position hasn't moved for 15 s, reopen at the last position with backoff (2, 5, 10 s). Show "Reconnecting…" over the loader. This watchdog also catches a video output that failed silently (M0 on the emulator: `playing=true`, no error, no frames) |
 | The streams or details request fails | `ErrorView` (it asks the status page once, so "Cinemana is having problems" when it's down) with **Try again** |
 | No streams at all | "This title isn't available right now", with Back |
 | Decoder error | Retry once with `hwdec=no`. If 4K still fails, offer the next lower quality |
@@ -152,7 +154,7 @@ Every error message goes in the ARB files.
 - **How they're drawn (hybrid):**
   - **Plain tracks:** mpv parses the file, `sub-visibility=no`, and `subtitle_layer.dart` draws the current text from the player's subtitle stream in Flutter. It uses IBM Plex Sans Arabic / IBM Plex Sans (cream text with a dark outline, no box). It lifts above the controls when they're shown, stays on screen in Fill mode, and follows the size setting. Each line gets its own `Directionality` from its script.
   - **Styled ASS track:** `sub-visibility=yes`, so libass renders it into the frame with its own styles. The Flutter layer hides.
-  - **Font for libass:** the ASS files name fonts the device won't have ("Adobe Arabic"). Bundle **IBM Plex Sans Arabic Medium** as the fallback. On Android it's set through `libassAndroidFont` / `libassAndroidFontName`. On desktop and iOS, `subtitle_fonts.dart` copies it from the assets to the app support folder at startup and sets `sub-fonts-dir` / `sub-font`.
+  - **Font for libass:** the ASS files name fonts the device won't have ("Bahij Nassim", "GE SS Text"). Bundle **IBM Plex Sans Arabic Regular** as the fallback. *M0: with only the Medium file libass rendered nothing, and the Regular file works. media_kit's Android controller sets `sub-font-provider=none`, so on Android this font is the only one libass has.* On Android it's set through `libassAndroidFont` / `libassAndroidFontName`. On desktop and iOS, `subtitle_fonts.dart` copies it from the assets to the app support folder at startup and sets `sub-fonts-dir` / `sub-font`.
 - **Size** (new setting, Settings → Playback): Small, Medium (default), Large. It applies to plain tracks, and to ASS through `sub-scale` (0.85 / 1 / 1.2).
 - **Delay:** in the subtitle menu, "Sync" with −0.5 s / +0.5 s steps and a reset, shown as "+1.5 s". It's set with mpv `sub-delay`, works for both renderers, and is kept for the rest of the session (not saved).
 
@@ -275,7 +277,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 
 | # | Milestone | Done when |
 |---|---|---|
-| **M0** | **Spike** (throwaway code on the debug screen, `features/debug/`): play a 1080p non-fast-start movie, a 4K movie and an anime episode with headers; measure start time; hybrid subtitles (Flutter-drawn SRT plus libass ASS with the bundled font, on Android and Linux); `sub-fonts-dir` at runtime on desktop; how a 403 and a network drop look on the error/log streams; quality switch at a position; 4K on the emulator and on a real phone | The numbers and findings are written into §5 and §13 of this file, and any choice they overturn is changed here first |
+| **M0** ✅ | **Spike** (`integration_test/player_spike_test.dart`, removed at M9; results in §13): play a 1080p non-fast-start movie, a 4K movie and an anime episode with headers; measure start time; hybrid subtitles (Flutter-drawn SRT plus libass ASS with the bundled font, on Android and Linux); `sub-fonts-dir` at runtime on desktop; how a 403 and a network drop look on the error/log streams; quality switch at a position; 4K on the emulator and on a real phone | The numbers and findings are written into §5 and §13 of this file, and any choice they overturn is changed here first |
 | **M1** | `PlayerEngine`, `MediaKitEngine`, `PlayerController` and `PlayerState`, no UI. `pickQuality`, subtitle choice, recovery (403 → `streams(fresh: true)`), `streams(fresh:)` in `MediaRepository` | Unit tests with `FakeEngine` cover open, quality pick, subtitle pick, 403 recovery, network-drop recovery and errors |
 | **M2** | `/watch/:id` route, `openPlayer`, the player screen with the basic controls (back, play/pause, ±10 s, seek bar, times, buffering loader, auto-hide). Play wired from Details, the hero and episode rows | A movie and an episode play from the app, on Android and Linux |
 | **M3** | Chip menus: subtitles (with size and delay), quality, speed, fit. Settings → Subtitle size | Every switch keeps the position and the other choices |
@@ -314,14 +316,40 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 - **Offline playback:** Phase 6 adds `LocalSource`. The player is built for it already.
 - **Long-press for 2× speed:** an idea for later.
 
-## 13. Risks and open questions (for M0)
+## 13. M0 results (2026-11-19)
+
+Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Linux) and `integration_test/player_spike_test.dart` on Linux and the Android emulator. A local proxy cut connections and answered 403 on cue.
+
+| Check | Linux | Android emulator |
+|---|---|---|
+| Start, 1080p (not fast-start), 4K, 720p, from 0 and from 1 h | First frame 0.6–0.9 s, playing 1.1–1.5 s | Playing 3.3–5.5 s, **but no picture** (below) |
+| Seek outside the buffer (1080p, to 30 and 120 min) | 0.7–1.0 s | n/a |
+| Quality switch 720p → 1080p at 10:02 | 0.7 s, same position, still playing | n/a |
+| Plain SRT with `sub-visibility=no` | Text arrives on `player.stream.subtitle`, nothing burned in | n/a |
+| Styled ASS with `sub-visibility=yes` | Rendered by libass. `sub-text` is **also** sent, so the Flutter layer hides by state | n/a |
+| `sub-delay`, `sub-scale`, `sub-fonts-dir` at runtime | All work | n/a |
+| Cut mid-play, then reconnect | Resumed by mpv | ffmpeg "Will reconnect" |
+| Cut mid-play, then 403 | `completed=true` at 0:16 of 2:29:17, no error | n/a |
+| 403 at open | Error "Failed to open …", `buffering` stuck `true` | n/a |
+
+**CDN:** node `cndw2` accepts expired and forged signatures; `cndw1`, `3`–`6` answer 403. `cdn.shabakaty.com` picks the node, so expiry shows up only sometimes.
+
+**Android emulator:** video never renders, with `vo=gpu` (mpv: "Could not create EGL context for GLES 2.x") or `vo=mediacodec_embed`, with Impeller on or off, even though decoding and the clock run. On the same `Player`, every `open()` after the first also failed to bring the video output back, while a new `Player` per file played. The emulator can't be used for video. **Real-phone checks** (owner's device, M2 onward):
+1. Does video render with the defaults (`vo=gpu`, `hwdec=auto-safe`)?
+2. Does a second `open()` on the same `Player` keep the picture? If not, `MediaKitEngine` creates a new `Player` per file (it's built so the controller doesn't notice).
+3. Styled ASS renders with the bundled font. 4K plays smoothly with hardware decoding.
+
+`fvm flutter test integration_test/player_spike_test.dart -d <phone>` runs these checks; the failure tests are skipped without the proxy.
+
+## 14. Risks and open questions
 
 | Risk | Plan |
 |---|---|
-| Non-fast-start 1080p files start slowly (mpv must read the tail first) | Measure in M0. Tune `network-timeout`, the read-ahead and the cache. If it's still slow, show the poster behind the loader so it never looks broken |
-| The hybrid subtitles don't work (subtitle text isn't sent while `sub-visibility=no`, or toggling at runtime misbehaves) | Fall back to libass for every track. The size then goes through `sub-scale`, and subtitles may be cropped in Fill mode |
-| libass on desktop doesn't pick up `sub-fonts-dir` set after start | Set it before the first subtitle loads, or pass it through the mpv config folder. Linux usually has Arabic system fonts as a backup |
+| ~~Non-fast-start 1080p files start slowly~~ | ✅ M0: no slower than fast-start files (about 1 s) |
+| ~~The hybrid subtitles don't work~~ | ✅ M0: they work on Linux. Android to confirm on the phone |
+| ~~libass on desktop ignores `sub-fonts-dir` set after start~~ | ✅ M0: works on Linux |
 | 4K is too heavy for some phones (decoder or memory) | Hardware decoding by default. On decoder errors, fall back once and then offer 1080p. The always-visible chip makes the cause clear |
-| Errors from mpv are strings, not codes | M0 records what a 403, a timeout and a DNS failure look like, and `media_kit_engine.dart` maps them to typed errors |
+| Errors from mpv are strings, not codes | ✅ M0: don't parse them. Any open failure goes through the same recovery (fresh URLs, then the error view) |
+| Video output on real Android phones | Unknown until the phone check (§13). The engine can recreate the `Player` per file if needed |
 | Windows has no dev machine yet | M8 needs a Windows machine or VM. The NVIDIA Linux bug (AGENTS.md) doesn't affect Windows |
 | `volume_controller` and `screen_brightness` differ between Android and iOS | Wrap them in the gesture layer only, and test both platforms when iOS starts (PLAN.md Phase 6) |
