@@ -288,7 +288,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
   - The CDN needs `Range: bytes=0-` for pause and resume to work (API.md §3).
   - Partial files: not in Android's cache dir (it can be evicted), and on desktop next to the download folder, not in `/tmp`.
   - Checked: unit and widget tests, and `integration_test/downloads_test.dart` on Linux with the live CDN (download, pause, resume from the partial file, offline playback, delete).
-- **To check on the phone:** a download with the screen off and the app in the background (notification with progress); pause and resume; force-stop mid-download, then reopen (it continues or shows Try again); airplane mode, then play the download with subtitles; Download season; delete. Windows and iOS (URLSession limits) are still to try.
+- **To check on the phone:** a download with the screen off and the app in the background (notification with progress); pause and resume; force-stop mid-download, then reopen (it continues or shows Try again); airplane mode, then play the download with subtitles; Download season; delete; the Downloads page in Arabic. Windows and iOS (URLSession limits) are still to try.
 
 ### Phase 7: New features
 - The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4; cast and crew, actor pages and the library refresh are done): related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
