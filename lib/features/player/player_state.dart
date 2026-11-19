@@ -1,0 +1,144 @@
+import '../../data/models/media_details.dart';
+import '../../data/models/playback_models.dart';
+import '../../data/models/playback_request.dart';
+import 'subtitles.dart';
+
+enum PlayerPhase {
+  /// Loading the streams, or opening a file (also after a quality switch).
+  loading,
+
+  /// The file is open; [PlayerState.playing] says whether it plays.
+  ready,
+
+  /// Getting playback back after the stream failed or stalled.
+  recovering,
+
+  /// Gave up; [PlayerState.error] says why. "Try again" calls `retry()`.
+  failed,
+
+  /// The video played to its end.
+  ended,
+}
+
+/// Why playback failed, when it wasn't an API error ([ApiException]).
+enum PlayerFailure implements Exception {
+  /// The title has no streams.
+  unavailable,
+
+  /// The stream kept failing after every recovery attempt.
+  playback,
+}
+
+/// How the video fills the screen (PLAYER.md §7.4).
+enum VideoFit { fit, fill, stretch }
+
+/// Everything the player UI shows, except the position, which changes too
+/// often: read it from `PlayerController.position`.
+class PlayerState {
+  const PlayerState({
+    required this.request,
+    required this.videoId,
+    this.episode,
+    this.episodes = const [],
+    this.details,
+    this.sources = const [],
+    this.quality,
+    this.subtitles = const [SubtitleOption.off()],
+    this.subtitle = const SubtitleOption.off(),
+    this.subtitleDelay = Duration.zero,
+    this.subtitleFailed = false,
+    this.speed = 1,
+    this.fit = VideoFit.fit,
+    this.phase = PlayerPhase.loading,
+    this.error,
+    this.playing = false,
+    this.buffering = false,
+    this.duration = Duration.zero,
+    this.seekPreview,
+  });
+
+  factory PlayerState.initial(PlaybackRequest request) => PlayerState(
+    request: request,
+    videoId: request.videoId,
+    episode: request.episode,
+  );
+
+  final PlaybackRequest request;
+
+  /// The movie or episode playing now (changes with the episode).
+  final String videoId;
+  final Episode? episode;
+
+  /// The series' episodes in order. Empty for movies.
+  final List<Episode> episodes;
+  final MediaDetails? details;
+  final List<VideoSource> sources;
+  final VideoSource? quality;
+  final List<SubtitleOption> subtitles;
+  final SubtitleOption subtitle;
+  final Duration subtitleDelay;
+
+  /// The chosen subtitle file couldn't be loaded (playback goes on).
+  final bool subtitleFailed;
+  final double speed;
+  final VideoFit fit;
+  final PlayerPhase phase;
+  final Object? error;
+  final bool playing;
+  final bool buffering;
+  final Duration duration;
+  final SeekPreview? seekPreview;
+
+  List<SkipRange> get introRanges => details?.introRanges ?? const [];
+
+  /// The episode after the current one, across seasons. `null` after the
+  /// last one, and for movies.
+  Episode? get nextEpisode {
+    final i = episodes.indexWhere((e) => e.id == videoId);
+    return i < 0 || i + 1 >= episodes.length ? null : episodes[i + 1];
+  }
+
+  PlayerState copyWith({
+    String? videoId,
+    Episode? episode,
+    List<Episode>? episodes,
+    MediaDetails? details,
+    bool clearDetails = false,
+    List<VideoSource>? sources,
+    VideoSource? quality,
+    List<SubtitleOption>? subtitles,
+    SubtitleOption? subtitle,
+    Duration? subtitleDelay,
+    bool? subtitleFailed,
+    double? speed,
+    VideoFit? fit,
+    PlayerPhase? phase,
+    Object? error,
+    bool clearError = false,
+    bool? playing,
+    bool? buffering,
+    Duration? duration,
+    SeekPreview? seekPreview,
+    bool clearSeekPreview = false,
+  }) => PlayerState(
+    request: request,
+    videoId: videoId ?? this.videoId,
+    episode: episode ?? this.episode,
+    episodes: episodes ?? this.episodes,
+    details: clearDetails ? null : (details ?? this.details),
+    sources: sources ?? this.sources,
+    quality: quality ?? this.quality,
+    subtitles: subtitles ?? this.subtitles,
+    subtitle: subtitle ?? this.subtitle,
+    subtitleDelay: subtitleDelay ?? this.subtitleDelay,
+    subtitleFailed: subtitleFailed ?? this.subtitleFailed,
+    speed: speed ?? this.speed,
+    fit: fit ?? this.fit,
+    phase: phase ?? this.phase,
+    error: clearError ? null : (error ?? this.error),
+    playing: playing ?? this.playing,
+    buffering: buffering ?? this.buffering,
+    duration: duration ?? this.duration,
+    seekPreview: clearSeekPreview ? null : (seekPreview ?? this.seekPreview),
+  );
+}

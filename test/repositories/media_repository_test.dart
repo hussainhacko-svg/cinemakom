@@ -91,6 +91,15 @@ void main() {
       await MediaRepository(api, clock: () => now).streams('7');
       expect(api.requests, hasLength(2));
     });
+
+    test('fresh always skips the API cache, in one request', () async {
+      final api = F([
+        F.path('transcoddedFiles/', streams(now.add(const Duration(days: 5)))),
+      ]);
+      await MediaRepository(api, clock: () => now).streams('7', fresh: true);
+      expect(api.requests, hasLength(1));
+      expect(api.requests.single.query['_'], isNotNull);
+    });
   });
 
   test('seasons fall back to the episodes when the list is empty', () async {

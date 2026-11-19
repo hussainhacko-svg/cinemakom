@@ -60,13 +60,18 @@ class MediaRepository {
   /// a URL can still expire sooner than the margin: when playback or a
   /// download gets a 403, call this again for a new URL. Call it right before
   /// playing or downloading; never store the URLs.
-  Future<List<VideoSource>> streams(String id) async {
-    final sources = parseVideoSources(
-      await _api.fetch(ApiEndpoints.streams(id)),
-    );
+  ///
+  /// [fresh] always skips the API cache. Use it after the CDN refused a URL
+  /// that still claimed to be valid.
+  Future<List<VideoSource>> streams(String id, {bool fresh = false}) async {
     final now = _clock().toUtc();
-    if (sources.every((s) => s.isValidFor(minStreamValidity, now: now))) {
-      return sources;
+    if (!fresh) {
+      final sources = parseVideoSources(
+        await _api.fetch(ApiEndpoints.streams(id)),
+      );
+      if (sources.every((s) => s.isValidFor(minStreamValidity, now: now))) {
+        return sources;
+      }
     }
     return parseVideoSources(
       await _api.fetch(

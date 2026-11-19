@@ -17,3 +17,6 @@ bool get isMobile =>
       _ => false,
     } &&
     !kIsWeb;
+
+bool get isAndroid =>
+    defaultTargetPlatform == TargetPlatform.android && !kIsWeb;
