@@ -121,7 +121,7 @@ test/
 integration_test/
   api_debug_test.dart           # live check of every endpoint
   player_engine_test.dart       # live check of PlayerController on the real MediaKitEngine
-  player_spike_test.dart        # Phase 4 M0 measurements (removed at M9)
+  player_test.dart              # the player end to end: movie (play, seek, quality, leave, resume), episode (Next)
   screenshots_test.dart         # drives the real app (live API) and saves PNGs of the main screens
 ```
 
@@ -151,7 +151,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - Label the external link "IMDb" only when `imdbUrlIsImdb`; anime links go to MyAnimeList.
   - *Decision (2026-11-19):* Details is a page, not a bottom sheet, so related titles and actor pages can stack and the back gesture steps through them.
   - Episodes show as "Episode N" from `Episode.numbering`: "Episodes 7 & 8" for double episodes, a "Final" badge for finales. Never use episode titles. Use the season image.
-- [ ] **Player** (full plan: [`PLAYER.md`](PLAYER.md)):
+- [x] **Player** (full plan: [`PLAYER.md`](PLAYER.md)). *Done 2026-11-19 (M0–M9, PLAYER.md §15), on Android and Linux; Windows still to run:*
   - quality selection (default from settings, closest match).
     - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour): it is an always-visible chip in the player's top bar.
   - subtitles (Arabic, English or off, default from settings; one plain track per language, SRT preferred)
@@ -181,8 +181,8 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 ### 4.2 Extras the API supports
 - [x] **More like this** on details, from the recommendation service (`recommend.shabakaty.com`: same franchise, then shared cast), falling back to `relatedVideos`.
 - [x] **Cast and crew** row on details (`actorsInfo`, `directorsInfo`, `writersInfo`). Tapping a person opens an **actor/director page** (`staff/actorID/...`): photo, name, role and title count, then a poster grid of every title they're credited on (`StaffScreen`, `openPerson`, route `person/:id` in every tab). *Done 2026-11-19.*
-- [ ] **Skip intro** button in the player, from `introSkipping` (`MediaDetails.introRanges`), which can hold two ranges.
-- [ ] **Seek-bar previews** from `video_thumbnails` sprite sheets (`SeekPreview.frameAt`). Popular titles have them; hide the preview when a title has none.
+- [x] **Skip intro** button in the player, from `introSkipping` (`MediaDetails.introRanges`), which can hold two ranges.
+- [x] **Seek-bar previews** from `video_thumbnails` sprite sheets (`SeekPreview.frameAt`). Popular titles have them; hide the preview when a title has none.
 - [ ] **Season picker** that loads first (`videoSeasonNumber`), with episodes loaded per season.
 - [x] **"See all"** page for each video group (`videoListPagination`).
 - [x] **Genre × language filter** (`categoryLangFreqVideo` + `videosByCategoryAndLanguage`), e.g. Anime = Animation (57) × Japanese.
@@ -202,7 +202,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
-> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Now: Phase 4 (player), M0–M8 done (M8 on Linux; Windows not run yet), M9 next.** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). Phases 2 (app shell) and 3 (browsing) are done. **Phase 4 (player) is done** (M0–M9, PLAYER.md §15; Windows not run yet). The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
 
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 
@@ -247,11 +247,11 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 
 ### Phase 4: Player
 **The detailed plan is [`PLAYER.md`](PLAYER.md)**: targets, decisions, architecture, mpv setup, every feature, the controls, platform specifics, milestones M0–M9 and tests.
-- *Progress (2026-11-19):* M0–M8 are done: measurements, engine and controller, the player screen, chip menus (subtitle size and sync, quality, speed, fit), and resume with watch history (drift). Checked on the owner's phone: the picture, quality and episode switches, smooth 4K, and resume after a force-stop.
+- *Progress (2026-11-19):* M0–M9 are done (the player is finished): measurements, engine and controller, the player screen, chip menus (subtitle size and sync, quality, speed, fit), and resume with watch history (drift). Checked on the owner's phone: the picture, quality and episode switches, smooth 4K, and resume after a force-stop.
   - **Android plays with ExoPlayer** (`video_player`, texture view), not media_kit: mpv stuttered on 4K there. Desktop and iOS keep media_kit. Android has no styled (ASS) subtitles (PLAYER.md §2, decision 7).
 - **M5 done (2026-11-19, checked on the owner's phone):** Next episode autoplay, the Up next card and countdown, "Still watching?", the Episodes panel.
 - **M6 done (2026-11-19, checked on the owner's phone and Linux):** Skip intro and seek-bar previews.
-- **M7 done (2026-11-19, checked on the owner's phone):** gestures, the controls lock, audio interruptions (immersive mode, wakelock and orientation were already in). M8 done on Linux (2026-11-19, checked by the owner): desktop keys, mouse, cursor hiding, full screen, saved volume, focus rings; Windows not run yet. Then M9 (hardening).
+- **M7 done (2026-11-19, checked on the owner's phone):** gestures, the controls lock, audio interruptions (immersive mode, wakelock and orientation were already in). M8 done on Linux (2026-11-19, checked by the owner): desktop keys, mouse, cursor hiding, full screen, saved volume, focus rings; Windows not run yet. **M9 done (2026-11-19):** 4K frame times and memory on the phone, the Arabic pass, every error state, the end-to-end test (PLAYER.md §15).
 - *Decisions (2026-11-19):*
   - The drift `watch_history` table is built in this phase, so resume works now. Phase 5 adds the Library UI.
   - The seek bar always runs left → right, in Arabic too.

@@ -14,19 +14,25 @@ Future<void> main() => integrationDriver(
   responseDataCallback: (data) async {
     if (data == null) return;
     final budgetUs = 1e6 / _hz;
-    stdout.writeln('Frame budget ${(budgetUs / 1000).toStringAsFixed(2)} ms '
-        '($_hz Hz)');
+    stdout.writeln(
+      'Frame budget ${(budgetUs / 1000).toStringAsFixed(2)} ms '
+      '($_hz Hz)',
+    );
     for (final MapEntry(:key, :value) in data.entries) {
       final summary = value as Map<String, dynamic>;
+      // Plain numbers (the player test's memory), not a frame timeline.
+      if (!summary.containsKey('frame_build_times')) {
+        stdout.writeln('$key: $summary');
+        continue;
+      }
       final build = _times(summary['frame_build_times']);
       final raster = _times(summary['frame_rasterizer_times']);
       stdout.writeln('$key: ${build.length} frames');
       stdout.writeln('  UI     ${_stats(build, budgetUs)}');
       stdout.writeln('  raster ${_stats(raster, budgetUs)}');
     }
-    await File('build/scroll_perf.json').writeAsString(
-      const JsonEncoder.withIndent('  ').convert(data),
-    );
+    await File('build/scroll_perf.json')
+        .writeAsString(const JsonEncoder.withIndent('  ').convert(data));
   },
 );
 

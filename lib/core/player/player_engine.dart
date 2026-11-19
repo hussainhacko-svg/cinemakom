@@ -45,6 +45,10 @@ abstract interface class PlayerEngine {
   /// it gets over by itself.
   bool get errorsStopPlayback;
 
+  /// Whether [error] (from [errors]) says the device couldn't decode the
+  /// file, so a lower quality may play (PLAYER.md §6).
+  bool isDecoderError(String error);
+
   Stream<Duration> get position;
   Stream<Duration> get duration;
 

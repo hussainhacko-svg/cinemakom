@@ -143,5 +143,6 @@
   "playerVolume": "الصوت",
   "playerFullScreen": "ملء الشاشة",
   "playerExitFullScreen": "إنهاء ملء الشاشة",
-  "playerMuted": "الصوت مكتوم"
+  "playerMuted": "الصوت مكتوم",
+  "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}."
 }

@@ -679,5 +679,17 @@
   "playerMuted": "Muted",
   "@playerMuted": {
     "description": "Player: short note after M mutes the sound"
+  },
+  "playerQualityLowered": "This device couldn't play {from}, so it switched to {to}.",
+  "@playerQualityLowered": {
+    "description": "Player: note after the decoder failed and a lower quality was picked, e.g. 4K to 1080p",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   }
 }

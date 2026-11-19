@@ -223,6 +223,7 @@ class PlayerController extends Notifier<PlayerState> {
       clearIntro: true,
       introPinned: false,
       clearAspectRatio: true,
+      clearLoweredFrom: true,
     );
 
     final repo = _repo;
@@ -382,7 +383,12 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 
-  void _onError(String _) {
+  void _onError(String error) {
+    if (state.phase != PlayerPhase.failed &&
+        engine.isDecoderError(error) &&
+        _lowerQuality()) {
+      return;
+    }
     // On mpv, mid-play errors are often blips it gets over by itself; the
     // watchdog and the early-completion check catch the real failures.
     // ExoPlayer stops on every error, paused too, so it's reopened at once.
@@ -391,6 +397,24 @@ class PlayerController extends Notifier<PlayerState> {
         (phase == PlayerPhase.ready && engine.errorsStopPlayback)) {
       unawaited(_recover());
     }
+  }
+
+  /// The device can't decode this quality (4K on some phones): the next
+  /// one down, at the same place, for the rest of the session. `false` when
+  /// there's none lower; then the usual recovery runs, and fails.
+  bool _lowerQuality() {
+    final current = state.quality;
+    if (current == null) return false;
+    // Streams are sorted highest first.
+    final sources = state.sources;
+    final i = sources.indexWhere((s) => s.url == current.url);
+    if (i < 0 || i + 1 >= sources.length) return false;
+    final lower = sources[i + 1];
+    // selectQuality sets the new quality at once; the note needs both.
+    final opening = selectQuality(lower);
+    state = state.copyWith(loweredFrom: current);
+    unawaited(opening);
+    return true;
   }
 
   void _onSubtitleError() {

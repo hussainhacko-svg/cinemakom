@@ -471,6 +471,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ..listen(provider.select((s) => s.seekPreview), (_, preview) {
         if (preview != null) _prefetch(preview);
       })
+      ..listen(provider.select((s) => s.loweredFrom), (_, from) {
+        final to = _state.quality;
+        if (from == null || to == null) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.playerQualityLowered(
+                qualityChipLabel(from),
+                qualityChipLabel(to),
+              ),
+            ),
+          ),
+        );
+      })
       ..listen(provider.select((s) => s.subtitleFailed), (_, failed) {
         if (!failed) return;
         ScaffoldMessenger.of(context)
@@ -691,7 +705,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                     ),
                   if (failed)
-                    _Failure(error: state.error, onRetry: controller.retry),
+                    _Failure(
+                      error: state.error,
+                      onRetry: controller.retry,
+                      onBack: _back,
+                    ),
                   if (state.resumedFrom case final from?
                       when phase == PlayerPhase.ready && !_locked)
                     _Resumed(from: from, onStartOver: controller.startOver),
@@ -956,30 +974,43 @@ class _Toast extends StatelessWidget {
 /// API errors go through [ErrorView] (it asks the status page once); stream
 /// failures say so in the player's own words.
 class _Failure extends StatelessWidget {
-  const _Failure({required this.error, required this.onRetry});
+  const _Failure({
+    required this.error,
+    required this.onRetry,
+    required this.onBack,
+  });
 
   final Object? error;
   final VoidCallback onRetry;
+
+  /// A title with no streams: trying again won't help (PLAYER.md §6).
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final error = this.error;
+    final unavailable = error == PlayerFailure.unavailable;
     final Widget body = error is ApiException
         ? ErrorView(error: error, onRetry: onRetry)
         : Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                error == PlayerFailure.unavailable
-                    ? l10n.playerUnavailable
-                    : l10n.playerFailed,
+                unavailable ? l10n.playerUnavailable : l10n.playerFailed,
                 textAlign: TextAlign.center,
                 style: MarqueeText.of(context).body
                     .copyWith(color: MarqueeColors.creamSoft),
               ),
               const SizedBox(height: MarqueeSpace.l),
-              OutlinedButton(onPressed: onRetry, child: Text(l10n.retry)),
+              unavailable
+                  ? OutlinedButton(
+                      onPressed: onBack,
+                      child: Text(
+                        MaterialLocalizations.of(context).backButtonTooltip,
+                      ),
+                    )
+                  : OutlinedButton(onPressed: onRetry, child: Text(l10n.retry)),
             ],
           );
     return Center(

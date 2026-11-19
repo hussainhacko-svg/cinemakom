@@ -195,6 +195,30 @@ void main() {
     });
   });
 
+  test('a decoder error moves down one quality, then fails at the bottom', () {
+    fakeAsync((async) {
+      final env = start(async);
+      env.engine.emitReady(at: const Duration(minutes: 5));
+      env.engine.emitError('decoder: renderer');
+      env.flush();
+      expect(env.state.quality!.height, 720);
+      expect(env.state.loweredFrom!.height, 1080);
+      expect(env.engine.opened.last.start, const Duration(minutes: 5));
+
+      env.engine.emitError('decoder: renderer');
+      env.flush();
+      expect(env.state.quality!.height, 480);
+      // Nothing lower: the usual recovery, which keeps failing.
+      for (final delay in PlayerController.recoveryDelays) {
+        env.engine.emitError('decoder: renderer');
+        env.flush(delay);
+      }
+      env.engine.emitError('decoder: renderer');
+      env.flush();
+      expect(env.state.phase, PlayerPhase.failed);
+    });
+  });
+
   test('errors while playing are left to the player', () {
     fakeAsync((async) {
       final env = start(async);

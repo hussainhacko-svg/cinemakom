@@ -17,6 +17,9 @@ class FakeEngine implements PlayerEngine {
   @override
   final bool errorsStopPlayback;
 
+  @override
+  bool isDecoderError(String error) => error.startsWith('decoder:');
+
   final opened = <({EngineSource source, Duration start, bool play})>[];
   final subtitles = <EngineSubtitle?>[];
   final seeks = <Duration>[];

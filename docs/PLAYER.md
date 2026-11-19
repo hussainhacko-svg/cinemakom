@@ -112,7 +112,7 @@ lib/
 | `network-timeout` | `20` | The default 5 s drops slow CDN nodes on the tail read that non-fast-start files need |
 | `demuxer-readahead-secs` / `cache-secs` | 20 / 60 (desktop), 20 / 30 (mobile) | Fast seeks near the playhead without filling a phone's memory |
 | `cache-on-disk` | `yes` desktop, **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0) |
-| `framedrop` | default desktop, **`no` mobile** | On a real phone (CPH2423) 4K dropped 14–20 frames per 25 s that were never late (`vo-delayed-frame-count` 0): a visible stutter. With `no`: 0 dropped, full 23.976 fps. Rendering tweaks (1080p surface, `gpu-dumb-mode`, `opengl-swapinterval=0`, `display-resample`) didn't help; `mediacodec_embed` only halved it. `integration_test/player_4k_test.dart` measures it |
+| `framedrop` | default desktop, **`no` mobile** | On a real phone (CPH2423) 4K dropped 14–20 frames per 25 s that were never late (`vo-delayed-frame-count` 0): a visible stutter. With `no`: 0 dropped, full 23.976 fps. Rendering tweaks (1080p surface, `gpu-dumb-mode`, `opengl-swapinterval=0`, `display-resample`) didn't help; `mediacodec_embed` only halved it. (Measured by `player_4k_test.dart`, removed at M9 with decision 7.) |
 | `hwdec` | `auto` (default) | 4K H.264 needs hardware decoding on phones. Fall back to `no` once on decoder errors |
 | `libass` | `true` | Needed for the styled ASS track (§7.2) |
 | `sub-visibility` | toggled per track at runtime | Plain tracks are drawn by Flutter, styled tracks by libass (§7.2). Works at runtime (M0) |
@@ -139,8 +139,8 @@ There are no HTTP reconnect options. On Linux, mpv 0.42 reads over its curl back
 | The network drops mid-play | mpv reconnects first (M0). If playback is "playing" but the position hasn't moved for 15 s, reopen at the last position with backoff (2, 5, 10 s). Show "Reconnecting…" over the loader. This watchdog also catches a video output that failed silently (M0 on the emulator: `playing=true`, no error, no frames) |
 | **Android (ExoPlayer): an error mid-play** | ExoPlayer retries a failed read itself; when it gives up (an expired URL, a long drop) it **stops for good**, paused too, and video_player resets the position and duration to 0. So the engine keeps the last good values (it never sends that 0), reports `errorsStopPlayback`, and the controller recovers at once, at the same position and keeping pause, instead of waiting for the watchdog. ExoPlayer never "completes" early. A failed open stays "buffering", like mpv. *Without this, the film reopened at 0:00 after 15 s, or stayed stuck when paused (fixed 2026-11-19).* |
 | The streams or details request fails | `ErrorView` (it asks the status page once, so "Cinemana is having problems" when it's down) with **Try again** |
-| No streams at all | "This title isn't available right now", with Back |
-| Decoder error | mpv: retry once with `hwdec=no`. ExoPlayer has no software switch, so go straight to the next lower quality. If 4K still fails, offer the next lower quality. *Not built yet (M9): today a decoder error goes through the normal recovery, then the error view* |
+| No streams at all | "This title isn't available right now", with Back (not Try again, which can't help) |
+| Decoder error | mpv falls back to software decoding by itself (`hwdec=auto`), so its errors aren't read. ExoPlayer has no software switch: `PlayerEngine.isDecoderError` spots its renderer errors, and the player moves to the next lower quality at the same place, for the rest of the session, with a note ("This device couldn't play 4K, so it switched to 1080p."). At the lowest quality the usual recovery runs, then the error view. *Built in M9* |
 | A subtitle fails to load | Keep playing without it and show a short note: "Subtitles couldn't be loaded" |
 | The status page is checked | Only after API calls fail, never for CDN errors |
 
@@ -306,7 +306,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 
 | # | Milestone | Done when |
 |---|---|---|
-| **M0** ✅ | **Spike** (`integration_test/player_spike_test.dart`, removed at M9; results in §13): play a 1080p non-fast-start movie, a 4K movie and an anime episode with headers; measure start time; hybrid subtitles (Flutter-drawn SRT plus libass ASS with the bundled font, on Android and Linux); `sub-fonts-dir` at runtime on desktop; how a 403 and a network drop look on the error/log streams; quality switch at a position; 4K on the emulator and on a real phone | The numbers and findings are written into §5 and §13 of this file, and any choice they overturn is changed here first |
+| **M0** ✅ | **Spike** (`integration_test/player_spike_test.dart`, removed at M9 ✅; results in §13): play a 1080p non-fast-start movie, a 4K movie and an anime episode with headers; measure start time; hybrid subtitles (Flutter-drawn SRT plus libass ASS with the bundled font, on Android and Linux); `sub-fonts-dir` at runtime on desktop; how a 403 and a network drop look on the error/log streams; quality switch at a position; 4K on the emulator and on a real phone | The numbers and findings are written into §5 and §13 of this file, and any choice they overturn is changed here first |
 | **M1** ✅ | `PlayerEngine`, `MediaKitEngine`, `PlayerController` and `PlayerState`, no UI. `pickQuality`, subtitle choice, recovery (403 → `streams(fresh: true)`), `streams(fresh:)` in `MediaRepository` | Unit tests with `FakeEngine` cover open, quality pick, subtitle pick, 403 recovery, network-drop recovery and errors |
 | **M2** ✅ | `/watch/:id` route, `openPlayer`, the player screen with the basic controls (back, play/pause, ±10 s, seek bar, times, buffering loader, auto-hide). Play wired from Details, the hero and episode rows | A movie and an episode play from the app, on Android and Linux |
 | **M3** ✅ | Chip menus: subtitles (with size and delay), quality, speed, fit. Settings → Subtitle size | Every switch keeps the position and the other choices |
@@ -315,7 +315,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 | **M6** ✅ | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't. *Checked on the owner's phone and on Linux (live API) 2026-11-19* |
 | **M7** ✅ | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on a real Android phone (the emulator shows no video), including the ExoPlayer failure checks in §13. *Checked on the owner's phone 2026-11-19* |
 | **M8** ✅ (Linux) | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows. *Linux ✅ (owner, 2026-11-19); Windows not run yet (no machine)* |
-| **M9** | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked |
+| **M9** ✅ | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked. *Done 2026-11-19: results in §15. Windows still to run* |
 
 ## 11. Testing
 - **Unit:**
@@ -373,7 +373,7 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 3. An expired or forged URL signature (debug build): the player fetches fresh URLs and plays.
 4. A quality switch and an episode switch keep the picture.
 
-`integration_test/player_engine_test.dart -d <phone>` runs the live engine checks (playback, quality switch, 4K, subtitles) on ExoPlayer; `player_spike_test.dart` measures mpv and no longer matters for Android.
+`integration_test/player_engine_test.dart -d <phone>` runs the live engine checks (playback, quality switch, 4K, subtitles) on ExoPlayer. The mpv spike and 4K tests were removed at M9.
 
 ## 14. Risks and open questions
 
@@ -389,3 +389,31 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 | Some Android phones can't decode 4K in hardware | ExoPlayer can't fall back to software like mpv, so the decoder fallback goes to a lower quality (§6, M9) |
 | Windows has no dev machine yet | M8 needs a Windows machine or VM. The NVIDIA Linux bug (AGENTS.md) doesn't affect Windows |
 | `volume_controller` and `screen_brightness` differ between Android and iOS | Wrap them in the gesture layer only, and test both platforms when iOS starts (PLAN.md Phase 6) |
+
+## 15. M9 results (2026-11-19)
+
+**Frame times on the owner's phone** (OnePlus CPH2423, 120 Hz), profile mode, **4K Avengers: Endgame playing on ExoPlayer**, from `integration_test/player_perf_test.dart`:
+
+| Scenario | Frames | UI p99 | Raster p99 | Slowest | Over 8.3 ms |
+|---|---|---|---|---|---|
+| Playing, controls up (clock and seek bar ticking) | 957 | 2.4 ms | 7.3 ms | 10.4 ms | 0.3% |
+| Controls fading in and out | 503 | 4.4 ms | 7.5 ms | 10.3 ms | 0.2% |
+| Scrubbing the seek bar with previews | 598 | 1.0 ms | 5.4 ms | 6.1 ms | 0% |
+| Opening and closing the quality menu | 729 | 7.2 ms | 8.0 ms | 13.0 ms | 0.7% |
+
+No frame came near 16.7 ms, the §1 target (60 fps); the controls nearly hold 120 Hz. The decoder ran 3840×2160 at 24 fps with no dropped frames. **Memory:** 633–720 MB (RSS) after a minute of 4K.
+
+**The §1 targets:**
+
+| Area | Result |
+|---|---|
+| Start | About 1 s on Linux (M0). On the phone, 4K starts within seconds (owner) |
+| Seeking | Inside the buffer: instant. Outside: 0.7–1.0 s on Linux (M0). One deep seek in a 2.5 h film took over 30 s once in three end-to-end runs (a slow CDN node) |
+| Never stuck | Every failure ends in a message with Try again (or Back): expired URLs, dropped connections (ExoPlayer and mpv), early "completed", failed opens, decoder errors, API errors (30 s timeout, one retry) |
+| Never lose progress | Saved every 10 s, on pause, seek, episode change, exit and when the app goes to the background (M4, checked with a force-stop) |
+| Smooth controls | Above |
+| Switching keeps your place | Unit and widget tests; checked on the phone (M3, M5) |
+| Works everywhere | Android and Linux, touch and keyboard/mouse, English and Arabic (RTL pass on Linux screenshots). **Windows not run yet** (no machine); iOS comes with Phase 6 |
+
+**Tests:** `integration_test/player_test.dart` (the player end to end on the live API: a movie and an episode) passes on Linux. The M0 spike and the mpv 4K test were removed.
+

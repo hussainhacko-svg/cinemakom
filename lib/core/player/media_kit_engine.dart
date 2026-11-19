@@ -67,6 +67,11 @@ class MediaKitEngine implements PlayerEngine {
   @override
   bool get errorsStopPlayback => false;
 
+  /// mpv falls back to software decoding by itself (`hwdec=auto`), and its
+  /// error text isn't parsed (PLAYER.md §13).
+  @override
+  bool isDecoderError(String error) => false;
+
   @override
   Stream<Duration> get position => _position.stream;
   @override

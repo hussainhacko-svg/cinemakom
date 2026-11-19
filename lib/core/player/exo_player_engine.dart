@@ -62,6 +62,15 @@ class ExoPlayerEngine implements PlayerEngine {
   @override
   bool get errorsStopPlayback => true;
 
+  /// ExoPlayer names the failing renderer, e.g. "MediaCodecVideoRenderer
+  /// error, … format_supported=NO_EXCEEDS_CAPABILITIES" for a 4K file the
+  /// phone can't decode.
+  @override
+  bool isDecoderError(String error) =>
+      error.contains('MediaCodecVideoRenderer') ||
+      error.contains('DecoderInitializationException') ||
+      error.contains('Decoder init failed');
+
   @override
   Stream<Duration> get position => _position.stream;
   @override

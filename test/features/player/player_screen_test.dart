@@ -286,9 +286,7 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
   });
 
-  testWidgets('a title without streams says so, with Try again', (
-    tester,
-  ) async {
+  testWidgets('a title without streams says so, with Back', (tester) async {
     await pumpApp(
       tester,
       width: 844,
@@ -297,7 +295,30 @@ void main() {
     );
     await openMovie(tester);
     expect(find.text("This video isn't available right now."), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Try again'), findsNothing);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Back'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(PlayerScreen), findsNothing);
+  });
+
+  testWidgets('an undecodable quality drops one step, with a note', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openMovie(tester);
+    engine.emitReady(at: const Duration(minutes: 5));
+    await tester.pump();
+    engine.emitError('decoder: MediaCodecVideoRenderer error');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(engine.opened, hasLength(2));
+    expect(engine.opened.last.start, const Duration(minutes: 5));
+    expect(
+      find.text("This device couldn't play 1080p, so it switched to 720p."),
+      findsOneWidget,
+    );
   });
 
   testWidgets('in Arabic the top bar flips but the seek bar stays LTR', (

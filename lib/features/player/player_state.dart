@@ -63,6 +63,7 @@ class PlayerState {
     this.aspectRatio,
     this.volume = 100,
     this.muted = false,
+    this.loweredFrom,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -120,6 +121,10 @@ class PlayerState {
   final double volume;
   final bool muted;
 
+  /// The quality the device couldn't decode, after the player moved down
+  /// from it (the screen says so once).
+  final VideoSource? loweredFrom;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -161,6 +166,8 @@ class PlayerState {
     bool clearAspectRatio = false,
     double? volume,
     bool? muted,
+    VideoSource? loweredFrom,
+    bool clearLoweredFrom = false,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -188,5 +195,6 @@ class PlayerState {
     aspectRatio: clearAspectRatio ? null : (aspectRatio ?? this.aspectRatio),
     volume: volume ?? this.volume,
     muted: muted ?? this.muted,
+    loweredFrom: clearLoweredFrom ? null : (loweredFrom ?? this.loweredFrom),
   );
 }
