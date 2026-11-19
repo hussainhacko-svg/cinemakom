@@ -83,7 +83,11 @@ lib/
       database.dart             # drift DB: downloads, watch_history, favorites
       preferences.dart          # language, default resolution, default subtitle
     platform/
-      platform_info.dart        # isDesktop / isMobile helpers
+      platform_info.dart        # isDesktop / isMobile / isAndroid helpers
+    player/
+      player_engine.dart        # PlayerEngine interface (tests use test/features/player/fake_engine.dart)
+      media_kit_engine.dart     # the only file that imports media_kit: mpv options, headers, errors
+      subtitle_fonts.dart       # the bundled libass font, copied to disk on desktop and iOS
   data/
     models/                     # MediaItem, MediaDetails, Episode, VideoSource, SubtitleTrack,
                                 # Category, Language, StaffMember, StaffPage, VideoGroup, SkipRange
@@ -100,8 +104,10 @@ lib/
       downloads_repository.dart # background_downloader + drift
   features/
     home/  search/  genre/  details/  browse/ ("See all")  onboarding/ (language picker)  settings/
+    player/                     # player_screen, player_controller (session, recovery), player_state,
+                                # quality, subtitles, widgets/ (controls_overlay, seek_bar, subtitle_layer)
     library/  downloads/        # placeholders until Phases 5 and 6
-    player/  staff/  faq/       # to come
+    staff/  faq/                # to come
     debug/                      # debug-build-only API check screen (Phase 1)
       # each: <feature>_screen.dart, widgets/, <feature>_providers.dart
 test/
@@ -112,6 +118,8 @@ test/
   data/  features/  core/       # paging, screen and settings tests
 integration_test/
   api_debug_test.dart           # live check of every endpoint
+  player_engine_test.dart       # live check of PlayerController on the real MediaKitEngine
+  player_spike_test.dart        # Phase 4 M0 measurements (removed at M9)
   screenshots_test.dart         # drives the real app (live API) and saves PNGs of the main screens
 ```
 
@@ -232,7 +240,9 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - [x] **Done when:** you can browse, search and open details for movies and series on Android and Linux. Checked by widget tests on fixtures, and `integration_test/screenshots_test.dart` against the live API on Linux and the Android emulator.
 
 ### Phase 4: Player
-**The detailed plan is [`PLAYER.md`](PLAYER.md)**. *Progress (2026-11-19): M0 (measurements), M1 (engine and controller) and M2 (player screen, Play wired from Details, the hero and episode rows) are done. Next: M3 (subtitle size and delay), after the owner's phone check (PLAYER.md §13).*: targets, decisions, architecture, mpv setup, every feature, the controls, platform specifics, milestones M0–M9 and tests.
+**The detailed plan is [`PLAYER.md`](PLAYER.md)**: targets, decisions, architecture, mpv setup, every feature, the controls, platform specifics, milestones M0–M9 and tests.
+- *Progress (2026-11-19):* M0 (measurements), M1 (engine and controller) and M2 (player screen; Play wired from Details, the hero and episode rows) are done.
+- **Next:** the owner tests a release APK on a real Android phone (PLAYER.md §13: picture, picture after a quality or episode switch, styled subtitles, 4K). Apply what it shows (e.g. `MediaKitEngine.recreatePerFile`), then M3 (subtitle size and delay).
 - *Decisions (2026-11-19):*
   - The drift `watch_history` table is built in this phase, so resume works now. Phase 5 adds the Library UI.
   - The seek bar always runs left → right, in Arabic too.
