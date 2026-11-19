@@ -33,6 +33,10 @@ fvm flutter test integration_test/screenshots_test.dart -d linux  # PNGs of the 
 - **One shared header map** (`User-Agent`, `Referer`, `Origin`, see API.md) is used for API calls, images, video streams and downloads. Never copy it somewhere else.
 - **The JSON is inconsistent.** IDs and titles come under several different key names. Parse with the tolerant helpers in `lib/data/parsers`, not generated `fromJson`. Parsers must skip bad items and never throw.
 - Keep new endpoints in `api_endpoints.dart` and document them in `docs/API.md` in the same change.
+- **Long lists** (anything paged) are a `MediaSource` in `lib/data/paging/media_sources.dart`, shown through `pagedMediaProvider` with `PagedGridSlivers` (grid) or `SourceRow` (a row). Don't write paging logic in screens. Lists scroll infinitely (decision 2026-11-19).
+- **Opening pages:** use `openTitle` / `openGenre` / `openList` (`lib/app/navigation.dart`). They push inside the current tab, so the nav bar stays and back works. New page types get a route in `_browse` in `router.dart`.
+- **Images** go through `MediaImage` (shared headers, decoded at display size, no fade). **Errors** go through `ErrorView` / `errorMessage` (it asks the status page once). **Loading** is `BulbLoader`, never a spinner or shimmer.
+- **No automatic provider retries:** every `ProviderScope` / `ProviderContainer` uses `retry: noRetry` (from `main.dart`). `ApiClient` already retries a failed GET once; screens show errors with "Try again".
 
 ## Conventions
 - Dart style: `flutter_lints` / analysis_options. Prefer `final`, `const` constructors, and small widgets.
@@ -41,7 +45,7 @@ fvm flutter test integration_test/screenshots_test.dart -d linux  # PNGs of the 
 - **Localization:** every user-facing string goes in the ARB files (`app_ar.arb`, `app_en.arb`). The app supports **English (default) and Arabic**. On first launch it asks the user which language to use. Arabic switches the layout to RTL, so every screen must work in both directions. Use directional APIs (`EdgeInsetsDirectional`, `AlignmentDirectional`, `start`/`end`), never hardcoded left or right.
 - **Platforms:** check `isDesktop` / `isMobile` through `lib/core/platform`. Touch gestures (brightness and volume swipes, double-tap) are mobile only. Desktop needs keyboard shortcuts and mouse hover.
 - **Responsive layout:** below 600 dp width use a bottom `NavigationBar`, at 600 dp and up use a `NavigationRail`, and from 1200 dp an extended rail. The tabs are Home, Search, Library, Downloads and Settings. Each screen's layout is in DESIGN.md §8.
-- **Tests:** when you add or change a parser, add or update a fixture in `test/fixtures/` and a test in `test/parsers/`. Fixtures are real API responses captured by `tool/capture_fixtures.dart`.
+- **Tests:** when you add or change a parser, add or update a fixture in `test/fixtures/` and a test in `test/parsers/`. Fixtures are real API responses captured by `tool/capture_fixtures.dart`. Widget tests of screens use `pumpApp()` and `fixtureApi()` from `test/helpers/app_harness.dart` (no network, no images). `pumpAndSettle` never returns while a `BulbLoader` is on screen (it animates), so make sure loads finish. To *see* a change, run `integration_test/screenshots_test.dart` on Linux and look at the PNGs.
 
 ## Reference app (`../cinematy`): keep token use low
 - Useful files: `app/src/main/java/com/example/cinematy/network/ApiService.kt` and `models/MediaModels.kt` (the parsers to port).

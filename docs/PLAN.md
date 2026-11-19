@@ -57,10 +57,17 @@ Organized by feature, in layers: **data → domain → presentation**, with Rive
 
 ```
 lib/
-  main.dart                     # bootstrap: MediaKit.ensureInitialized, sqflite ffi on desktop, ProviderScope
+  main.dart                     # bootstrap: MediaKit.ensureInitialized, sqflite ffi on desktop, ProviderScope (retry: noRetry)
   app/
-    app.dart                    # MaterialApp.router, theme, locale, RTL
-    router.dart                 # go_router + tab shell
+    app.dart                    # splash until startup is done, then MaterialApp.router; locale, theme and RTL from settings
+    router.dart                 # go_router: /welcome, the 5-tab StatefulShellRoute, and the per-tab browse routes
+    navigation.dart             # openTitle / openGenre / openList: push a page inside the current tab
+    catalog_providers.dart      # apiLanguageProvider, genresProvider, categoryLanguagesProvider
+    splash_screen.dart          # mark + BulbLoader, retry when startup fails
+    shell/app_shell.dart        # bottom bar / rail / extended rail by width (Breakpoints)
+    widgets/                    # shared UI: TabPage, SubPageHeader/BackPill, MediaImage, PosterCard, MediaRow/SourceRow,
+                                # PagedGridSlivers, ErrorView, SectionHeader, Segmented/FilterPill, BulbLoader/BulbRow,
+                                # showChoicePicker, media_text.dart (titles, metadata, durations, episode labels)
     brand/                      # CinemakomMark / CinemakomLogo, brand_paths.g.dart (generated)
     theme/                      # the one Marquee theme: colour tokens, type scale, ThemeData
     l10n/                       # app_ar.arb, app_en.arb (+ generated app_localizations*.dart)
@@ -81,6 +88,9 @@ lib/
     models/                     # MediaItem, MediaDetails, Episode, VideoSource, SubtitleTrack,
                                 # Category, Language, StaffMember, StaffPage, VideoGroup, SkipRange
     parsers/                    # tolerant parsers ported from MediaModels.kt
+    paging/
+      media_sources.dart        # MediaSource: one class per paged list (genre, catalog, latest, featured, group, search)
+      paged_media.dart          # pagedMediaProvider: loads a source page by page, de-duplicates, kept 5 min after use
     repositories/
       catalog_repository.dart   # home rows, groups, featured, latest, genres, by-category(+language), FAQ
       search_repository.dart    # base64 title search + AdvancedSearch, merged, de-duplicated and ranked
@@ -89,14 +99,20 @@ lib/
       library_repository.dart   # favorites + continue watching (drift)
       downloads_repository.dart # background_downloader + drift
   features/
-    home/  search/  genre/  details/  player/  library/
-    downloads/  settings/  staff/  faq/  onboarding/
+    home/  search/  genre/  details/  browse/ ("See all")  onboarding/ (language picker)  settings/
+    library/  downloads/        # placeholders until Phases 5 and 6
+    player/  staff/  faq/       # to come
     debug/                      # debug-build-only API check screen (Phase 1)
       # each: <feature>_screen.dart, widgets/, <feature>_providers.dart
 test/
   fixtures/                     # captured real JSON responses, one per endpoint
   parsers/                      # parser unit tests run against fixtures
-  repositories/                 # tests against a mocked Dio
+  repositories/                 # tests against a fake ApiClient (fake_api_client.dart)
+  helpers/app_harness.dart      # pumpApp() + fixtureApi(): the whole app on fixtures, no network, no images
+  data/  features/  core/       # paging, screen and settings tests
+integration_test/
+  api_debug_test.dart           # live check of every endpoint
+  screenshots_test.dart         # drives the real app (live API) and saves PNGs of the main screens
 ```
 
 Key rules:
@@ -216,6 +232,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - [x] **Done when:** you can browse, search and open details for movies and series on Android and Linux. Checked by widget tests on fixtures, and `integration_test/screenshots_test.dart` against the live API on Linux and the Android emulator.
 
 ### Phase 4: Player
+- *Where it plugs in (left by Phase 3):* the disabled **Play** button in `features/details/details_screen.dart` (`onPressed: null`), the hero's Play in `features/home/widgets/home_hero.dart` (opens details for now), and the episode rows in `features/details/widgets/episode_list.dart` (not tappable yet). Settings already store the default quality and subtitles (`settingsProvider`; `PreferredQuality.height` matches `VideoSource.height`).
 - media_kit with headers, a quality menu, external subtitles (plain SRT, plus "Arabic (styled)" ASS for anime with the bundled Arabic fallback font for libass, see §4.1), speed, fit modes, next episode, saving position and resuming.
 - **Mobile:** gestures, forced landscape, wakelock.
 - **Desktop:** keyboard shortcuts (space, ←/→ seek, ↑/↓ volume, F fullscreen, Esc), mouse-hover controls, fullscreen through `window_manager`.

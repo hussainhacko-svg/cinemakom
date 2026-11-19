@@ -16,5 +16,6 @@ fvm flutter analyze
 fvm flutter test
 fvm flutter run -d linux     # Linux needs libmpv: sudo pacman -S mpv
 fvm dart run tool/api_contract_check.dart   # check the live API still matches docs/API.md
+fvm flutter test integration_test/screenshots_test.dart -d linux   # PNGs of the main screens (live API) in build/screenshots
 python3 tool/brand/generate.py              # regenerate the logo and all app icons
 ```
