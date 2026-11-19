@@ -218,6 +218,7 @@ Every error message goes in the ARB files.
 **Visibility:**
 - Controls show on tap, mouse move or a key press, and hide after 3 s of no input while playing.
 - They stay visible while paused, while a menu is open, while scrubbing and during errors.
+- A tap on the video hides them, paused too. A tap outside an open menu (or back, or a swipe down on the sheet) closes the menu and hides them; picking something keeps them up.
 - **Skip intro** and the Up next card stay visible when the controls hide.
 
 **Menus:** each chip opens a bottom sheet below 600 dp and an anchored popover from 600 dp (like `showChoicePicker`). One row per choice, with the current one in `bulb` and a check. Playback continues while a menu is open.

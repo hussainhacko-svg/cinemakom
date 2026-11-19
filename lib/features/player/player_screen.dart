@@ -115,16 +115,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
   }
 
+  /// A tap on the video: hides the controls (paused too), or brings them back.
   void _toggle() {
-    if (_visible && _state.playing) {
-      _hideTimer?.cancel();
-      setState(() => _visible = false);
+    if (_visible) {
+      _hide();
     } else {
       _show();
     }
   }
 
-  /// Opens a menu; the controls stay up while it's open.
+  void _hide() {
+    _hideTimer?.cancel();
+    if (_visible) setState(() => _visible = false);
+  }
+
+  /// Opens a menu; the controls stay up while it's open. Closing it without
+  /// a pick (a tap on the video, back, a swipe down) hides them too.
   Future<T?> _menu<T>(
     Rect anchor,
     WidgetBuilder builder, {
@@ -139,7 +145,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       width: width,
     );
     _menuOpen = false;
-    if (mounted) _scheduleHide();
+    if (!mounted) return picked;
+    if (picked == null) {
+      _hide();
+    } else {
+      _scheduleHide();
+    }
     return picked;
   }
 
@@ -158,7 +169,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ---------------------------------------------------------------------------
   // Menus (PLAYER.md §8)
 
-  void _subtitleMenu(Rect anchor) => _menu<void>(
+  void _subtitleMenu(Rect anchor) => _menu<bool>(
     anchor,
     (_) => SubtitleMenu(request: widget.request),
     width: SubtitleMenu.popoverWidth,
@@ -368,34 +379,37 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   lifted: _visible,
                   scale: subtitleScale,
                 ),
+                // Wraps the controls: the scrim takes every hit, so a tap
+                // detector under it would never fire. Buttons inside still
+                // win their own taps.
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _toggle,
-                ),
-                IgnorePointer(
-                  ignoring: !_visible,
-                  child: AnimatedOpacity(
-                    opacity: _visible ? 1 : 0,
-                    duration: const Duration(milliseconds: 150),
-                    curve: Curves.easeOut,
-                    child: ControlsOverlay(
-                      state: state,
-                      controller: controller,
-                      busy: busy || failed,
-                      onBack: _back,
-                      onSubtitles: _subtitleMenu,
-                      onQuality: (anchor) => _qualityMenu(l10n, anchor),
-                      onSpeed: (anchor) => _speedMenu(l10n, anchor),
-                      onFit: () => _cycleFit(l10n),
-                      onMore: (anchor) => _moreMenu(l10n, anchor),
-                      onScrub: (at) {
-                        _scrubbing = at != null;
-                        if (_scrubbing) {
-                          _hideTimer?.cancel();
-                        } else {
-                          _scheduleHide();
-                        }
-                      },
+                  child: IgnorePointer(
+                    ignoring: !_visible,
+                    child: AnimatedOpacity(
+                      opacity: _visible ? 1 : 0,
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOut,
+                      child: ControlsOverlay(
+                        state: state,
+                        controller: controller,
+                        busy: busy || failed,
+                        onBack: _back,
+                        onSubtitles: _subtitleMenu,
+                        onQuality: (anchor) => _qualityMenu(l10n, anchor),
+                        onSpeed: (anchor) => _speedMenu(l10n, anchor),
+                        onFit: () => _cycleFit(l10n),
+                        onMore: (anchor) => _moreMenu(l10n, anchor),
+                        onScrub: (at) {
+                          _scrubbing = at != null;
+                          if (_scrubbing) {
+                            _hideTimer?.cancel();
+                          } else {
+                            _scheduleHide();
+                          }
+                        },
+                      ),
                     ),
                   ),
                 ),

@@ -88,11 +88,42 @@ void main() {
     await tester.pump();
     expect(opacity(), 1);
 
-    // Paused: the controls stay.
+    // Paused: the controls stay, until a tap on the video hides them.
     await tester.tap(find.byTooltip('Pause'));
     await tester.pump(const Duration(seconds: 5));
     expect(opacity(), 1);
     expect(find.byTooltip('Play'), findsOneWidget);
+    await tester.tapAt(const Offset(120, 200)); // clear of the centre buttons
+    await tester.pump();
+    expect(opacity(), 0);
+  });
+
+  testWidgets('a tap outside a menu closes it and hides the controls', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openMovie(tester);
+    engine.emitReady();
+    await tester.pump();
+
+    await tester.tap(find.text('1080p'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(choiceMenu, findsOneWidget);
+
+    await tester.tapAt(const Offset(120, 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(choiceMenu, findsNothing);
+    final opacity = tester
+        .widget<AnimatedOpacity>(
+          find.descendant(
+            of: find.byType(PlayerScreen),
+            matching: find.byType(AnimatedOpacity),
+          ),
+        )
+        .opacity;
+    expect(opacity, 0);
   });
 
   testWidgets('the quality menu switches at the current position', (
@@ -128,7 +159,13 @@ void main() {
   ) async {
     final engine = FakeEngine();
     final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
-    await pumpApp(tester, engine: engine, store: store, width: 844, height: 390);
+    await pumpApp(
+      tester,
+      engine: engine,
+      store: store,
+      width: 844,
+      height: 390,
+    );
     await openMovie(tester);
     engine.emitReady();
     await tester.pump();

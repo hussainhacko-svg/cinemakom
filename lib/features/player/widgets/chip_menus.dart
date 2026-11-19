@@ -360,7 +360,8 @@ class SubtitleMenu extends ConsumerWidget {
           selected: o == state.subtitle,
           onTap: () {
             controller.selectSubtitle(o);
-            Navigator.of(context).pop();
+            // A pick, so the player keeps its controls up (null = dismissed).
+            Navigator.of(context).pop(true);
           },
         ),
     ];
