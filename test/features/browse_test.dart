@@ -4,6 +4,7 @@ import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/genre/genre_screen.dart';
+import 'package:cinemakom/features/home/home_providers.dart';
 import 'package:cinemakom/features/home/widgets/home_hero.dart';
 import 'package:cinemakom/features/search/search_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../data/paged_media_test.dart' show rawItems;
+import '../fixture.dart';
 import '../helpers/app_harness.dart';
 import '../repositories/fake_api_client.dart';
 
@@ -36,6 +38,32 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('LATEST MOVIES'), findsOneWidget);
+    });
+
+    testWidgets('the hero shows at most heroBannerCap banners', (tester) async {
+      // The live API sends 85; here 18 distinct ones.
+      final one = (fixture('banners')! as List).cast<Map<String, Object?>>();
+      final many = [
+        for (var copy = 0; copy < 3; copy++)
+          for (final b in one) {...b, 'nb': '${b['nb']}$copy'},
+      ];
+      expect(many, hasLength(18));
+      await pumpApp(
+        tester,
+        api: fixtureApi([FakeApiClient.path('banner/', many)]),
+      );
+      final banners = ProviderScope.containerOf(
+        tester.element(find.byType(HomeHero)),
+      ).read(bannersProvider).value!;
+      expect(banners, hasLength(heroBannerCap));
+      expect(heroBannerCap, 10);
+      expect(
+        tester
+            .widget<PageView>(find.byType(PageView))
+            .childrenDelegate
+            .estimatedChildCount,
+        10,
+      );
     });
 
     testWidgets('the hero moves on by itself, but not under a finger', (
