@@ -4,6 +4,7 @@ import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/genre/genre_screen.dart';
+import 'package:cinemakom/features/home/widgets/home_hero.dart';
 import 'package:cinemakom/features/search/search_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +28,7 @@ void main() {
       await pumpApp(tester);
       // The first banner, uppercased as a Latin hero title.
       expect(find.text('TENET'), findsOneWidget);
-      expect(find.text('NOW SHOWING'), findsOneWidget);
+      expect(find.text('NOW SHOWING'), findsWidgets);
       // Scroll the lazily built rows into view.
       await tester.scrollUntilVisible(
         find.text('LATEST MOVIES'),
@@ -35,6 +36,42 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('LATEST MOVIES'), findsOneWidget);
+    });
+
+    testWidgets('the hero moves on by itself, but not under a finger', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      const next = 'THE LORD OF THE RINGS: THE RINGS OF POWER';
+      // Every banner's text is laid out; only the current one is opaque.
+      double shown(String title) => tester
+          .widget<AnimatedOpacity>(
+            find
+                .ancestor(
+                  of: find.text(title),
+                  matching: find.byType(AnimatedOpacity),
+                )
+                .first,
+          )
+          .opacity;
+      final hero = find.byType(HomeHero);
+      final height = tester.getSize(hero).height;
+      expect(shown('TENET'), 1);
+
+      final finger = await tester.startGesture(
+        tester.getCenter(find.byType(PageView)),
+      );
+      await tester.pump(const Duration(seconds: 8));
+      expect(shown('TENET'), 1);
+      // Cancelled, so it isn't a tap (that opens the title).
+      await finger.cancel();
+
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pumpAndSettle();
+      expect(shown(next), 1);
+      expect(shown('TENET'), 0);
+      // A longer title doesn't move the page below.
+      expect(tester.getSize(hero).height, height);
     });
 
     testWidgets('a failing section offers a retry', (tester) async {

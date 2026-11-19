@@ -66,13 +66,13 @@ Each role is one family plus a fallback (`fontFamilyFallback`), so mixed-script 
 - **Spacing:** multiples of 4 (`4 8 12 16 20 24 32 40`). Screen gutter: 20 on phones, 32 at 600 dp and up, 48 at 1200 dp and up.
 - **Radii:** 6 thumbnails · 10 posters · 12 rows and cards · 16 panels and hero · pill for buttons (height / 2).
 - **Touch targets:** at least 44 × 44. The primary button is 48 tall.
-- **Motion:** 150 ms ease-out for state changes and 250 ms for page transitions. Nothing loops except the loading indicator. Respect `MediaQuery.disableAnimations`.
+- **Motion:** 150 ms ease-out for state changes and 250 ms for page transitions. Nothing loops except the loading indicator, and the only thing that moves by itself is the Home hero carousel (a 7 s timer, no frames in between). Respect `MediaQuery.disableAnimations`.
 
 ## 4. The motif: marquee bulbs
 
 A row of small `bulb` dots (4–6 px, gap 5–7 px, with an occasional dimmed dot) has three uses:
 - **The loading indicator:** dots light in sequence. It replaces spinners and shimmer.
-- **The hero frame:** dot rows above the banner.
+- **The hero pager:** a row of bulbs above the banner, one per banner, the current one lit.
 - **Brand marks:** the logo, the splash screen and the header.
 
 Use it sparingly. It is never a divider between every section.
@@ -80,7 +80,7 @@ Use it sparingly. It is never a divider between every section.
 ## 5. Components
 
 - **Poster card:** 2:3 image, radius 10, `title` below (1 line, ellipsis), then a `caption` with year · genre. The only badge is **4K** (`bulb` background, `onBulb` text, radius 4, at the top start corner). The placeholder is a plain `booth` block (no shimmer). Keyboard focus draws a 2 px `bulb` ring. *Lists don't say which titles have 4K (only a title's streams do), so the badge can only appear where streams are loaded.*
-- **Hero (Home):** a `booth` panel (radius 16, padding 10). It holds a bulb-dot row, then the **wide banner cover at its real 2.7:1 ratio** (radius 8), then page bars (active is a wide `bulb` bar, the others short `velvetStrong` bars). Below the panel: `eyebrow` "NOW SHOWING", `heroTitle`, `caption` meta, then **Play** (primary) and a Favorite icon button.
+- **Hero (Home):** no panel. A bulb pager (one 7 dp bulb per banner: `bulb` for the current one, `velvetStrong` for the rest; a tap goes to that banner), then a carousel of **wide banner covers at their real 2.7:1 ratio** (radius 12). On phones each banner is 90% of the width from the start gutter, so the next one peeks in at the end edge; from 900 dp the carousel takes 60% beside the text, one banner at a time. Under it: `eyebrow` "NOW SHOWING", `heroTitle`, `caption` meta, then **Play** (primary) and a Favorite icon button. The text fades with the banner, and the text block is always as tall as the tallest banner's text, so the page never shifts. It advances every 7 s; it holds under a finger, while Home is hidden and with `disableAnimations`.
 - **Continue card:** `booth` row (radius 12, padding 8) with a 56 × 84 poster, title, "Season 2 · Episode 5", a 3 px progress bar (`velvet` track, `bulb` fill) and "14 min left".
 - **Episode row:** `numeral` (bulb when in progress, `cream` when watched, `dustDim` when unwatched), then "Episode N" (the API has no episode titles), length, and progress when started. The current episode sits on `boothRaised`.
 - **Buttons:** primary = `bulb` pill, `onBulb` label with an icon. Secondary = outlined pill (`velvetStrong` border, `cream` label). Icon button = 44 px circle, `booth` fill, `velvet` border.
