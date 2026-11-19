@@ -25,6 +25,7 @@ fvm flutter run -d <android-device-id>   # `fvm flutter devices` to list
 fvm dart run tool/api_contract_check.dart  # live API contract check
 fvm flutter test integration_test/screenshots_test.dart -d linux  # PNGs of the main screens in build/screenshots, for design review
 fvm flutter test integration_test/player_engine_test.dart -d linux  # live player check (real media_kit)
+fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/scroll_perf_test.dart  # frame times on the phone at 120 Hz. Uninstalls the app first, wiping its data
 fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flutter-apk/ (phones: app-arm64-v8a-release.apk)
 ```
 **Why 3.47.9:** Flutter 3.50.0 has a Linux bug on NVIDIA's proprietary driver: the frame is drawn shifted by half the window, so you only see a quarter of the UI ([flutter#195885](https://github.com/flutter/flutter/issues/195885), [#196695](https://github.com/flutter/flutter/issues/196695)). The development machine has an NVIDIA GPU. Move back up (`fvm use <version>`, then restore `window_manager: ^0.7.0` and `sdk: ^3.14.0` in pubspec) only once a 3.50.x release fixes it, and check `fvm flutter run -d linux` renders the whole window. If a command fails because the SDK is missing, report it instead of installing toolchains yourself.

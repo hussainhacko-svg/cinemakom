@@ -102,6 +102,7 @@ Use it sparingly. It is never a divider between every section.
   - **The hero** uses the banner cover, decoded at screen width × device pixel ratio.
 - **No** `BackdropFilter`, shadows, `Opacity` animations over images, or `saveLayer` effects. Round images with `ClipRRect` only where needed, and everything else with `BoxDecoration.borderRadius`.
 - **Lists:** horizontal rows use `ListView.builder` with a fixed `itemExtent` where possible. Use `const` widgets wherever possible.
+- **Refresh rate (Android):** `MainActivity` asks for the display's fastest mode at the current resolution (`preferredDisplayModeId`). Without it, OnePlus/OPPO (ColorOS) and some other vendors hold apps that aren't on their allowlist at 60 Hz on a 120 Hz panel. It is only a preference: battery saver, thermal limits and the user's refresh setting still cap it. The frame budget is therefore **8.3 ms**, not 16.7 ms. Check with `integration_test/scroll_perf_test.dart` (see AGENTS.md).
 - **Fonts:** bundled in the app (no runtime downloads), each with its SIL OFL text in `assets/fonts/licenses/`, registered on the licenses page (`registerFontLicenses` in `main.dart`). Variable fonts where available; for IBM Plex Sans Arabic, only Regular, Medium and SemiBold.
 
 ## 7. Logo (final: mark 1, "Ticket")
