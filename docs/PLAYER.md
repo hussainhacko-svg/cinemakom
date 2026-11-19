@@ -288,7 +288,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 | **M4** ✅ | drift `database.dart`, `watch_history`, `LibraryRepository`, saving and resume, Details' Resume button, episode progress in the rows, Home's Continue watching row | Force-stop mid-episode, relaunch, and resume within 10 s of where it stopped |
 | **M5** | Series: Next episode, the Up next card and countdown, "Still watching?", the Episodes panel | A full season plays through by itself, and switching episodes keeps the choices |
 | **M6** | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't |
-| **M7** | Mobile: orientation, immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on the emulator and a real Android phone |
+| **M7** | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on the emulator and a real Android phone |
 | **M8** | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows |
 | **M9** | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked |
 
