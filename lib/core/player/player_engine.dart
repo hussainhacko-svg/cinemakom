@@ -40,6 +40,11 @@ abstract interface class PlayerEngine {
   /// doesn't offer them.
   bool get supportsStyledSubtitles;
 
+  /// Whether every error on [errors] means playback stopped for good, so
+  /// the file must be reopened. True for ExoPlayer; mpv also reports blips
+  /// it gets over by itself.
+  bool get errorsStopPlayback;
+
   Stream<Duration> get position;
   Stream<Duration> get duration;
 
@@ -53,9 +58,9 @@ abstract interface class PlayerEngine {
   Stream<bool> get completed;
 
   /// Errors from the native player, as text. They are not reliable enough to
-  /// tell an expired URL from a network failure (PLAYER.md §13), and some
-  /// come from blips the player recovers from by itself, so only act on
-  /// them while a file is opening.
+  /// tell an expired URL from a network failure (PLAYER.md §13). Unless
+  /// [errorsStopPlayback], some come from blips the player recovers from by
+  /// itself, so only act on them while a file is opening.
   Stream<String> get errors;
 
   /// An external subtitle file couldn't be loaded.

@@ -25,9 +25,9 @@ These are the targets. Every milestone below is checked against them.
 2. **The seek bar always runs left → right**, in Arabic too. The ±10 s buttons, double-tap zones and swipe-to-seek follow the same physical direction. Only the top bar's text and chips follow RTL.
 3. **Next episode autoplays with a countdown.** An "Up next" card appears near the end, and a 10 s countdown starts the next episode. **Next episode** is always available.
 4. **Extras in Phase 4:** subtitle size and delay, seek-bar previews (moved up from Phase 7), and a controls lock on mobile.
-7. **Android plays with ExoPlayer, not mpv** (*2026-11-19, after real-phone tests*). media_kit copies each decoded frame back to memory and draws it into a Flutter texture; 4K stuttered visibly on the owner's phone, even after `framedrop=no` cut the dropped frames to 0. `ExoPlayerEngine` (video_player 2.14) decodes in hardware into a Flutter texture with no copy back to memory. *Not* the SurfaceView platform view: Flutter draws that above every widget, so the controls only showed on the letterbox bars. **Confirmed on the owner's phone (2026-11-19): 4K is smooth and the controls work.** **Cost:** no styled (ASS) subtitles on Android; plain tracks are downloaded with the shared headers, parsed in Dart (SRT/VTT) and drawn by the Flutter layer as before. Desktop and iOS keep media_kit. The mpv-on-Android notes below stay for reference.
 5. **Not in Phase 4:** picture-in-picture, casting, background audio, lock-screen media controls (§12).
 6. Already decided (PLAN.md §4.1): 2160p is a normal quality, with an always-visible quality chip. "Arabic (styled)" is an extra subtitle choice for ASS tracks. Stream URLs are fetched right before playing and again on a 403. When the API fails, ask the status page once.
+7. **Android plays with ExoPlayer, not mpv** (*2026-11-19, after real-phone tests*). media_kit copies each decoded frame back to memory and draws it into a Flutter texture; 4K stuttered visibly on the owner's phone, even after `framedrop=no` cut the dropped frames to 0. `ExoPlayerEngine` (video_player 2.14) decodes in hardware into a Flutter texture with no copy back to memory. *Not* the SurfaceView platform view: Flutter draws that above every widget, so the controls only showed on the letterbox bars. **Confirmed on the owner's phone (2026-11-19): 4K is smooth and the controls work.** **Cost:** no styled (ASS) subtitles on Android; plain tracks are downloaded with the shared headers, parsed in Dart (SRT/VTT) and drawn by the Flutter layer as before. Desktop and iOS keep media_kit. Where the two engines behave differently, this file says so with **Android (ExoPlayer)**; the mpv-on-Android findings in §13 stay for reference.
 
 ## 3. What already exists
 
@@ -41,8 +41,8 @@ These are the targets. Every milestone below is checked against them.
 | Default quality and subtitles | `settingsProvider` (`PreferredQuality.height` = `VideoSource.height`) | |
 | Shared headers | `ApiClient.defaultHeaders` | Passed to `Media(httpHeaders:)`. Never copied |
 | Status page | `StatusRepository.cinemanaHealth()`, `ErrorView` / `errorMessage` | |
-| Packages | media_kit 1.2.6, media_kit_video 2.0.1, media_kit_libs_video, wakelock_plus, screen_brightness, volume_controller, window_manager 0.6.0 | `MediaKit.ensureInitialized()` already runs in `main.dart` |
-| Where Play plugs in | `details_screen.dart` (`onPressed: null`), `home_hero.dart` (opens details for now), `episode_list.dart` (rows not tappable) | |
+| Packages | media_kit 1.2.6, media_kit_video 2.0.1, media_kit_libs_video (desktop, iOS), video_player 2.14 (Android), drift + drift_flutter, wakelock_plus, screen_brightness, volume_controller, window_manager 0.6.0 | `MediaKit.ensureInitialized()` already runs in `main.dart` |
+| Where Play plugs in | `details_screen.dart`, `home_hero.dart`, `episode_list.dart` | Wired in M2 through `openPlayer` |
 
 **media_kit facts this plan relies on** (read from the package source):
 - `Media(uri, httpHeaders:, start:)`: per-media headers and a start position.
@@ -60,7 +60,8 @@ lib/
   core/
     player/
       player_engine.dart        # PlayerEngine interface: open, play/pause, seek, rate, volume, subtitle, streams of state
-      media_kit_engine.dart     # the only file that imports media_kit (mpv options, headers, error mapping)
+      media_kit_engine.dart     # desktop and iOS: the only file that imports media_kit (mpv options, headers, error mapping)
+      exo_player_engine.dart    # Android: the only file that imports video_player (texture view, SRT/VTT parsing)
       subtitle_fonts.dart       # copies the bundled Arabic font to disk for libass (desktop and iOS)
     storage/
       database.dart             # drift DB (watch_history now; favorites and downloads later)
@@ -75,6 +76,7 @@ lib/
     player_controller.dart      # PlayerController (Riverpod Notifier): the playback session
     player_state.dart           # immutable PlayerState (source, quality, subtitle, speed, fit, status, error…)
     quality.dart                # pickQuality(): closest to the preference
+    subtitles.dart              # subtitle choices and the default pick
     up_next.dart                # next-episode rules and the countdown
     widgets/
       controls_overlay.dart     # scrim, top bar, centre buttons, bottom bar, auto-hide
@@ -90,16 +92,18 @@ lib/
 ```
 
 **Rules**
-- **Only `media_kit_engine.dart` imports media_kit.** Everything else talks to `PlayerEngine`, so the controller is unit-tested with a `FakeEngine` and the screens are widget-tested without native code.
+- **Only `media_kit_engine.dart` imports media_kit, and only `exo_player_engine.dart` imports video_player.** Everything else talks to `PlayerEngine`, so the controller is unit-tested with a `FakeEngine` and the screens are widget-tested without native code. Engine differences are flags on the interface (`supportsStyledSubtitles`, `errorsStopPlayback`), never platform checks in the controller.
 - **`PlayerController` owns the session.** Screens call intents like `togglePlay()`, `seekBy()`, `selectQuality()`, `selectSubtitle()`, `nextEpisode()`. The controller also owns recovery and saving progress.
 - **Headers:** the engine receives `ApiClient.defaultHeaders` and passes it to `Media(httpHeaders:)`. Subtitle URLs and sprite sheets get the same headers (sprites through `MediaImage` or the shared header map).
 - **Sources are a sealed type:** `RemoteSource(videoId)` now, `LocalSource(filePath, subtitlePath)` in Phase 6, so offline playback reuses the same player.
 - **Route:** `/watch/:id` is a **top-level route on the root navigator**, outside the tab shell, so the nav bar is hidden. `openPlayer(context, request)` goes in `navigation.dart`. The `PlaybackRequest` travels as `extra`. A bare `/watch/:id` (deep link, hot restart) rebuilds it from the ID.
 - **Performance:** the `Video` texture is never inside an `Opacity`, `ClipRRect` or `saveLayer`. Controls fade with one `FadeTransition` on the overlay only. Position text updates at most 4× a second, and the seek bar is a `RepaintBoundary` driven by a `ValueListenable`. `PlayerState` excludes the position, so menus and chips don't rebuild every tick.
 
-## 5. Engine setup (mpv)
+## 5. Engine setup
 
-Set in `media_kit_engine.dart`, once per player.
+**Android (ExoPlayer):** `ExoPlayerEngine` uses ExoPlayer's defaults: hardware decoding, its own buffer, and its own retries of a failed read (then it stops with an error, §6). The only settings are the texture view (decision 7) and the shared headers. The table below is mpv only.
+
+**mpv (desktop and iOS)** is set in `media_kit_engine.dart`, once per player. "Mobile" below now means iOS. Those values were measured on Android before decision 7; check them when iOS starts (PLAN.md Phase 6).
 
 | Option | Value | Why |
 |---|---|---|
@@ -110,11 +114,11 @@ Set in `media_kit_engine.dart`, once per player.
 | `cache-on-disk` | `yes` desktop, **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0) |
 | `framedrop` | default desktop, **`no` mobile** | On a real phone (CPH2423) 4K dropped 14–20 frames per 25 s that were never late (`vo-delayed-frame-count` 0): a visible stutter. With `no`: 0 dropped, full 23.976 fps. Rendering tweaks (1080p surface, `gpu-dumb-mode`, `opengl-swapinterval=0`, `display-resample`) didn't help; `mediacodec_embed` only halved it. `integration_test/player_4k_test.dart` measures it |
 | `hwdec` | `auto` (default) | 4K H.264 needs hardware decoding on phones. Fall back to `no` once on decoder errors |
-| `libass` | `true` | Needed for the styled ASS track, and on Android it's the only way to give libass a font (§7.2) |
+| `libass` | `true` | Needed for the styled ASS track (§7.2) |
 | `sub-visibility` | toggled per track at runtime | Plain tracks are drawn by Flutter, styled tracks by libass (§7.2). Works at runtime (M0) |
 | `title` | the media title | Window and task-switcher title on desktop |
 
-There are no HTTP reconnect options. On Linux, mpv 0.42 reads over its curl backend, which resumes a cut connection by itself ("retrying from <offset>"). Android's ffmpeg does the same ("Will reconnect at …"). The controller's own recovery (§6) covers the rest.
+There are no HTTP reconnect options. On Linux, mpv 0.42 reads over its curl backend, which resumes a cut connection by itself ("retrying from <offset>"). ffmpeg (as measured on Android in M0) does the same ("Will reconnect at …"). The controller's own recovery (§6) covers the rest.
 
 ## 6. Playback flow
 
@@ -133,9 +137,10 @@ There are no HTTP reconnect options. On Linux, mpv 0.42 reads over its curl back
 | An open fails | media_kit sends "Failed to open …" on its error stream, **but `buffering` stays `true` and nothing else changes** (M0). The controller leaves the loading state itself |
 | **The file "completes" early** | When a reconnect fails mid-play (for example the URL expired), mpv plays out its buffer and **reports `completed` with no error**: 0:16 of a 2:29:17 film in M0. A completion counts only when the position is within 5 s of the duration. Otherwise it's a stream failure and goes through recovery. Without this rule, autoplay would jump to the next episode |
 | The network drops mid-play | mpv reconnects first (M0). If playback is "playing" but the position hasn't moved for 15 s, reopen at the last position with backoff (2, 5, 10 s). Show "Reconnecting…" over the loader. This watchdog also catches a video output that failed silently (M0 on the emulator: `playing=true`, no error, no frames) |
+| **Android (ExoPlayer): an error mid-play** | ExoPlayer retries a failed read itself; when it gives up (an expired URL, a long drop) it **stops for good**, paused too, and video_player resets the position and duration to 0. So the engine keeps the last good values (it never sends that 0), reports `errorsStopPlayback`, and the controller recovers at once, at the same position and keeping pause, instead of waiting for the watchdog. ExoPlayer never "completes" early. A failed open stays "buffering", like mpv. *Without this, the film reopened at 0:00 after 15 s, or stayed stuck when paused (fixed 2026-11-19).* |
 | The streams or details request fails | `ErrorView` (it asks the status page once, so "Cinemana is having problems" when it's down) with **Try again** |
 | No streams at all | "This title isn't available right now", with Back |
-| Decoder error | Retry once with `hwdec=no`. If 4K still fails, offer the next lower quality |
+| Decoder error | mpv: retry once with `hwdec=no`. ExoPlayer has no software switch, so go straight to the next lower quality. If 4K still fails, offer the next lower quality. *Not built yet (M9): today a decoder error goes through the normal recovery, then the error view* |
 | A subtitle fails to load | Keep playing without it and show a short note: "Subtitles couldn't be loaded" |
 | The status page is checked | Only after API calls fail, never for CDN errors |
 
@@ -153,18 +158,19 @@ Every error message goes in the ARB files.
 ### 7.2 Subtitles
 - **Default from Settings:** Arabic, English or Off. If the language is missing, use Off and show nothing (no silent switch to the other language).
 - **Choices:** Off, then one plain track per language (SRT preferred, `oneTrackPerLanguage`), then **"Arabic (styled)"** when an ASS track exists. Plain Arabic stays the default.
-- **How they're drawn (hybrid):**
+- **Android (ExoPlayer):** "Arabic (styled)" isn't offered (`supportsStyledSubtitles` is false). Plain tracks are downloaded with the shared headers (`ApiClient.fetchText`), parsed in Dart (SRT/VTT) and drawn by the same Flutter layer. The delay is applied in Dart, and the size is the Flutter layer's own.
+- **How they're drawn on mpv (hybrid):**
   - **Plain tracks:** mpv parses the file, `sub-visibility=no`, and `subtitle_layer.dart` draws the current text from the player's subtitle stream in Flutter. It uses IBM Plex Sans Arabic / IBM Plex Sans (cream text with a dark outline, no box). It lifts above the controls when they're shown, stays on screen in Fill mode, and follows the size setting. Each line gets its own `Directionality` from its script.
   - **Styled ASS track:** `sub-visibility=yes`, so libass renders it into the frame with its own styles. The Flutter layer hides.
-  - **Font for libass:** the ASS files name fonts the device won't have ("Bahij Nassim", "GE SS Text"). Bundle **IBM Plex Sans Arabic Regular** as the fallback. *M0: with only the Medium file libass rendered nothing, and the Regular file works. media_kit's Android controller sets `sub-font-provider=none`, so on Android this font is the only one libass has.* On Android it's set through `libassAndroidFont` / `libassAndroidFontName`. On desktop and iOS, `subtitle_fonts.dart` copies it from the assets to the app support folder at startup and sets `sub-fonts-dir` / `sub-font`.
+  - **Font for libass:** the ASS files name fonts the device won't have ("Bahij Nassim", "GE SS Text"). Bundle **IBM Plex Sans Arabic Regular** as the fallback. *M0: with only the Medium file libass rendered nothing, and the Regular file works.* `subtitle_fonts.dart` copies it from the assets to the app support folder at startup and sets `sub-fonts-dir` / `sub-font`. (*Before decision 7, Android needed `libassAndroidFont` / `libassAndroidFontName`, because media_kit's Android controller sets `sub-font-provider=none`.*)
 - **Size** (new setting, Settings → Playback): Small, Medium (default), Large. It applies to plain tracks, and to ASS through `sub-scale` (0.85 / 1 / 1.2).
-- **Delay:** in the subtitle menu, "Sync" with −0.5 s / +0.5 s steps and a reset, shown as "+1.5 s". It's set with mpv `sub-delay`, works for both renderers, and is kept for the rest of the session (not saved).
+- **Delay:** in the subtitle menu, "Sync" with −0.5 s / +0.5 s steps and a reset, shown as "+1.5 s". On mpv it's `sub-delay` (both renderers); on ExoPlayer the engine shifts the parsed cues. It's kept for the rest of the session (not saved).
 
 ### 7.3 Speed
-0.5×, 0.75×, 1×, 1.25×, 1.5×, 1.75×, 2× with pitch correction (mpv's default). The chip shows "1×". It's kept for the session, across episodes.
+0.5×, 0.75×, 1×, 1.25×, 1.5×, 1.75×, 2× with pitch correction (the default on both mpv and ExoPlayer). The chip shows "1×". It's kept for the session, across episodes.
 
 ### 7.4 Fit
-**Fit** (whole frame, letterboxed; the default), **Fill** (crop to fill the screen), **Stretch**. The chip cycles through them (icon plus a short toast "Fill"). On mobile, pinch out = Fill and pinch in = Fit. Done with `Video(fit:)`. Plain subtitles stay on screen in Fill because Flutter draws them.
+**Fit** (whole frame, letterboxed; the default), **Fill** (crop to fill the screen), **Stretch**. The chip cycles through them (icon plus a short toast "Fill"). On mobile, pinch out = Fill and pinch in = Fit. Done with `PlayerEngine.buildVideo(fit:)` (`Video(fit:)` on mpv, a `FittedBox` on ExoPlayer). Plain subtitles stay on screen in Fill because Flutter draws them.
 
 ### 7.5 Skip intro
 - While the playhead is inside an intro range (`SkipRange.contains`), show **Skip intro** (outlined pill, at the end side above the seek bar, as in the design). It jumps to the range's `end`.
@@ -288,7 +294,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 | **M4** ✅ | drift `database.dart`, `watch_history`, `LibraryRepository`, saving and resume, Details' Resume button, episode progress in the rows, Home's Continue watching row | Force-stop mid-episode, relaunch, and resume within 10 s of where it stopped |
 | **M5** | Series: Next episode, the Up next card and countdown, "Still watching?", the Episodes panel | A full season plays through by itself, and switching episodes keeps the choices |
 | **M6** | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't |
-| **M7** | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on the emulator and a real Android phone |
+| **M7** | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on a real Android phone (the emulator shows no video), including the ExoPlayer failure checks in §13 |
 | **M8** | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows |
 | **M9** | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked |
 
@@ -299,7 +305,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
   - `isFinished` / resume rules.
   - Next-episode order (gaps, double episodes, season boundaries).
   - The Up next countdown and "Still watching?" (with `fake_async`).
-  - Recovery paths, with `FakeEngine`.
+  - Recovery paths, with `FakeEngine`, for both engine kinds (`FakeEngine(errorsStopPlayback: true)` acts like ExoPlayer).
 - **Repository:** `LibraryRepository` on an in-memory drift database. `streams(fresh: true)` on the fake API client.
 - **Widget** (`pumpApp`, `fixtureApi`, `FakeEngine` instead of media_kit):
   - Controls show and hide.
@@ -311,10 +317,10 @@ Each milestone ends with something that runs, and is checked on **Android and Li
   - The locked state.
   - Error states.
 - **Integration** (`integration_test/player_test.dart`, live API, Linux and the Android emulator): launch → open a movie → play 5 s → seek → change quality → leave → resume. Then the same for an episode, with Next episode.
-- **Manual before release:** a 2-hour movie in 4K on desktop, a full anime season with styled subtitles on a phone, airplane mode mid-play, and a 403 forced by editing a URL's signature in a debug build.
+- **Manual before release:** a 2-hour movie in 4K on desktop, a full anime season on a phone (plain subtitles; styled on desktop), airplane mode mid-play, and a 403 forced by editing a URL's signature in a debug build, on Linux and on the Android phone.
 
 ## 12. Not in this phase
-- **Picture-in-picture:** not chosen for now. Android could add it later with a small native change. iOS PiP isn't possible with media_kit's mpv backend.
+- **Picture-in-picture:** not chosen for now. Android could add it later with a small native change (ExoPlayer makes it easier than mpv did). iOS PiP isn't possible with media_kit's mpv backend.
 - **Casting, background audio, lock-screen controls:** later, if wanted. `audio_session` is a first step toward them.
 - **Audio track switching:** every file has one audio track (API.md §3).
 - **Offline playback:** Phase 6 adds `LocalSource`. The player is built for it already.
@@ -338,25 +344,29 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 
 **CDN:** node `cndw2` accepts expired and forged signatures; `cndw1`, `3`–`6` answer 403. `cdn.shabakaty.com` picks the node, so expiry shows up only sometimes.
 
-**Android emulator:** video never renders, with `vo=gpu` (mpv: "Could not create EGL context for GLES 2.x") or `vo=mediacodec_embed`, with Impeller on or off, even though decoding and the clock run. On the same `Player`, every `open()` after the first also failed to bring the video output back, while a new `Player` per file played. The emulator can't be used for video. **Real-phone checks** (owner's device, M2 onward):
-1. Does video render with the defaults (`vo=gpu`, `hwdec=auto-safe`)?
-2. Does a second `open()` on the same `Player` keep the picture? If not, `MediaKitEngine` creates a new `Player` per file (it's built so the controller doesn't notice).
-3. Styled ASS renders with the bundled font. 4K plays smoothly with hardware decoding.
+**Android emulator:** video never renders, with `vo=gpu` (mpv: "Could not create EGL context for GLES 2.x") or `vo=mediacodec_embed`, with Impeller on or off, even though decoding and the clock run. On the same `Player`, every `open()` after the first also failed to bring the video output back, while a new `Player` per file played. The emulator can't be used for video.
 
-How to check (from M2 on, the app plays from Details, the hero and the episode rows):
-- `fvm flutter run -d <phone>`, then play a movie, switch quality, open an episode, and play Attack on Titan S4E3 (279230) with "Arabic (styled)".
-- `fvm flutter test integration_test/player_spike_test.dart -d <phone>` repeats the M0 measurements; the failure tests are skipped without the proxy.
-- If the picture survives a quality switch with `recreatePerFile: false`, Android can reuse one player (`MediaKitEngine`).
+**Real phone with mpv (answered 2026-11-19, then replaced by decision 7):** video rendered, but 4K stuttered (§5 `framedrop`). `MediaKitEngine` still creates a new `Player` per file on Android (`recreatePerFile`), which only matters if Android ever goes back to mpv.
+
+**Real-phone checks for ExoPlayer** (owner's device, release APK). Done: 4K is smooth and the controls draw over the video. **Still to check (M7):**
+1. Airplane mode for a few seconds mid-play: ExoPlayer resumes by itself, or the player shows "Reconnecting…" and comes back at the same position.
+2. ✅ Airplane mode for a minute, while playing and while paused: the player recovers at the same position (paused stays paused), never at 0:00. *Confirmed on the owner's phone 2026-11-19, after the `errorsStopPlayback` fix (§6).*
+3. An expired or forged URL signature (debug build): the player fetches fresh URLs and plays.
+4. A quality switch and an episode switch keep the picture.
+
+`integration_test/player_engine_test.dart -d <phone>` runs the live engine checks (playback, quality switch, 4K, subtitles) on ExoPlayer; `player_spike_test.dart` measures mpv and no longer matters for Android.
 
 ## 14. Risks and open questions
 
 | Risk | Plan |
 |---|---|
 | ~~Non-fast-start 1080p files start slowly~~ | ✅ M0: no slower than fast-start files (about 1 s) |
-| ~~The hybrid subtitles don't work~~ | ✅ M0: they work on Linux. Android to confirm on the phone |
+| ~~The hybrid subtitles don't work~~ | ✅ M0: they work on Linux. Android draws plain tracks only (decision 7) |
 | ~~libass on desktop ignores `sub-fonts-dir` set after start~~ | ✅ M0: works on Linux |
 | 4K is too heavy for some phones (decoder or memory) | Hardware decoding by default. On decoder errors, fall back once and then offer 1080p. The always-visible chip makes the cause clear |
 | Errors from mpv are strings, not codes | ✅ M0: don't parse them. Any open failure goes through the same recovery (fresh URLs, then the error view) |
-| Video output on real Android phones | Unknown until the phone check (§13). The engine can recreate the `Player` per file if needed |
+| ~~Video output on real Android phones~~ | ✅ Decision 7: ExoPlayer in a texture renders and plays 4K smoothly on the owner's phone |
+| ExoPlayer's failures differ from mpv's | It stops on every error and resets its position; handled with `errorsStopPlayback` (§6) and a unit test. A minute in airplane mode recovers on the phone (2026-11-19); the 403 check is still to do (§13) |
+| Some Android phones can't decode 4K in hardware | ExoPlayer can't fall back to software like mpv, so the decoder fallback goes to a lower quality (§6, M9) |
 | Windows has no dev machine yet | M8 needs a Windows machine or VM. The NVIDIA Linux bug (AGENTS.md) doesn't affect Windows |
 | `volume_controller` and `screen_brightness` differ between Android and iOS | Wrap them in the gesture layer only, and test both platforms when iOS starts (PLAN.md Phase 6) |

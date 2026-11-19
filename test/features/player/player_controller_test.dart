@@ -204,6 +204,35 @@ void main() {
     });
   });
 
+  test('ExoPlayer stops on errors: reopened at once, paused too', () {
+    fakeAsync((async) {
+      final env = start(
+        async,
+        fake: FakeEngine(
+          supportsStyledSubtitles: false,
+          errorsStopPlayback: true,
+        ),
+        routes: [
+          (
+            (r) => r.path.startsWith('transcoddedFiles/') && _fresh(r),
+            (_) => streams(const ['1080p', '720p'], 'b'),
+          ),
+        ],
+      );
+      env.engine.emitReady(at: const Duration(minutes: 42));
+      env.controller.pause();
+      env.engine.emitError('Source error: HTTP 403');
+      env.flush(PlayerController.recoveryDelays.first);
+
+      expect(env.freshRequests, 1);
+      expect(env.engine.opened, hasLength(2));
+      final reopen = env.engine.opened.last;
+      expect(reopen.source.uri, contains('b-1080p'));
+      expect(reopen.start, const Duration(minutes: 42));
+      expect(reopen.play, isFalse);
+    });
+  });
+
   test('the watchdog reopens a stalled stream, but not a paused one', () {
     fakeAsync((async) {
       final env = start(async);

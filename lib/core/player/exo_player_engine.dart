@@ -44,7 +44,10 @@ class ExoPlayerEngine implements PlayerEngine {
   Duration _subtitleDelay = Duration.zero;
   List<Caption> _captions = const [];
   List<String> _shownLines = const [];
+
+  /// The last value without an error.
   VideoPlayerValue? _last;
+  String? _lastError;
 
   /// Bumped by every [open] and [setSubtitle]; older async work is dropped.
   int _openId = 0;
@@ -53,6 +56,10 @@ class ExoPlayerEngine implements PlayerEngine {
 
   @override
   bool get supportsStyledSubtitles => false;
+
+  /// ExoPlayer retries a failed read itself, then stops with an error.
+  @override
+  bool get errorsStopPlayback => true;
 
   @override
   Stream<Duration> get position => _position.stream;
@@ -74,9 +81,9 @@ class ExoPlayerEngine implements PlayerEngine {
   Stream<List<String>> get subtitleText => _subtitleText.stream;
 
   @override
-  Duration get currentPosition => _controller.value?.value.position ?? Duration.zero;
+  Duration get currentPosition => _last?.position ?? Duration.zero;
   @override
-  Duration get currentDuration => _controller.value?.value.duration ?? Duration.zero;
+  Duration get currentDuration => _last?.duration ?? Duration.zero;
 
   @override
   Future<void> open(
@@ -88,6 +95,7 @@ class ExoPlayerEngine implements PlayerEngine {
     final id = ++_openId;
     await _release();
     _last = null;
+    _lastError = null;
     _completed.add(false);
     _buffering.add(true);
     _playing.add(false);
@@ -125,6 +133,17 @@ class ExoPlayerEngine implements PlayerEngine {
   void _onValue(VideoPlayerController controller) {
     if (!identical(controller, _controller.value) || _disposed) return;
     final v = controller.value;
+    final error = v.errorDescription;
+    if (error != null) {
+      // ExoPlayer stopped. video_player resets the value (position and
+      // duration 0, not playing), so keep the last good one: the controller
+      // reopens the file where it was.
+      if (error != _lastError) {
+        _lastError = error;
+        _errors.add(error);
+      }
+      return;
+    }
     final last = _last;
     _last = v;
     if (last == null || v.position != last.position) {
@@ -143,8 +162,6 @@ class ExoPlayerEngine implements PlayerEngine {
     if (last == null || v.isCompleted != last.isCompleted) {
       _completed.add(v.isCompleted);
     }
-    final error = v.errorDescription;
-    if (error != null && error != last?.errorDescription) _errors.add(error);
   }
 
   /// The end of the buffered range under the playhead.

@@ -60,6 +60,10 @@ class MediaKitEngine implements PlayerEngine {
   @override
   bool get supportsStyledSubtitles => true;
 
+  /// mpv reports blips it gets over by itself (PLAYER.md §13).
+  @override
+  bool get errorsStopPlayback => false;
+
   @override
   Stream<Duration> get position => _position.stream;
   @override

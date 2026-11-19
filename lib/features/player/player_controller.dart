@@ -343,9 +343,12 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   void _onError(String _) {
-    // Mid-play errors are often blips the native player gets over by itself;
-    // the watchdog and the early-completion check catch the real failures.
-    if (state.phase == PlayerPhase.loading && state.quality != null) {
+    // On mpv, mid-play errors are often blips it gets over by itself; the
+    // watchdog and the early-completion check catch the real failures.
+    // ExoPlayer stops on every error, paused too, so it's reopened at once.
+    final phase = state.phase;
+    if ((phase == PlayerPhase.loading && state.quality != null) ||
+        (phase == PlayerPhase.ready && engine.errorsStopPlayback)) {
       unawaited(_recover());
     }
   }
@@ -497,7 +500,8 @@ class PlayerController extends Notifier<PlayerState> {
     final duration = state.duration;
     // Nothing is known before the file opened (a resume shows its start).
     if (duration <= Duration.zero) return;
-    if (state.phase == PlayerPhase.loading || state.phase == PlayerPhase.failed) {
+    if (state.phase == PlayerPhase.loading ||
+        state.phase == PlayerPhase.failed) {
       return;
     }
     final at = state.phase == PlayerPhase.ended ? duration : position.value;
