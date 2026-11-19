@@ -16,6 +16,9 @@ import 'package:cinemakom/features/player/widgets/skip_intro_button.dart';
 import 'package:cinemakom/features/player/widgets/subtitle_layer.dart';
 import 'package:cinemakom/features/player/widgets/up_next_card.dart';
 import 'package:cinemakom/features/details/widgets/episode_list.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -615,6 +618,120 @@ void main() {
       expect(find.byType(PlayerScreen), findsOneWidget);
       expect(find.text('Unlock'), findsNothing);
       expect(opacity(tester), 1);
+    });
+  });
+  group('desktop keys and mouse (PLAYER.md §9.2)', () {
+    /// A movie playing at 10:00 of 2 h, on a 1280×720 Linux window.
+    Future<(FakeEngine, FakeFullScreen)> desktop(WidgetTester tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      final engine = FakeEngine();
+      final window = FakeFullScreen();
+      await pumpApp(
+        tester,
+        engine: engine,
+        fullScreen: window,
+        width: 1280,
+        height: 720,
+      );
+      await openMovie(tester);
+      engine.emitReady(
+        duration: const Duration(hours: 2),
+        at: const Duration(minutes: 10),
+      );
+      await tester.pump();
+      return (engine, window);
+    }
+
+    Future<void> key(WidgetTester tester, LogicalKeyboardKey k) async {
+      await tester.sendKeyEvent(k);
+      await tester.pump();
+    }
+
+    testWidgets('keys: play, seek, volume, mute, speed, tenths', (
+      tester,
+    ) async {
+      final (engine, _) = await desktop(tester);
+      try {
+        await key(tester, LogicalKeyboardKey.keyK);
+        expect(engine.isPlaying, isFalse);
+        await key(tester, LogicalKeyboardKey.space);
+        expect(engine.isPlaying, isTrue);
+
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await key(tester, LogicalKeyboardKey.arrowRight);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        expect(engine.seeks.last, const Duration(minutes: 11));
+
+        await key(tester, LogicalKeyboardKey.arrowDown);
+        expect(engine.volume, 95);
+        expect(find.text('95%'), findsOneWidget);
+        await key(tester, LogicalKeyboardKey.keyM);
+        expect(engine.volume, 0);
+        expect(find.text('Muted'), findsOneWidget);
+
+        await key(tester, LogicalKeyboardKey.bracketRight);
+        expect(engine.rate, 1.25);
+        await key(tester, LogicalKeyboardKey.bracketLeft);
+        await key(tester, LogicalKeyboardKey.bracketLeft);
+        expect(engine.rate, 0.75);
+
+        await key(tester, LogicalKeyboardKey.digit5);
+        expect(engine.seeks.last, const Duration(hours: 1));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('a click plays or pauses, a double click goes full screen', (
+      tester,
+    ) async {
+      final (engine, window) = await desktop(tester);
+      try {
+        await tester.tapAt(const Offset(300, 200));
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(engine.isPlaying, isFalse);
+        expect(window.isOn, isFalse);
+
+        await tester.tapAt(const Offset(300, 200));
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.tapAt(const Offset(300, 200));
+        await tester.pump(const Duration(milliseconds: 500));
+        // Two clicks: paused, then playing again, and full screen.
+        expect(engine.isPlaying, isFalse);
+        expect(window.isOn, isTrue);
+        expect(find.byTooltip('Exit full screen'), findsOneWidget);
+
+        // Esc leaves full screen first, then the player.
+        await key(tester, LogicalKeyboardKey.escape);
+        expect(window.isOn, isFalse);
+        expect(find.byType(PlayerScreen), findsOneWidget);
+        await key(tester, LogicalKeyboardKey.keyF);
+        expect(window.isOn, isTrue);
+        // Leaving the player gives the window back.
+        await key(tester, LogicalKeyboardKey.escape);
+        await key(tester, LogicalKeyboardKey.escape);
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(PlayerScreen), findsNothing);
+        expect(window.isOn, isFalse);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('the scroll wheel sets the volume', (tester) async {
+      final (engine, _) = await desktop(tester);
+      try {
+        final mouse = TestPointer(1, PointerDeviceKind.mouse);
+        await tester.sendEventToBinding(mouse.hover(const Offset(300, 200)));
+        await tester.sendEventToBinding(mouse.scroll(const Offset(0, 50)));
+        await tester.pump();
+        expect(engine.volume, 95);
+        await tester.sendEventToBinding(mouse.scroll(const Offset(0, -50)));
+        await tester.pump();
+        expect(engine.volume, 100);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
   });
 }

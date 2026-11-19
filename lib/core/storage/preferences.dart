@@ -187,12 +187,17 @@ abstract final class PreferenceKeys {
   static const subtitleSize = 'subtitleSize';
   static const screenRotation = 'screenRotation';
 
+  /// The player's own volume on desktop, 0–100 (PLAYER.md §9.2). Phones
+  /// use the system volume.
+  static const playerVolume = 'playerVolume';
+
   static const all = {
     language,
     defaultQuality,
     defaultSubtitle,
     subtitleSize,
     screenRotation,
+    playerVolume,
   };
 }
 

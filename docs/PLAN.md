@@ -248,7 +248,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
   - **Android plays with ExoPlayer** (`video_player`, texture view), not media_kit: mpv stuttered on 4K there. Desktop and iOS keep media_kit. Android has no styled (ASS) subtitles (PLAYER.md §2, decision 7).
 - **M5 done (2026-11-19, checked on the owner's phone):** Next episode autoplay, the Up next card and countdown, "Still watching?", the Episodes panel.
 - **M6 done (2026-11-19, checked on the owner's phone and Linux):** Skip intro and seek-bar previews.
-- **M7 built (2026-11-19), to check on the phone:** gestures, the controls lock, audio interruptions (immersive mode, wakelock and orientation were already in). Then M8 (desktop: shortcuts, mouse, fullscreen, saved volume).
+- **M7 built (2026-11-19), to check on the phone:** gestures, the controls lock, audio interruptions (immersive mode, wakelock and orientation were already in). M8 built (2026-11-19), to check on Linux: desktop keys, mouse, cursor hiding, full screen, saved volume, focus rings; Windows not run yet. Then M9 (hardening).
 - *Decisions (2026-11-19):*
   - The drift `watch_history` table is built in this phase, so resume works now. Phase 5 adds the Library UI.
   - The seek bar always runs left → right, in Arabic too.

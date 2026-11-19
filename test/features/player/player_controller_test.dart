@@ -746,4 +746,58 @@ void main() {
       });
     });
   });
+  group('desktop controls (PLAYER.md §9.2)', () {
+    test('the volume is saved and comes back next time', () {
+      fakeAsync((async) {
+        final env = start(async, prefs: {PreferenceKeys.playerVolume: 40});
+        expect(env.state.volume, 40);
+        env.controller.changeVolume(-5);
+        env.flush();
+        expect(env.engine.volume, 35);
+        final store = env.c.read(preferenceStoreProvider).requireValue;
+        expect(store.getInt(PreferenceKeys.playerVolume), 35);
+        env.controller.changeVolume(200);
+        env.flush();
+        expect(env.state.volume, 100);
+      });
+    });
+
+    test('mute keeps the volume; a key up from mute starts at 0', () {
+      fakeAsync((async) {
+        final env = start(async, prefs: {PreferenceKeys.playerVolume: 60});
+        env.controller.toggleMute();
+        env.flush();
+        expect(env.state.muted, isTrue);
+        expect(env.engine.volume, 0);
+        env.controller.toggleMute();
+        env.flush();
+        expect(env.engine.volume, 60);
+
+        env.controller.toggleMute();
+        env.controller.changeVolume(5);
+        env.flush();
+        expect(env.state.muted, isFalse);
+        expect(env.engine.volume, 5);
+      });
+    });
+
+    test('C cycles the subtitles, 0-9 jump to tenths', () {
+      fakeAsync((async) {
+        final env = start(async);
+        env.engine.emitReady(duration: const Duration(minutes: 100));
+        final options = env.state.subtitles;
+        final at = options.indexOf(env.state.subtitle);
+        env.controller.nextSubtitle();
+        env.flush();
+        expect(env.state.subtitle, options[(at + 1) % options.length]);
+
+        env.controller.seekToTenth(3);
+        env.flush();
+        expect(env.engine.seeks.last, const Duration(minutes: 30));
+        env.controller.seekToTenth(0);
+        env.flush();
+        expect(env.engine.seeks.last, Duration.zero);
+      });
+    });
+  });
 }

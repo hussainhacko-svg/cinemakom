@@ -292,6 +292,13 @@ Every error message goes in the ARB files.
 | 0–9 | Jump to 0–90% |
 
 - Every control is reachable with Tab and has a 2 px `bulb` focus ring (DESIGN.md §5).
+- *Built (M8):*
+  - **Full screen** goes through `lib/core/platform/full_screen.dart` (window_manager 0.6's native `WindowManager.instance.getCurrent()`, the only file that imports it; tests override `fullScreenProvider`). Checked on the Linux window: it fills the monitor and gives the previous size back. Leaving the player restores the window as it was when the player opened.
+  - **Click** plays or pauses at once; a **double click** is two clicks (so playback ends up as it was) plus full screen, as on YouTube. A real double-tap recognizer would hold every button's tap for 300 ms.
+  - **Volume** (keys, wheel, M) shows a short note ("95%", "Muted") and is saved as `playerVolume`. From mute, ↑ or the wheel starts at 0.
+  - **Esc** leaves full screen first, then the player. Menus close themselves on Esc (they are routes).
+  - The focus ring is `withFocusRing` (`controls_overlay.dart`), over each button's own border.
+  - **Windows:** not run yet (no Windows machine). Everything here is Flutter or window_manager, which supports Windows.
 
 ## 10. Milestones
 

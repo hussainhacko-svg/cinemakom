@@ -89,9 +89,11 @@ class ControlsOverlay extends StatelessWidget {
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back, size: 24),
-          style: IconButton.styleFrom(
-            foregroundColor: MarqueeColors.cream,
-            fixedSize: const Size.square(44),
+          style: withFocusRing(
+            IconButton.styleFrom(
+              foregroundColor: MarqueeColors.cream,
+              fixedSize: const Size.square(44),
+            ),
           ),
         ),
         const SizedBox(width: MarqueeSpace.m),
@@ -164,11 +166,13 @@ class ControlsOverlay extends StatelessWidget {
                 : IconButton(
                     tooltip: state.playing ? l10n.playerPause : l10n.play,
                     onPressed: controller.togglePlay,
-                    style: IconButton.styleFrom(
-                      backgroundColor: MarqueeColors.bulb,
-                      foregroundColor: MarqueeColors.onBulb,
-                      hoverColor: MarqueeColors.bulbBright,
-                      fixedSize: const Size.square(76),
+                    style: withFocusRing(
+                      IconButton.styleFrom(
+                        backgroundColor: MarqueeColors.bulb,
+                        foregroundColor: MarqueeColors.onBulb,
+                        hoverColor: MarqueeColors.bulbBright,
+                        fixedSize: const Size.square(76),
+                      ),
                     ),
                     icon: Icon(
                       ended
@@ -233,9 +237,11 @@ class ControlsOverlay extends StatelessWidget {
             onPressed: open,
             icon: const Icon(Icons.video_library_outlined, size: 22),
             label: Text(l10n.episodesHeading),
-            style: TextButton.styleFrom(
-              foregroundColor: MarqueeColors.cream,
-              minimumSize: const Size(44, 44),
+            style: withFocusRing(
+              TextButton.styleFrom(
+                foregroundColor: MarqueeColors.cream,
+                minimumSize: const Size(44, 44),
+              ),
             ),
           ),
         ],
@@ -246,9 +252,11 @@ class ControlsOverlay extends StatelessWidget {
             icon: const Icon(Icons.skip_next_outlined, size: 22),
             iconAlignment: IconAlignment.end,
             label: Text(l10n.nextEpisode),
-            style: TextButton.styleFrom(
-              foregroundColor: MarqueeColors.cream,
-              minimumSize: const Size(44, 44),
+            style: withFocusRing(
+              TextButton.styleFrom(
+                foregroundColor: MarqueeColors.cream,
+                minimumSize: const Size(44, 44),
+              ),
             ),
           ),
         ],
@@ -289,17 +297,19 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TextButton.styleFrom(
-      backgroundColor: MarqueeColors.booth,
-      foregroundColor: MarqueeColors.cream,
-      disabledForegroundColor: MarqueeColors.dust,
-      side: const BorderSide(color: MarqueeColors.velvet),
-      shape: const StadiumBorder(),
-      minimumSize: const Size(44, 44),
-      padding: EdgeInsetsDirectional.symmetric(
-        horizontal: label == null ? 0 : MarqueeSpace.l,
+    final style = withFocusRing(
+      TextButton.styleFrom(
+        backgroundColor: MarqueeColors.booth,
+        foregroundColor: MarqueeColors.cream,
+        disabledForegroundColor: MarqueeColors.dust,
+        side: const BorderSide(color: MarqueeColors.velvet),
+        shape: const StadiumBorder(),
+        minimumSize: const Size(44, 44),
+        padding: EdgeInsetsDirectional.symmetric(
+          horizontal: label == null ? 0 : MarqueeSpace.l,
+        ),
+        textStyle: MarqueeText.of(context).label.copyWith(fontSize: 15),
       ),
-      textStyle: MarqueeText.of(context).label.copyWith(fontSize: 15),
     );
     final text = label;
     final glyph = icon;
@@ -354,9 +364,24 @@ class _SeekButton extends StatelessWidget {
     tooltip: tooltip,
     onPressed: onPressed,
     icon: Icon(icon, size: 36),
-    style: IconButton.styleFrom(
-      foregroundColor: MarqueeColors.cream,
-      fixedSize: const Size.square(56),
+    style: withFocusRing(
+      IconButton.styleFrom(
+        foregroundColor: MarqueeColors.cream,
+        fixedSize: const Size.square(56),
+      ),
+    ),
+  );
+}
+
+/// A 2 px `bulb` ring while the button has keyboard focus (DESIGN.md §5),
+/// over the button's own border otherwise.
+ButtonStyle withFocusRing(ButtonStyle style) {
+  final rest = style.side;
+  return style.copyWith(
+    side: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.focused)
+          ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+          : rest?.resolve(states),
     ),
   );
 }

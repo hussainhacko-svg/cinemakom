@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'controls_overlay.dart' show withFocusRing;
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
@@ -39,17 +40,19 @@ class SkipIntroButton extends StatelessWidget {
                 icon: const Icon(Icons.skip_next, size: 20),
                 iconAlignment: IconAlignment.end,
                 label: Text(AppLocalizations.of(context).playerSkipIntro),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: MarqueeColors.booth,
-                  foregroundColor: MarqueeColors.cream,
-                  side: const BorderSide(color: MarqueeColors.cream),
-                  shape: const StadiumBorder(),
-                  minimumSize: const Size(44, 44),
-                  padding: const EdgeInsetsDirectional.symmetric(
-                    horizontal: MarqueeSpace.l,
+                style: withFocusRing(
+                  OutlinedButton.styleFrom(
+                    backgroundColor: MarqueeColors.booth,
+                    foregroundColor: MarqueeColors.cream,
+                    side: const BorderSide(color: MarqueeColors.cream),
+                    shape: const StadiumBorder(),
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsetsDirectional.symmetric(
+                      horizontal: MarqueeSpace.l,
+                    ),
+                    textStyle: MarqueeText.of(context).label
+                        .copyWith(fontSize: 15),
                   ),
-                  textStyle: MarqueeText.of(context).label
-                      .copyWith(fontSize: 15),
                 ),
               ),
             ),

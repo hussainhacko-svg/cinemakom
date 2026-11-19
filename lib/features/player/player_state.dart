@@ -61,6 +61,8 @@ class PlayerState {
     this.intro,
     this.introPinned = false,
     this.aspectRatio,
+    this.volume = 100,
+    this.muted = false,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -113,6 +115,11 @@ class PlayerState {
   /// this shape: the server squeezes every frame into a 16:9 cell.
   final double? aspectRatio;
 
+  /// The player's volume, 0–100, and whether it's muted (desktop keys and
+  /// the scroll wheel).
+  final double volume;
+  final bool muted;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -152,6 +159,8 @@ class PlayerState {
     bool? introPinned,
     double? aspectRatio,
     bool clearAspectRatio = false,
+    double? volume,
+    bool? muted,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -177,5 +186,7 @@ class PlayerState {
     intro: clearIntro ? null : (intro ?? this.intro),
     introPinned: introPinned ?? this.introPinned,
     aspectRatio: clearAspectRatio ? null : (aspectRatio ?? this.aspectRatio),
+    volume: volume ?? this.volume,
+    muted: muted ?? this.muted,
   );
 }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import 'controls_overlay.dart' show withFocusRing;
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
@@ -102,15 +103,19 @@ class UpNextCard extends StatelessWidget {
                                     ? const _CountdownRing()
                                     : const Icon(Icons.play_arrow, size: 20),
                                 label: Text(l10n.playerPlayNow),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(44, 40),
+                                style: withFocusRing(
+                                  FilledButton.styleFrom(
+                                    minimumSize: const Size(44, 40),
+                                  ),
                                 ),
                               ),
                               TextButton(
                                 onPressed: onHide,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: MarqueeColors.cream,
-                                  minimumSize: const Size(44, 40),
+                                style: withFocusRing(
+                                  TextButton.styleFrom(
+                                    foregroundColor: MarqueeColors.cream,
+                                    minimumSize: const Size(44, 40),
+                                  ),
                                 ),
                                 child: Text(l10n.playerHide),
                               ),

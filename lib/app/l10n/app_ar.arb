@@ -129,5 +129,8 @@
   "playerUnlock": "فتح القفل",
   "playerSeekAmount": "{amount} ث",
   "playerBrightness": "السطوع",
-  "playerVolume": "الصوت"
+  "playerVolume": "الصوت",
+  "playerFullScreen": "ملء الشاشة",
+  "playerExitFullScreen": "إنهاء ملء الشاشة",
+  "playerMuted": "الصوت مكتوم"
 }

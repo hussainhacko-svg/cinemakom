@@ -143,6 +143,12 @@ class PlayerController extends Notifier<PlayerState> {
       engine.subtitleText.listen(_onSubtitleText),
     ]);
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    final saved = ref
+        .read(preferenceStoreProvider)
+        .value
+        ?.getInt(PreferenceKeys.playerVolume);
+    final volume = (saved ?? 100).clamp(0, 100).toDouble();
+    unawaited(engine.setVolume(volume));
     // The size setting also sizes styled (libass) subtitles; the Flutter
     // layer reads it itself.
     unawaited(
@@ -160,7 +166,7 @@ class PlayerController extends Notifier<PlayerState> {
         start: request.start,
       ),
     );
-    return PlayerState.initial(request);
+    return PlayerState.initial(request).copyWith(volume: volume);
   }
 
   void _dispose() {
@@ -666,6 +672,41 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> seekBy(Duration delta) => seek(position.value + delta);
+
+  /// Sets the volume (0–100), unmutes, and remembers it for next time.
+  Future<void> setVolume(double volume) async {
+    noteActivity();
+    final v = volume.clamp(0, 100).toDouble();
+    state = state.copyWith(volume: v, muted: false);
+    await engine.setVolume(v);
+    await ref
+        .read(preferenceStoreProvider)
+        .value
+        ?.setInt(PreferenceKeys.playerVolume, v.round());
+  }
+
+  /// ↑ / ↓ and the scroll wheel. From mute, it starts again at 0.
+  Future<void> changeVolume(double delta) =>
+      setVolume((state.muted ? 0 : state.volume) + delta);
+
+  /// M: mute, or back to the volume before.
+  Future<void> toggleMute() async {
+    noteActivity();
+    final muted = !state.muted;
+    state = state.copyWith(muted: muted);
+    await engine.setVolume(muted ? 0 : state.volume);
+  }
+
+  /// C: the next subtitle choice, Off after the last.
+  Future<void> nextSubtitle() {
+    final options = state.subtitles;
+    final i = options.indexWhere((o) => o == state.subtitle);
+    return selectSubtitle(options[(i + 1) % options.length]);
+  }
+
+  /// 0–9: jump to that tenth of the video.
+  Future<void> seekToTenth(int tenth) =>
+      seek(state.duration * (tenth.clamp(0, 9) / 10));
 
   Future<void> setSpeed(double speed) async {
     noteActivity();

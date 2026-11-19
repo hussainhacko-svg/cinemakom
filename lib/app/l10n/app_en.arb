@@ -618,5 +618,17 @@
   "playerVolume": "Volume",
   "@playerVolume": {
     "description": "Player: label of the volume level shown while swiping"
+  },
+  "playerFullScreen": "Full screen",
+  "@playerFullScreen": {
+    "description": "Player (desktop): button and tooltip to fill the screen"
+  },
+  "playerExitFullScreen": "Exit full screen",
+  "@playerExitFullScreen": {
+    "description": "Player (desktop): leave full screen"
+  },
+  "playerMuted": "Muted",
+  "@playerMuted": {
+    "description": "Player: short note after M mutes the sound"
   }
 }

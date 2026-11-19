@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart'
+    show PointerScrollEvent, kDoubleTapTimeout;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ import '../../app/widgets/bulb_loader.dart';
 import '../../app/widgets/error_view.dart';
 import '../../app/widgets/media_image.dart' show networkImagesProvider;
 import '../../core/network/api_exception.dart';
+import '../../core/platform/full_screen.dart';
 import '../../core/platform/orientation.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/player/audio_focus.dart';
@@ -64,6 +67,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// Calls, other apps and unplugged headphones pause playback (phones).
   AudioFocus? _audio;
+
+  /// Desktop full screen, and whether the window was already full screen
+  /// when the player opened (it's left that way on exit).
+  late final FullScreen _window;
+  late final bool _wasFullScreen;
+  bool _fullScreen = false;
+
+  /// The last click on the video, to spot a double click.
+  DateTime? _lastClick;
   Timer? _hideTimer;
   Timer? _bufferingTimer;
   Timer? _toastTimer;
@@ -88,6 +100,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     _session = _controller;
+    _window = ref.read(fullScreenProvider);
+    _wasFullScreen = isDesktop && _window.isOn;
+    _fullScreen = _wasFullScreen;
     _rotation = ref.read(settingsProvider).screenRotation;
     // Progress survives the app being killed in the background.
     _lifecycle = AppLifecycleListener(
@@ -110,6 +125,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void dispose() {
     _session.saveProgress();
+    if (_fullScreen != _wasFullScreen) _window.set(_wasFullScreen);
     _lifecycle.dispose();
     _hideTimer?.cancel();
     _bufferingTimer?.cancel();
@@ -197,6 +213,59 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _back() {
     if (context.canPop()) context.pop();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Desktop: full screen, mouse, keys (PLAYER.md §9.2)
+
+  void _toggleFullScreen() {
+    final on = !_fullScreen;
+    _window.set(on);
+    setState(() => _fullScreen = on);
+    _show();
+  }
+
+  /// Esc: out of full screen first, then out of the player.
+  void _escape() => _fullScreen ? _toggleFullScreen() : _back();
+
+  /// A click on the video plays or pauses at once. A double click is two
+  /// clicks, so playback comes back as it was, and the window goes full
+  /// screen.
+  void _click() {
+    _input();
+    final now = DateTime.now();
+    final last = _lastClick;
+    _lastClick = now;
+    unawaited(_controller.togglePlay());
+    if (last != null && now.difference(last) < kDoubleTapTimeout) {
+      _lastClick = null;
+      _toggleFullScreen();
+    }
+  }
+
+  Future<void> _volumeBy(double delta) async {
+    await _controller.changeVolume(delta);
+    _showVolume();
+  }
+
+  void _showVolume() {
+    if (!mounted) return;
+    final s = _state;
+    final silent = s.muted || s.volume == 0;
+    _showToast(
+      silent ? Icons.volume_off_outlined : Icons.volume_up_outlined,
+      s.muted
+          ? AppLocalizations.of(context).playerMuted
+          : '${s.volume.round()}%',
+    );
+  }
+
+  /// [ and ]: one step through the speed menu's choices.
+  Future<void> _speedStep(int step) async {
+    final i = _speeds.indexOf(_state.speed);
+    final next = _speeds[((i < 0 ? 2 : i) + step).clamp(0, _speeds.length - 1)];
+    await _controller.setSpeed(next);
+    _showToast(Icons.speed, speedLabel(next));
   }
 
   // ---------------------------------------------------------------------------
@@ -437,29 +506,78 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  Map<ShortcutActivator, VoidCallback> get _shortcuts => {
-    const SingleActivator(LogicalKeyboardKey.space): () {
+  /// The keys of PLAYER.md §9.2, the same in both languages.
+  Map<ShortcutActivator, VoidCallback> get _shortcuts {
+    VoidCallback key(void Function() action) => () {
       _input();
-      _controller.togglePlay();
-    },
-    const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-      _input();
-      _controller.seekBy(const Duration(seconds: -10));
-    },
-    const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-      _input();
-      _controller.seekBy(const Duration(seconds: 10));
-    },
-    const SingleActivator(LogicalKeyboardKey.keyS): () {
-      _input();
-      _controller.skipIntro();
-    },
-    const SingleActivator(LogicalKeyboardKey.keyN): () {
-      _input();
-      _controller.playNext();
-    },
-    const SingleActivator(LogicalKeyboardKey.escape): _back,
-  };
+      action();
+    };
+    void seekBy(int seconds) =>
+        unawaited(_controller.seekBy(Duration(seconds: seconds)));
+    return {
+      const SingleActivator(LogicalKeyboardKey.space): key(_togglePlay),
+      const SingleActivator(LogicalKeyboardKey.keyK): key(_togglePlay),
+      const SingleActivator(LogicalKeyboardKey.arrowLeft): key(
+        () => seekBy(-10),
+      ),
+      const SingleActivator(LogicalKeyboardKey.arrowRight): key(
+        () => seekBy(10),
+      ),
+      const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true): key(
+        () => seekBy(-60),
+      ),
+      const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true): key(
+        () => seekBy(60),
+      ),
+      const SingleActivator(LogicalKeyboardKey.arrowUp): key(
+        () => _volumeBy(5),
+      ),
+      const SingleActivator(LogicalKeyboardKey.arrowDown): key(
+        () => _volumeBy(-5),
+      ),
+      const SingleActivator(LogicalKeyboardKey.keyM): key(() async {
+        await _controller.toggleMute();
+        _showVolume();
+      }),
+      if (isDesktop)
+        const SingleActivator(LogicalKeyboardKey.keyF): key(_toggleFullScreen),
+      const SingleActivator(LogicalKeyboardKey.keyC): key(
+        () => unawaited(_controller.nextSubtitle()),
+      ),
+      const SingleActivator(LogicalKeyboardKey.bracketLeft): key(
+        () => _speedStep(-1),
+      ),
+      const SingleActivator(LogicalKeyboardKey.bracketRight): key(
+        () => _speedStep(1),
+      ),
+      for (final (i, digit) in _digits.indexed)
+        SingleActivator(digit): key(
+          () => unawaited(_controller.seekToTenth(i)),
+        ),
+      const SingleActivator(LogicalKeyboardKey.keyS): key(
+        () => unawaited(_controller.skipIntro()),
+      ),
+      const SingleActivator(LogicalKeyboardKey.keyN): key(
+        () => unawaited(_controller.playNext()),
+      ),
+      const SingleActivator(LogicalKeyboardKey.escape): _escape,
+    };
+  }
+
+  void _togglePlay() => unawaited(_controller.togglePlay());
+
+  static const _digits = [
+    LogicalKeyboardKey.digit0,
+    LogicalKeyboardKey.digit1,
+    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
+    LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
+    LogicalKeyboardKey.digit9,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -541,6 +659,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 tooltip: l10n.playerLock,
                                 onPressed: _lock,
                               ),
+                            if (isDesktop)
+                              _ChipIcon(
+                                icon: _fullScreen
+                                    ? Icons.fullscreen_exit
+                                    : Icons.fullscreen,
+                                tooltip: _fullScreen
+                                    ? l10n.playerExitFullScreen
+                                    : l10n.playerFullScreen,
+                                onPressed: _toggleFullScreen,
+                              ),
                           ],
                           onScrub: (at) {
                             _scrubbing = at != null;
@@ -613,10 +741,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onPinch: (fit) => _pinchFit(l10n, fit),
           child: controls,
         )
-      : GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggle,
-          child: controls,
+      : Listener(
+          // The scroll wheel sets the volume.
+          onPointerSignal: (e) {
+            if (e is PointerScrollEvent && e.scrollDelta.dy != 0) {
+              unawaited(_volumeBy(e.scrollDelta.dy < 0 ? 5 : -5));
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _click,
+            child: controls,
+          ),
         );
 }
 
@@ -641,11 +777,13 @@ class _ChipIcon extends StatelessWidget {
       tooltip: tooltip,
       onPressed: onPressed,
       icon: Icon(icon, size: 20),
-      style: IconButton.styleFrom(
-        backgroundColor: MarqueeColors.booth,
-        foregroundColor: MarqueeColors.cream,
-        side: const BorderSide(color: MarqueeColors.velvet),
-        fixedSize: const Size.square(44),
+      style: withFocusRing(
+        IconButton.styleFrom(
+          backgroundColor: MarqueeColors.booth,
+          foregroundColor: MarqueeColors.cream,
+          side: const BorderSide(color: MarqueeColors.velvet),
+          fixedSize: const Size.square(44),
+        ),
       ),
     ),
   );
@@ -673,14 +811,16 @@ class _Unlock extends StatelessWidget {
             onPressed: onPressed,
             icon: const Icon(Icons.lock_open_outlined, size: 20),
             label: Text(AppLocalizations.of(context).playerUnlock),
-            style: TextButton.styleFrom(
-              backgroundColor: MarqueeColors.booth,
-              foregroundColor: MarqueeColors.cream,
-              side: const BorderSide(color: MarqueeColors.velvet),
-              shape: const StadiumBorder(),
-              minimumSize: const Size(44, 44),
-              padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: MarqueeSpace.l,
+            style: withFocusRing(
+              TextButton.styleFrom(
+                backgroundColor: MarqueeColors.booth,
+                foregroundColor: MarqueeColors.cream,
+                side: const BorderSide(color: MarqueeColors.velvet),
+                shape: const StadiumBorder(),
+                minimumSize: const Size(44, 44),
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: MarqueeSpace.l,
+                ),
               ),
             ),
           ),
@@ -761,9 +901,11 @@ class _Resumed extends StatelessWidget {
                   const SizedBox(width: MarqueeSpace.xs),
                   TextButton(
                     onPressed: onStartOver,
-                    style: TextButton.styleFrom(
-                      foregroundColor: MarqueeColors.bulb,
-                      minimumSize: const Size(44, 44),
+                    style: withFocusRing(
+                      TextButton.styleFrom(
+                        foregroundColor: MarqueeColors.bulb,
+                        minimumSize: const Size(44, 44),
+                      ),
                     ),
                     child: Text(l10n.playerStartOver),
                   ),

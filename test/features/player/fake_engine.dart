@@ -118,8 +118,9 @@ class FakeEngine implements PlayerEngine {
 
   @override
   Future<void> setRate(double rate) async => this.rate = rate;
+  double volume = 100;
   @override
-  Future<void> setVolume(double volume) async {}
+  Future<void> setVolume(double volume) async => this.volume = volume;
   @override
   Future<void> setSubtitle(EngineSubtitle? track) async => subtitles.add(track);
   @override

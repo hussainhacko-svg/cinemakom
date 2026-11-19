@@ -1,3 +1,4 @@
+import 'package:cinemakom/core/platform/full_screen.dart';
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
@@ -87,6 +88,7 @@ Future<void> pumpApp(
   FakeApiClient? api,
   FakeEngine? engine,
   MemoryLibraryRepository? library,
+  FakeFullScreen? fullScreen,
   double width = 390,
   double height = 844,
 }) async {
@@ -110,11 +112,21 @@ Future<void> pumpApp(
         libraryRepositoryProvider.overrideWithValue(
           library ?? MemoryLibraryRepository(),
         ),
+        fullScreenProvider.overrideWithValue(fullScreen ?? FakeFullScreen()),
       ],
       child: const CinemakomApp(),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// The desktop window's full screen, without a window.
+class FakeFullScreen implements FullScreen {
+  @override
+  bool isOn = false;
+
+  @override
+  void set(bool on) => isOn = on;
 }
 
 TextDirection directionAt(WidgetTester tester, Finder finder) =>
