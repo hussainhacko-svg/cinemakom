@@ -31,7 +31,7 @@ fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flu
 
 ## Architecture rules
 - Folders are organized by feature: `lib/core` (network, storage, platform), `lib/data` (models, parsers, repositories), `lib/features/<feature>` (screen, widgets, providers). See PLAN.md §3.
-- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit. **Downloads:** background_downloader.
+- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit (desktop, iOS) and video_player/ExoPlayer (Android). **Downloads:** background_downloader.
 - **Only `lib/core/network` builds URLs or sets headers.** Screens and widgets never call Dio directly. They go through repositories.
 - **One shared header map** (`User-Agent`, `Referer`, `Origin`, see API.md) is used for API calls, images, video streams and downloads. Never copy it somewhere else.
 - **The JSON is inconsistent.** IDs and titles come under several different key names. Parse with the tolerant helpers in `lib/data/parsers`, not generated `fromJson`. Parsers must skip bad items and never throw.
@@ -39,7 +39,7 @@ fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flu
 - **Long lists** (anything paged) are a `MediaSource` in `lib/data/paging/media_sources.dart`, shown through `pagedMediaProvider` with `PagedGridSlivers` (grid) or `SourceRow` (a row). Don't write paging logic in screens. Lists scroll infinitely (decision 2026-11-19).
 - **Opening pages:** use `openTitle` / `openGenre` / `openList` (`lib/app/navigation.dart`). They push inside the current tab, so the nav bar stays and back works. New page types get a route in `_browse` in `router.dart`. The player is the exception: `openPlayer` pushes the full-screen `/watch/:id` route above the tabs.
 - **Images** go through `MediaImage` (shared headers, decoded at display size, no fade). **Errors** go through `ErrorView` / `errorMessage` (it asks the status page once). **Loading** is `BulbLoader`, never a spinner or shimmer.
-- **Player:** only `lib/core/player/media_kit_engine.dart` imports media_kit; everything else uses `PlayerEngine`. `PlayerController` (`lib/features/player`) owns playback and recovery. Follow `docs/PLAYER.md` (and its §13 findings: never parse mpv error text, an early "completed" is a failure, a failed open stays "buffering").
+- **Player:** two engines behind `PlayerEngine`: **ExoPlayer on Android** (`exo_player_engine.dart`, the only file that imports video_player; mpv stuttered on 4K there) and **media_kit (mpv) everywhere else** (`media_kit_engine.dart`, the only file that imports media_kit). Everything else uses `PlayerEngine`. Android has no styled (ASS) subtitles (`supportsStyledSubtitles`). `PlayerController` (`lib/features/player`) owns playback and recovery. Follow `docs/PLAYER.md` (and its §13 findings: never parse mpv error text, an early "completed" is a failure, a failed open stays "buffering").
 - **No automatic provider retries:** every `ProviderScope` / `ProviderContainer` uses `retry: noRetry` (from `main.dart`). `ApiClient` already retries a failed GET once; screens show errors with "Try again".
 
 ## Conventions

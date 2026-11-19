@@ -82,6 +82,33 @@ class ApiClient {
     }
   }
 
+  /// Downloads a text file (a subtitle) from an absolute [url] with the
+  /// shared headers, retried once like [fetch]. A UTF-8 BOM is dropped.
+  Future<String> fetchText(String url) async {
+    Future<String> once() async {
+      try {
+        final response = await _dio.get<String>(url);
+        final body = response.data ?? '';
+        return body.startsWith('\uFEFF') ? body.substring(1) : body;
+      } on DioException catch (e) {
+        throw _mapDioError(e, url);
+      }
+    }
+
+    await _slots.acquire();
+    try {
+      try {
+        return await once();
+      } on ApiException catch (e) {
+        if (!_isRetryable(ApiRequest(url), e)) rethrow;
+        await Future<void>.delayed(retryDelay);
+        return await once();
+      }
+    } finally {
+      _slots.release();
+    }
+  }
+
   static bool _isRetryable(ApiRequest request, ApiException e) =>
       request.method == HttpMethod.get &&
       (e.kind == ApiErrorKind.network ||

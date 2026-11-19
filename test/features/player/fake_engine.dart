@@ -7,6 +7,11 @@ import 'package:flutter/widgets.dart';
 /// pushes events with the `emit…` methods. Events are delivered
 /// synchronously.
 class FakeEngine implements PlayerEngine {
+  FakeEngine({this.supportsStyledSubtitles = true});
+
+  @override
+  final bool supportsStyledSubtitles;
+
   final opened = <({EngineSource source, Duration start, bool play})>[];
   final subtitles = <EngineSubtitle?>[];
   final seeks = <Duration>[];

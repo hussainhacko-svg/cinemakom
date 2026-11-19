@@ -58,6 +58,9 @@ class MediaKitEngine implements PlayerEngine {
   bool _disposed = false;
 
   @override
+  bool get supportsStyledSubtitles => true;
+
+  @override
   Stream<Duration> get position => _position.stream;
   @override
   Stream<Duration> get duration => _duration.stream;

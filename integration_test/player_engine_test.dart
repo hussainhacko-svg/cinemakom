@@ -106,6 +106,24 @@ void main() {
     expect(c.position.value - at, lessThan(const Duration(seconds: 15)));
   });
 
+  testWidgets('4K keeps playing (Android: ExoPlayer)', (tester) async {
+    final c = await pumpPlayer(tester, avengers);
+    await until(tester, () => c.state.phase == PlayerPhase.ready);
+    await c.selectQuality(c.state.sources.firstWhere((s) => s.height == 2160));
+    await until(
+      tester,
+      () => c.state.phase == PlayerPhase.ready && !c.state.buffering,
+    );
+    final from = c.position.value;
+    final clock = Stopwatch()..start();
+    await until(tester, () => false, seconds: 20);
+    final played = c.position.value - from;
+    // ignore: avoid_print
+    print('4K played $played in ${clock.elapsed}');
+    expect(c.state.phase, PlayerPhase.ready);
+    expect(played, greaterThan(const Duration(seconds: 18)));
+  });
+
   testWidgets('plain Arabic subtitles reach the Flutter layer', (tester) async {
     final c = await pumpPlayer(tester, attackOnTitan);
     await until(tester, () => c.position.value > const Duration(seconds: 96));

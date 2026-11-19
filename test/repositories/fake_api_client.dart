@@ -43,6 +43,10 @@ class FakeApiClient implements ApiClient {
     }
     throw StateError('No fake route for $request');
   }
+
+  @override
+  Future<String> fetchText(String url) async =>
+      '${await fetch(ApiRequest(url))}';
 }
 
 const offline = ApiException(ApiErrorKind.network, message: 'offline');

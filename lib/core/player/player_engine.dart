@@ -29,12 +29,17 @@ class EngineSubtitle {
   final bool styled;
 }
 
-/// The video player, without any UI. [MediaKitEngine] is the real one; tests
-/// use a fake. Only the engine implementation knows about media_kit.
+/// The video player, without any UI. `MediaKitEngine` (mpv) runs on desktop
+/// and iOS, `ExoPlayerEngine` on Android; tests use a fake. Only the engine
+/// implementations know about their packages.
 ///
 /// The streams are broadcast streams that survive [open], even when the
 /// implementation recreates its native player for a new file.
 abstract interface class PlayerEngine {
+  /// Whether styled (ASS) subtitles can be drawn. When not, the player
+  /// doesn't offer them.
+  bool get supportsStyledSubtitles;
+
   Stream<Duration> get position;
   Stream<Duration> get duration;
 

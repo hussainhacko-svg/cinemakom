@@ -67,8 +67,9 @@ Env start(
   List<Route> routes = const [],
   PlaybackRequest request = movie,
   Map<String, Object> prefs = const {},
+  FakeEngine? fake,
 }) {
-  final engine = FakeEngine();
+  final engine = fake ?? FakeEngine();
   final api = F([
     ...routes,
     F.path('transcoddedFiles/', streams()),
@@ -397,6 +398,24 @@ void main() {
       env.flush();
       expect(env.engine.opened.last.start, Duration.zero);
       expect(env.controller.position.value, Duration.zero);
+    });
+  });
+
+  test('styled subtitles are offered only where the engine draws them', () {
+    fakeAsync((async) {
+      final routes = [F.fixtureAt('translationFiles/', 'subtitles_special')];
+      final mpv = start(async, routes: routes);
+      expect(mpv.state.subtitles.where((o) => o.isStyled), isNotEmpty);
+
+      final exo = start(
+        async,
+        routes: routes,
+        fake: FakeEngine(supportsStyledSubtitles: false),
+      );
+      expect(exo.state.subtitles.where((o) => o.isStyled), isEmpty);
+      expect(exo.state.subtitles.where((o) => o.languageCode == 'ar'), [
+        isA<Object>(),
+      ]);
     });
   });
 

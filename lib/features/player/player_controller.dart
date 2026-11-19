@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_providers.dart';
+import '../../core/platform/platform_info.dart';
+import '../../core/player/exo_player_engine.dart';
 import '../../core/player/media_kit_engine.dart';
 import '../../core/player/player_engine.dart';
 import '../../core/storage/preferences.dart';
@@ -14,10 +17,16 @@ import 'player_state.dart';
 import 'quality.dart';
 import 'subtitles.dart';
 
-/// Makes the engine for each player session. Tests override it with a fake.
-final playerEngineFactoryProvider = Provider<PlayerEngine Function()>(
-  (ref) => MediaKitEngine.new,
-);
+/// Makes the engine for each player session: ExoPlayer on Android (mpv
+/// stuttered there, PLAYER.md §13), mpv elsewhere. Tests override it with a
+/// fake.
+final playerEngineFactoryProvider = Provider<PlayerEngine Function()>((ref) {
+  if (isAndroid) {
+    final api = ref.read(apiClientProvider);
+    return () => ExoPlayerEngine(loadText: api.fetchText);
+  }
+  return MediaKitEngine.new;
+});
 
 /// One playback session: opened by the player screen, closed with it.
 final playerControllerProvider = NotifierProvider.autoDispose
@@ -204,9 +213,13 @@ class PlayerController extends Notifier<PlayerState> {
       sources,
       _chosenHeight ?? settings.defaultQuality.height,
     )!;
-    final options = subtitleOptions(
-      loadedTracks.isNotEmpty ? loadedTracks : loadedDetails?.subtitles ?? [],
-    );
+    final options = subtitleOptions([
+      for (final t
+          in loadedTracks.isNotEmpty
+              ? loadedTracks
+              : loadedDetails?.subtitles ?? const <SubtitleTrack>[])
+        if (engine.supportsStyledSubtitles || !t.isStyled) t,
+    ]);
     final chosen = _chosenSubtitle;
     final subtitle =
         (chosen == null ? null : carryOver(options, chosen)) ??
