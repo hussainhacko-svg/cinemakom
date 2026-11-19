@@ -29,6 +29,10 @@ extension MarqueeWeight on TextStyle {
 class MarqueeText {
   const MarqueeText({required this.arabic});
 
+  /// The scale for the UI language in effect at [context].
+  factory MarqueeText.of(BuildContext context) =>
+      MarqueeText(arabic: Localizations.localeOf(context).languageCode == 'ar');
+
   final bool arabic;
 
   static const _display = TextStyle(

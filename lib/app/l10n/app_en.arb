@@ -4,8 +4,114 @@
   "@appTitle": {
     "description": "The application name"
   },
-  "setupPlaceholder": "Coming soon",
-  "@setupPlaceholder": {
-    "description": "Placeholder text on the empty Phase 0 screen"
+  "comingSoon": "Coming soon",
+  "@comingSoon": {
+    "description": "Shown on screens that are not built yet"
+  },
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Navigation tab: the home screen"
+  },
+  "navSearch": "Search",
+  "@navSearch": {
+    "description": "Navigation tab: search"
+  },
+  "navLibrary": "Library",
+  "@navLibrary": {
+    "description": "Navigation tab: continue watching and favorites"
+  },
+  "navDownloads": "Downloads",
+  "@navDownloads": {
+    "description": "Navigation tab: downloaded videos"
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Navigation tab: settings"
+  },
+  "chooseLanguage": "Choose your language",
+  "@chooseLanguage": {
+    "description": "Heading on the first-launch language picker"
+  },
+  "continueAction": "Continue",
+  "@continueAction": {
+    "description": "Button that confirms the language on the first-launch picker"
+  },
+  "changeLanguageLater": "You can change this later in Settings",
+  "@changeLanguageLater": {
+    "description": "Hint under the Continue button on the first-launch picker"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "The English language, always written in English"
+  },
+  "languageArabic": "العربية",
+  "@languageArabic": {
+    "description": "The Arabic language, always written in Arabic"
+  },
+  "settingsGeneral": "General",
+  "@settingsGeneral": {
+    "description": "Settings group heading"
+  },
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Settings row: the UI language"
+  },
+  "settingsPlayback": "Playback",
+  "@settingsPlayback": {
+    "description": "Settings group heading"
+  },
+  "settingsDefaultQuality": "Default quality",
+  "@settingsDefaultQuality": {
+    "description": "Settings row: the video quality the player starts with"
+  },
+  "settingsDefaultSubtitles": "Default subtitles",
+  "@settingsDefaultSubtitles": {
+    "description": "Settings row: the subtitle language the player starts with"
+  },
+  "settingsHelp": "Help",
+  "@settingsHelp": {
+    "description": "Settings group heading"
+  },
+  "settingsAbout": "About and licenses",
+  "@settingsAbout": {
+    "description": "Settings row: opens the open-source licenses page"
+  },
+  "subtitleArabic": "Arabic",
+  "@subtitleArabic": {
+    "description": "Subtitle choice: Arabic subtitles"
+  },
+  "subtitleEnglish": "English",
+  "@subtitleEnglish": {
+    "description": "Subtitle choice: English subtitles"
+  },
+  "subtitleOff": "Off",
+  "@subtitleOff": {
+    "description": "Subtitle choice: no subtitles"
+  },
+  "quality4k": "{height}p · 4K",
+  "@quality4k": {
+    "description": "Quality choice for 2160p, e.g. 2160p · 4K",
+    "placeholders": {
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "qualityHeight": "{height}p",
+  "@qualityHeight": {
+    "description": "Quality choice, e.g. 1080p",
+    "placeholders": {
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "startupFailed": "Cinemakom couldn't start",
+  "@startupFailed": {
+    "description": "Splash screen error when the settings can't be loaded"
+  },
+  "retry": "Try again",
+  "@retry": {
+    "description": "Button that retries a failed action"
   }
 }

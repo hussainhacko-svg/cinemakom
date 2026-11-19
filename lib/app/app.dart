@@ -1,72 +1,62 @@
 import 'package:cupertino_ui/cupertino_ui.dart'
     show GlobalCupertinoLocalizations;
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalWidgetsLocalizations;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../features/debug/debug_screen.dart';
-import 'brand/cinemakom_mark.dart';
+import '../core/storage/preferences.dart';
 import 'l10n/app_localizations.dart';
+import 'router.dart';
+import 'splash_screen.dart';
 import 'theme/marquee_theme.dart';
 
-class CinemakomApp extends StatelessWidget {
+const _localizationsDelegates = [
+  AppLocalizations.delegate,
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
+
+/// The root widget. Shows the splash until startup has finished, then the
+/// router. The UI language (and with it the text direction) comes from the
+/// settings, so changing it in Settings switches the whole app live.
+class CinemakomApp extends ConsumerWidget {
   const CinemakomApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      debugShowCheckedModeBanner: false,
-      // English is the default. Phase 2 adds the first-launch language picker
-      // and stores the choice; Arabic switches the layout to RTL.
-      locale: const Locale('en'),
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      // The one and only theme (docs/DESIGN.md).
-      theme: buildMarqueeTheme(arabic: false),
-      home: const _PlaceholderScreen(),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          // Developer-only API check; removed from release builds.
-          if (kDebugMode)
-            IconButton(
-              icon: const Icon(Icons.bug_report_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const DebugScreen()),
-              ),
-            ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 24,
-          children: [
-            const CinemakomLogo(),
-            Text(
-              l10n.setupPlaceholder,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final startup = ref.watch(appStartupProvider);
+    if (!startup.hasValue) {
+      // Before the settings load, the language is unknown: follow the device.
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: _localizationsDelegates,
+        theme: buildMarqueeTheme(arabic: false),
+        home: SplashScreen(
+          onRetry: startup.hasError
+              ? () => ref
+                  ..invalidate(preferenceStoreProvider)
+                  ..invalidate(appStartupProvider)
+              : null,
         ),
-      ),
+      );
+    }
+
+    final language = ref.watch(
+      settingsProvider.select((s) => s.effectiveLanguage),
+    );
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      locale: language.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: _localizationsDelegates,
+      // The one and only theme (docs/DESIGN.md). Arabic only drops tracking.
+      theme: buildMarqueeTheme(arabic: language == AppLanguage.arabic),
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

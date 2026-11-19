@@ -70,7 +70,9 @@ ThemeData buildMarqueeTheme({required bool arabic}) {
       height: 72,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: Colors.transparent,
+      // The active tab sits on a boothRaised pill (DESIGN.md §5).
+      indicatorColor: MarqueeColors.boothRaised,
+      indicatorShape: pill,
       iconTheme: selected(
         const IconThemeData(color: MarqueeColors.bulb, size: 22),
         const IconThemeData(color: MarqueeColors.dust, size: 22),
@@ -85,8 +87,9 @@ ThemeData buildMarqueeTheme({required bool arabic}) {
     navigationRailTheme: NavigationRailThemeData(
       backgroundColor: MarqueeColors.navBar,
       elevation: 0,
-      indicatorColor: Colors.transparent,
-      labelType: NavigationRailLabelType.all,
+      indicatorColor: MarqueeColors.boothRaised,
+      indicatorShape: pill,
+      useIndicator: true,
       selectedIconTheme: const IconThemeData(
         color: MarqueeColors.bulb,
         size: 22,
