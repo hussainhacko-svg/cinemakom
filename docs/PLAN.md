@@ -141,7 +141,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - Label the external link "IMDb" only when `imdbUrlIsImdb`; anime links go to MyAnimeList.
   - *Decision (2026-11-19):* Details is a page, not a bottom sheet, so related titles and actor pages can stack and the back gesture steps through them.
   - Episodes show as "Episode N" from `Episode.numbering`: "Episodes 7 & 8" for double episodes, a "Final" badge for finales. Never use episode titles. Use the season image.
-- [ ] **Player:**
+- [ ] **Player** (full plan: [`PLAYER.md`](PLAYER.md)):
   - quality selection (default from settings, closest match).
     - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour): it is an always-visible chip in the player's top bar.
   - subtitles (Arabic, English or off, default from settings; one plain track per language, SRT preferred)
@@ -232,15 +232,17 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - [x] **Done when:** you can browse, search and open details for movies and series on Android and Linux. Checked by widget tests on fixtures, and `integration_test/screenshots_test.dart` against the live API on Linux and the Android emulator.
 
 ### Phase 4: Player
-- *Where it plugs in (left by Phase 3):* the disabled **Play** button in `features/details/details_screen.dart` (`onPressed: null`), the hero's Play in `features/home/widgets/home_hero.dart` (opens details for now), and the episode rows in `features/details/widgets/episode_list.dart` (not tappable yet). Settings already store the default quality and subtitles (`settingsProvider`; `PreferredQuality.height` matches `VideoSource.height`).
-- media_kit with headers, a quality menu, external subtitles (plain SRT, plus "Arabic (styled)" ASS for anime with the bundled Arabic fallback font for libass, see §4.1), speed, fit modes, next episode, saving position and resuming.
-- **Mobile:** gestures, forced landscape, wakelock.
-- **Desktop:** keyboard shortcuts (space, ←/→ seek, ↑/↓ volume, F fullscreen, Esc), mouse-hover controls, fullscreen through `window_manager`.
-- Skip intro.
-- **Done when:** a movie and a full series play smoothly on Android, Linux and Windows.
+**The detailed plan is [`PLAYER.md`](PLAYER.md)**: targets, decisions, architecture, mpv setup, every feature, the controls, platform specifics, milestones M0–M9 and tests.
+- *Decisions (2026-11-19):*
+  - The drift `watch_history` table is built in this phase, so resume works now. Phase 5 adds the Library UI.
+  - The seek bar always runs left → right, in Arabic too.
+  - Next episode autoplays after a 10 s "Up next" countdown.
+  - Extras in this phase: subtitle size and delay, seek-bar previews (moved up from Phase 7) and a controls lock on mobile.
+  - No picture-in-picture for now.
+- **Done when:** a movie and a full series play smoothly on Android, Linux and Windows, and every target in PLAYER.md §1 is met.
 
 ### Phase 5: Library
-- drift tables (`watch_history`, `favorites`), the Library tab (Continue watching and Favorites), and a background metadata refresh with `getVideosByIds`.
+- drift `favorites` table (`watch_history` already exists from Phase 4), the Library tab (Continue watching and Favorites), and a background metadata refresh with `getVideosByIds`.
 - **Done when:** history and favorites survive a restart and resume works.
 
 ### Phase 6: Downloads
@@ -255,7 +257,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** a download finishes, plays offline with subtitles, and survives an app restart in the middle.
 
 ### Phase 7: New features
-- The rest of §4.2 (skip intro is built in Phase 4): cast and crew, actor pages, related titles, seek-bar previews, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
+- The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4): cast and crew, actor pages, related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
 
 ### Phase 8: Polish and release
 - Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).
