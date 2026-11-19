@@ -172,17 +172,17 @@ class _ActiveRow extends ConsumerWidget {
     final status = switch (d.status) {
       DownloadStatus.running => sizes ?? '',
       DownloadStatus.queued => l10n.downloadQueued,
-      DownloadStatus.paused => [l10n.downloadPaused, ?sizes].join(' · '),
+      DownloadStatus.paused => context.joinMeta([l10n.downloadPaused, ?sizes]),
       DownloadStatus.failed => problemText(l10n, d.problem),
       DownloadStatus.complete => '',
     };
     final pace = d.status == DownloadStatus.running
-        ? [
+        ? context.joinMeta([
             if (progress?.bytesPerSecond case final speed? when speed > 0)
               l10n.downloadSpeed(formatBytes(l10n, speed.round())),
             if (progress?.timeLeft case final left? when left > Duration.zero)
               minutesLeft(l10n, left),
-          ].join(' · ')
+          ])
         : '';
     final where = _where(l10n, d);
     final running =
@@ -264,13 +264,13 @@ class _TitleRow extends ConsumerWidget {
     final first = downloads.first;
     final bytes = downloads.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
     final series = first.isEpisode;
-    final meta = [
+    final meta = context.joinMeta([
       if (series)
         l10n.downloadEpisodeCount(downloads.length)
       else
         first.quality,
       if (bytes > 0) formatBytes(l10n, bytes),
-    ].join(' · ');
+    ]);
     return _Row(
       posterUrl: first.posterUrl,
       onTap: () => series
@@ -368,11 +368,11 @@ class SavedSeriesScreen extends ConsumerWidget {
                           Text(_where(l10n, d), style: text.label),
                           const SizedBox(height: 2),
                           Text(
-                            [
+                            context.joinMeta([
                               d.quality,
                               if (d.totalBytes case final b? when b > 0)
                                 formatBytes(l10n, b),
-                            ].join(' · '),
+                            ]),
                             style: text.caption,
                           ),
                         ],

@@ -11,6 +11,18 @@ extension MediaText on BuildContext {
   String titleOf(MediaItem item) =>
       item.title.resolve(arabic: isArabicUi) ?? item.otherTitle ?? '';
 
+  /// [parts] joined with " · ". In RTL each part is a bidi isolate, so a
+  /// Latin part ("720p") and a number in the next one ("270 م.ب") don't
+  /// merge into one left-to-right run and swap places.
+  String joinMeta(Iterable<String> parts) =>
+      Directionality.of(this) == TextDirection.rtl
+      ? parts.map(isolate).join(' · ')
+      : parts.join(' · ');
+
+  /// [text] as a bidi isolate in RTL (first strong character decides).
+  String isolate(String text) =>
+      Directionality.of(this) == TextDirection.rtl ? '\u2068$text\u2069' : text;
+
   /// "2023 · Drama": year and first genre, for cards.
   String cardMeta(MediaItem item) => [
     if (item.year != null) '${item.year}',

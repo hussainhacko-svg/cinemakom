@@ -91,8 +91,8 @@ Future<void> startDownload(
           c.bytes == null
               ? qualityChipLabel(c.source)
               : l10n.downloadChoice(
-                  qualityChipLabel(c.source),
-                  formatBytes(l10n, c.bytes!),
+                  context.isolate(qualityChipLabel(c.source)),
+                  context.isolate(formatBytes(l10n, c.bytes!)),
                 ),
         ),
     ],
@@ -143,8 +143,8 @@ Future<void> startSeasonDownload(
           c.bytes == null
               ? qualityChipLabel(c.source)
               : l10n.downloadChoiceEach(
-                  qualityChipLabel(c.source),
-                  formatBytes(l10n, c.bytes!),
+                  context.isolate(qualityChipLabel(c.source)),
+                  context.isolate(formatBytes(l10n, c.bytes!)),
                 ),
         ),
     ],
