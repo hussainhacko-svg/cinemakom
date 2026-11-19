@@ -20,10 +20,10 @@
 | Windows | Visual Studio 2022 with the "Desktop development with C++" workload. media_kit ships its own libmpv |
 | iOS | Requires a Mac with Xcode. Builds can't happen on this machine, so plan on CI (e.g. Codemagic or GitHub Actions macOS runners) or a Mac |
 
-Create the project:
+The project was created with (done, kept for reference):
 ```bash
 cd ~/Projects/flutter/cinemakom
-flutter create --project-name cinemakom --org io.github.sharon_xa --platforms android,ios,linux,windows .
+fvm flutter create --project-name cinemakom --org io.github.sharon_xa --platforms android,ios,linux,windows .
 ```
 > ✅ Application ID: **`io.github.sharon_xa.cinemakom`**, based on the GitHub account `sharon-xa`. Hyphens aren't allowed in IDs, so `-` becomes `_`. **Never change it after the first store release.**
 
@@ -37,7 +37,7 @@ flutter create --project-name cinemakom --org io.github.sharon_xa --platforms an
 | Navigation | Manual state in MainActivity | **go_router** (with `StatefulShellRoute` for tabs) | Deep links, back-stack per tab, and desktop back handling |
 | HTTP | Retrofit + OkHttp + Gson | **dio** | One interceptor adds the required headers. Also gives timeouts, cancellation and retry |
 | JSON | Gson with lenient fallbacks | **Hand-written tolerant parsers** (`dart:convert`) | The API changes key names across endpoints, so generated `fromJson` breaks. Port `parseMediaItems`, `parseCategories`, `parseSeriesEpisodes` and `parseSubtitles` |
-| Immutable models | Kotlin data classes | **freezed** (optional) or plain `final` classes | |
+| Immutable models | Kotlin data classes | **Plain immutable classes** (`final` fields, `const` constructors) | No freezed, so no codegen for models |
 | Images | Coil | **cached_network_image** | Accepts `httpHeaders`. Its cache uses sqflite, so **desktop needs `sqflite_common_ffi`** (see §6) |
 | Video player | Media3 ExoPlayer | **media_kit** + media_kit_video | The only mature player that covers all four platforms. Supports per-media HTTP headers, external subtitles and quality switching |
 | Local database | Room v4 (downloads, history, favorites) | **drift** (sqlite3 3.x) | Typed SQL, reactive streams, and it works on desktop. sqlite3 3.x bundles SQLite through build hooks. **Don't add `sqlite3_flutter_libs`**: it is end-of-life |
@@ -61,13 +61,15 @@ lib/
   app/
     app.dart                    # MaterialApp.router, theme, locale, RTL
     router.dart                 # go_router + tab shell
+    brand/                      # CinemakomMark / CinemakomLogo, brand_paths.g.dart (generated)
     theme/                      # the one Marquee theme: colour tokens, type scale, ThemeData
-    l10n/                       # app_ar.arb, app_en.arb
+    l10n/                       # app_ar.arb, app_en.arb (+ generated app_localizations*.dart)
   core/
     network/
       api_client.dart           # Dio instance, base URL, header interceptor, logging
       api_endpoints.dart        # every path from API.md as builder functions
       api_exception.dart
+      api_providers.dart        # Riverpod provider for the shared ApiClient
     json/
       json_utils.dart           # firstNonBlank(), parseIntLoose(), unescapeUrl()
     storage/
@@ -83,11 +85,13 @@ lib/
       catalog_repository.dart   # home rows, groups, featured, latest, genres, by-category(+language), FAQ
       search_repository.dart    # base64 title search + AdvancedSearch, merged, de-duplicated and ranked
       media_repository.dart     # details, episodes, seasons, streams, subtitles, related, skip ranges, getVideosByIds, staff pages
+      status_repository.dart    # cinemanaHealth(): public status page, asked only after API calls fail
       library_repository.dart   # favorites + continue watching (drift)
       downloads_repository.dart # background_downloader + drift
   features/
     home/  search/  genre/  details/  player/  continue_watching/
     favorites/  downloads/  settings/  staff/  faq/
+    debug/                      # debug-build-only API check screen (Phase 1)
       # each: <feature>_screen.dart, widgets/, <feature>_providers.dart
 test/
   fixtures/                     # captured real JSON responses, one per endpoint
@@ -191,7 +195,8 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 
 ### Phase 2: App shell
 - go_router with the tab shell and per-tab back stacks.
-- The single Marquee theme (`lib/app/theme/`, done), bundled fonts, ARB localization in en and ar, RTL switching.
+- [x] The single Marquee theme (`lib/app/theme/`), bundled fonts, and the ARB setup in en and ar with generated `AppLocalizations`.
+- RTL switching: the locale comes from preferences instead of the hardcoded `Locale('en')`, and the theme uses `buildMarqueeTheme(arabic: true)` for Arabic.
 - In-app splash: the logo with the marquee-bulb loader (`docs/DESIGN.md` §4 and §7), shown while the app starts.
 - First-launch language picker (English or Arabic), shown once before Home and saved to preferences.
 - Preferences provider and the Settings screen.
@@ -242,13 +247,13 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 
 | Risk | Mitigation |
 |---|---|
-| `cached_network_image` → sqflite crashes on Linux and Windows | In `main.dart` on desktop: `sqfliteFfiInit(); databaseFactory = databaseFactoryFfi;`. Or use a cache manager backed by drift or files |
+| `cached_network_image` → sqflite crashes on Linux and Windows | ✅ Handled: `main.dart` calls `sqfliteFfiInit(); databaseFactory = databaseFactoryFfi;` on desktop. It shares sqlite3 3.x with drift, so there's no version conflict |
 | libmpv is missing on a user's Linux install | List it as a dependency in the Flatpak or AppImage. Show a clear error if the player fails to start |
 | The API checks headers (Referer, Origin, User-Agent) | All requests go through the shared header map. If streams break on one platform, compare against the Kotlin app first |
 | The API is undocumented and can change without warning | Parsers stay tolerant. Fixture tests catch changes. Re-run the capture script to compare |
-| Unknown stream formats (mp4 vs HLS) | Check `container` in the `transcoddedFiles` fixtures. media_kit plays both |
+| ~~Unknown stream formats (mp4 vs HLS)~~ | ✅ Resolved: every stream is progressive MP4 (H.264 + one AAC track), with no HLS or DASH (API.md §3) |
 | `popularFilms`, `latestVideosItems`, `collectionVideos` return nothing | Leave them out of the UI until they return data |
-| Arabic text and RTL in subtitles and mixed-language titles | Bundle an Arabic font (e.g. Noto Kufi Arabic or Cairo). Use `Directionality` per text when a title mixes scripts |
+| Arabic text and RTL in subtitles and mixed-language titles | UI: the bundled IBM Plex Sans Arabic and Reem Kufi act as font fallbacks, so mixed-script titles render correctly (DESIGN.md §2). Use `Directionality` per text when a title mixes scripts. Subtitles: the proposal is to use IBM Plex Sans Arabic as the libass fallback font. libass reads fonts from disk, not from Flutter assets, so copy it out at startup |
 | iOS can't be built on this Linux machine | Use a CI macOS runner or a Mac. Keep iOS-specific code small |
 | Desktop input (no touch) | Controls must work with keyboard and mouse. Gestures are mobile only. Show hover states and scrollbars on desktop |
 | Data from the old Android app (Room) | **Not migrated.** This is a new app with a new database. Document it for existing users |
@@ -266,7 +271,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 
 ## 8. Open decisions
 1. ~~Application ID and org~~ ✅ `io.github.sharon_xa.cinemakom`.
-2. Riverpod with or without codegen (`riverpod_generator`). The proposal is to start without it.
-3. Details as a bottom sheet everywhere, or a full page on desktop. The proposal is a sheet on mobile and a page with a two-column layout on desktop.
-4. Download folder on desktop: fixed, or chosen by the user. The proposal is a default folder the user can change in Settings.
+2. ~~Riverpod codegen~~ ✅ No codegen: plain `Provider`s, no `riverpod_generator` (and no freezed, see §2).
+3. ~~Details layout~~ ✅ A bottom sheet on mobile, a page or side panel on desktop (§4.1 Details).
+4. ~~Download folder on desktop~~ ✅ The user picks it, defaulting to `~/Videos/Cinemakom` (Phase 6). It can be changed in Settings.
 5. Add Shabakaty sign-in later (unlocks server-side history, likes, comments)? Out of scope for v1.
