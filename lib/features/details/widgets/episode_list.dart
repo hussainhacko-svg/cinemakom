@@ -117,7 +117,26 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
           );
       final shown = inSeason
           .skip(block * episodeBlockSize)
-          .take(episodeBlockSize);
+          .take(episodeBlockSize)
+          .toList();
+      // The number column fits the widest number in the block, so 3- and
+      // 4-digit numbers (One Piece) stay on one line and rows line up.
+      // Merged like the row's Text merges it, or the measure comes up short.
+      final numeralStyle = DefaultTextStyle.of(context).style
+          .merge(MarqueeText.of(context).numeral);
+      final scaler = MediaQuery.textScalerOf(context);
+      final direction = Directionality.of(context);
+      final numeralWidth = shown.fold<double>(52, (widest, e) {
+        final painter = TextPainter(
+          text: TextSpan(text: _numeralText(e), style: numeralStyle),
+          maxLines: 1,
+          textDirection: direction,
+          textScaler: scaler,
+        )..layout();
+        final width = painter.width.ceilToDouble();
+        painter.dispose();
+        return math.max(widest, width);
+      });
       String range(int b) {
         final first = inSeason[b * episodeBlockSize].numbering.first;
         final last =
@@ -168,6 +187,7 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
               episode: e,
               progress: watched[e.id],
               current: e.id == widget.currentId,
+              numeralWidth: numeralWidth,
               onTap: () => widget.onPlay(e),
             ),
         ],
@@ -259,9 +279,13 @@ class _BlockChipsState extends State<_BlockChips> {
   );
 }
 
+/// An episode row's big number: "07", "112", "1179".
+String _numeralText(Episode e) => '${e.numbering.first}'.padLeft(2, '0');
+
 class _EpisodeRow extends StatelessWidget {
   const _EpisodeRow({
     required this.episode,
+    required this.numeralWidth,
     required this.onTap,
     this.progress,
     this.current = false,
@@ -270,6 +294,7 @@ class _EpisodeRow extends StatelessWidget {
   final Episode episode;
   final WatchProgress? progress;
   final bool current;
+  final double numeralWidth;
   final VoidCallback onTap;
 
   @override
@@ -296,9 +321,11 @@ class _EpisodeRow extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(
-                  width: 52,
+                  width: numeralWidth,
                   child: Text(
-                    '${numbering.first}'.padLeft(2, '0'),
+                    _numeralText(episode),
+                    maxLines: 1,
+                    softWrap: false,
                     style: text.numeral.copyWith(
                       color: started
                           ? MarqueeColors.bulb
