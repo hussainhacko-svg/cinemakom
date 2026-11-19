@@ -257,7 +257,7 @@ A series has **no separate record**. It is represented by its **first episode (S
 
 | Endpoint | Source | Status | Verified parameters and behaviour | Response |
 |---|---|---|---|---|
-| `banner/level/0` | W C A | ✅ `banners()` | 85 items; level 2 gives 33, level 3 gives 13 | Media records, plus `link`: `https://cinemana.shabakaty.{com,cc}/video/{lang}/{id}?showInfo=…` or `?lastEpisodeVideoID={episode}`, the episode to open (`MediaItem.linkedEpisodeId`) |
+| `banner/level/0` | W C A | ✅ `banners()` | 85 items; level 2 gives 33, level 3 gives 13. All distinct: the site's promotion history, a few picked titles first, then recent promotions newest first. The hero shows the first 10 (`heroBannerCap`) | Media records, plus `link`: `https://cinemana.shabakaty.{com,cc}/video/{lang}/{id}?showInfo=…` or `?lastEpisodeVideoID={episode}`, the episode to open (`MediaItem.linkedEpisodeId`) |
 | `videoGroups/lang/{lang}/level/0` | W C A | ✅ `videoGroups()` | Unknown `lang` means English | `{groups: [{groupsID, title, content: [12 media], hasPagination: 1, analytics: {eventID, eventInt}}]}`. **The ID key is `groupsID`.** `analytics` is telemetry: ignore it |
 | `videoListPagination/groupID/{id}/level/0/itemsPerPage/{n}/page/{p}` | W C A | ✅ `videoGroupPage()` | `n` up to 100; page 0 equals the group's `content`. A query form also works | Media list |
 | `featuredMovies/level/0/itemsPerPage/{n}/page/{p}` | W C A | ✅ `featured()` | Movies only, `n` uncapped. The website only loads page 0 | Media list |

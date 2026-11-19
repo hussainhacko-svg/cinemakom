@@ -6,7 +6,12 @@ import '../../data/models/media_item.dart';
 import '../../data/paging/paged_media.dart';
 import '../../data/repositories/catalog_repository.dart';
 
-/// The hero carousel: banners with wide covers.
+/// How many banners the hero shows. The API returns its whole promotion
+/// history (85 at level 0, docs/API.md): a few picked titles first, then
+/// recent promotions newest first. The first ones are the ones that matter.
+const heroBannerCap = 10;
+
+/// The hero carousel: the first [heroBannerCap] banners with wide covers.
 final bannersProvider = FutureProvider.autoDispose<List<MediaItem>>((
   ref,
 ) async {
@@ -15,7 +20,7 @@ final bannersProvider = FutureProvider.autoDispose<List<MediaItem>>((
   return [
     for (final b in banners)
       if (b.backdropUrl != null) b,
-  ];
+  ].take(heroBannerCap).toList();
 });
 
 /// The curated rows, named in the UI language.

@@ -14,6 +14,7 @@ import '../../../app/widgets/media_text.dart';
 import '../../../data/models/media_item.dart';
 import '../../../data/models/playback_request.dart';
 import '../home_providers.dart';
+import 'hero_title.dart';
 
 /// Wide covers are about 2.7:1 (docs/API.md §Images).
 const _coverRatio = 2.7;
@@ -28,8 +29,13 @@ const _peekFraction = 0.9;
 /// The gap between banners in the carousel.
 const _gap = MarqueeSpace.s;
 
+/// The text swap: the old title out in the first half, the new one in
+/// the second.
+const _fadeOut = Interval(0, 0.5, curve: Curves.easeOut);
+const _fadeIn = Interval(0.5, 1, curve: Curves.easeOut);
+
 /// How long a banner stays before the carousel moves on.
-const _advanceAfter = Duration(seconds: 7);
+const _advanceAfter = Duration(seconds: 10);
 
 /// The Home hero (DESIGN.md §8): a row of marquee bulbs, one per banner
 /// with the current one lit, over a carousel of wide covers where the next
@@ -145,7 +151,12 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
         // Every banner's text is laid out at once and only the current one
         // shows, so the hero is always as tall as its tallest text and the
         // page below never shifts when the banner changes.
+        // Bottom-aligned: the meta line and Play stay in one place, and a
+        // longer title only lifts the eyebrow. The swap is sequential, the
+        // old text fading out before the new one fades in, so two titles
+        // are never drawn over each other.
         final info = Stack(
+          alignment: AlignmentDirectional.bottomStart,
           children: [
             for (var i = 0; i < items.length; i++)
               IgnorePointer(
@@ -154,8 +165,8 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
                   opacity: i == index ? 1 : 0,
                   duration: _still
                       ? Duration.zero
-                      : const Duration(milliseconds: 150),
-                  curve: Curves.easeOut,
+                      : const Duration(milliseconds: 300),
+                  curve: i == index ? _fadeIn : _fadeOut,
                   child: _HeroInfo(item: items[i]),
                 ),
               ),
@@ -290,16 +301,30 @@ class _Carousel extends StatelessWidget {
             clipBehavior: clip,
             itemCount: items.length,
             onPageChanged: onPageChanged,
-            itemBuilder: (context, i) => Padding(
-              padding: EdgeInsetsDirectional.only(end: gap),
-              child: Semantics(
-                button: true,
-                label: context.titleOf(items[i]),
-                child: GestureDetector(
-                  onTap: () => openTitle(context, items[i]),
-                  child: MediaImage(
-                    url: items[i].backdropUrl,
-                    borderRadius: _radius,
+            // A banner fades as it slides out past the start edge, instead
+            // of being cut off there.
+            itemBuilder: (context, i) => AnimatedBuilder(
+              animation: controller,
+              builder: (context, child) {
+                final page =
+                    controller.hasClients &&
+                        controller.position.hasContentDimensions
+                    ? controller.page ?? 0
+                    : controller.initialPage.toDouble();
+                final gone = (page - i).clamp(0.0, 1.0);
+                return Opacity(opacity: 1 - gone, child: child);
+              },
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(end: gap),
+                child: Semantics(
+                  button: true,
+                  label: context.titleOf(items[i]),
+                  child: GestureDetector(
+                    onTap: () => openTitle(context, items[i]),
+                    child: MediaImage(
+                      url: items[i].backdropUrl,
+                      borderRadius: _radius,
+                    ),
                   ),
                 ),
               ),
@@ -312,8 +337,10 @@ class _Carousel extends StatelessWidget {
 }
 
 /// The marquee bulbs, one per banner: the current one lit `bulb`, the rest
-/// `velvetStrong`. A tap on a bulb goes to its banner. With many banners
-/// only a window of bulbs around the current one is shown.
+/// `velvetStrong`. A tap on a bulb goes to its banner. The bulbs shrink so
+/// every banner gets one and the lit bulb walks along the row. When even
+/// the smallest bulbs don't fit, the row shows one page of them at a time
+/// and turns to the next page when the lit bulb runs off its end.
 class _BulbPager extends StatelessWidget {
   const _BulbPager({
     required this.count,
@@ -325,48 +352,53 @@ class _BulbPager extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
 
-  static const _window = 15;
-  static const _size = 7.0;
+  /// Bulb centre to centre, roomiest and tightest.
+  static const _widePitch = 19.0;
+  static const _tightPitch = 12.0;
 
   @override
   Widget build(BuildContext context) {
-    final first = (index - _window ~/ 2).clamp(
-      0,
-      (count - _window).clamp(0, count),
-    );
-    final last = (first + _window).clamp(0, count);
     final still = MediaQuery.disableAnimationsOf(context);
     return ExcludeSemantics(
-      child: Row(
-        children: [
-          for (var i = first; i < last; i++)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onTap(i),
-              child: Padding(
-                // The first bulb lines up with the banner's start edge.
-                padding: EdgeInsetsDirectional.only(
-                  end: MarqueeSpace.m,
-                  top: MarqueeSpace.s,
-                  bottom: MarqueeSpace.s,
-                ),
-                child: AnimatedContainer(
-                  duration: still
-                      ? Duration.zero
-                      : const Duration(milliseconds: 150),
-                  curve: Curves.easeOut,
-                  width: _size,
-                  height: _size,
-                  decoration: BoxDecoration(
-                    color: i == index
-                        ? MarqueeColors.bulb
-                        : MarqueeColors.velvetStrong,
-                    shape: BoxShape.circle,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final pitch = (box.maxWidth / count).clamp(_tightPitch, _widePitch);
+          final size = (pitch * 0.37).clamp(5.0, 7.0);
+          final perPage = (box.maxWidth / pitch).floor().clamp(1, count);
+          final first = index ~/ perPage * perPage;
+          final last = (first + perPage).clamp(0, count);
+          return Row(
+            children: [
+              for (var i = first; i < last; i++)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(i),
+                  child: SizedBox(
+                    width: pitch,
+                    height: size + 2 * MarqueeSpace.s,
+                    // The first bulb lines up with the banner's start edge.
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: AnimatedContainer(
+                        duration: still
+                            ? Duration.zero
+                            : const Duration(milliseconds: 150),
+                        curve: Curves.easeOut,
+                        width: size,
+                        height: size,
+                        decoration: BoxDecoration(
+                          color: i == index
+                              ? MarqueeColors.bulb
+                              : MarqueeColors.velvetStrong,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -397,10 +429,8 @@ class _HeroInfo extends StatelessWidget {
           style: text.eyebrow,
         ),
         const SizedBox(height: 6),
-        Text(
-          arabicTitle ? title : title.toUpperCase(),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
+        HeroTitle(
+          title: arabicTitle ? title : title.toUpperCase(),
           style: text.heroTitleFor(title),
         ),
         if (meta.isNotEmpty) ...[

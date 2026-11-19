@@ -61,12 +61,12 @@ void main() {
       final finger = await tester.startGesture(
         tester.getCenter(find.byType(PageView)),
       );
-      await tester.pump(const Duration(seconds: 8));
+      await tester.pump(const Duration(seconds: 11));
       expect(shown('TENET'), 1);
       // Cancelled, so it isn't a tap (that opens the title).
       await finger.cancel();
 
-      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(seconds: 10));
       await tester.pumpAndSettle();
       expect(shown(next), 1);
       expect(shown('TENET'), 0);
