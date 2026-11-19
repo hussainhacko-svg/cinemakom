@@ -43,6 +43,9 @@ class MediaKitEngine implements PlayerEngine {
 
   final _position = StreamController<Duration>.broadcast();
   final _duration = StreamController<Duration>.broadcast();
+  final _aspectRatio = StreamController<double>.broadcast();
+  int? _width;
+  int? _height;
   final _buffered = StreamController<Duration>.broadcast();
   final _playing = StreamController<bool>.broadcast();
   final _buffering = StreamController<bool>.broadcast();
@@ -68,6 +71,8 @@ class MediaKitEngine implements PlayerEngine {
   Stream<Duration> get position => _position.stream;
   @override
   Stream<Duration> get duration => _duration.stream;
+  @override
+  Stream<double> get aspectRatio => _aspectRatio.stream;
   @override
   Stream<Duration> get buffered => _buffered.stream;
   @override
@@ -131,6 +136,8 @@ class MediaKitEngine implements PlayerEngine {
       s.completed.listen(_completed.add),
       s.error.listen(_onError),
       s.subtitle.listen(_subtitleText.add),
+      s.width.listen((w) => _onSize(w, _height)),
+      s.height.listen((h) => _onSize(_width, h)),
     ]);
     _video.value = VideoController(player);
     return player;
@@ -248,6 +255,14 @@ class MediaKitEngine implements PlayerEngine {
               ),
       );
 
+  void _onSize(int? width, int? height) {
+    _width = width;
+    _height = height;
+    if (width != null && height != null && width > 0 && height > 0) {
+      _aspectRatio.add(width / height);
+    }
+  }
+
   @override
   Future<void> dispose() async {
     if (_disposed) return;
@@ -258,6 +273,7 @@ class MediaKitEngine implements PlayerEngine {
     for (final c in [
       _position,
       _duration,
+      _aspectRatio,
       _buffered,
       _playing,
       _buffering,

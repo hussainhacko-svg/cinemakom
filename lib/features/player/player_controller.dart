@@ -132,6 +132,9 @@ class PlayerController extends Notifier<PlayerState> {
       engine.position.listen(_onPosition),
       engine.buffered.listen((b) => buffered.value = b),
       engine.duration.listen(_onDuration),
+      engine.aspectRatio.listen((r) {
+        if (r != state.aspectRatio) state = state.copyWith(aspectRatio: r);
+      }),
       engine.playing.listen(_onPlaying),
       engine.buffering.listen(_onBuffering),
       engine.completed.listen(_onCompleted),
@@ -213,6 +216,7 @@ class PlayerController extends Notifier<PlayerState> {
       upNext: UpNext.none,
       clearIntro: true,
       introPinned: false,
+      clearAspectRatio: true,
     );
 
     final repo = _repo;

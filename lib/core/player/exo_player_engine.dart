@@ -31,6 +31,7 @@ class ExoPlayerEngine implements PlayerEngine {
 
   final _position = StreamController<Duration>.broadcast();
   final _duration = StreamController<Duration>.broadcast();
+  final _aspectRatio = StreamController<double>.broadcast();
   final _buffered = StreamController<Duration>.broadcast();
   final _playing = StreamController<bool>.broadcast();
   final _buffering = StreamController<bool>.broadcast();
@@ -65,6 +66,8 @@ class ExoPlayerEngine implements PlayerEngine {
   Stream<Duration> get position => _position.stream;
   @override
   Stream<Duration> get duration => _duration.stream;
+  @override
+  Stream<double> get aspectRatio => _aspectRatio.stream;
   @override
   Stream<Duration> get buffered => _buffered.stream;
   @override
@@ -151,6 +154,11 @@ class ExoPlayerEngine implements PlayerEngine {
       _updateSubtitle(v.position);
     }
     if (last == null || v.duration != last.duration) _duration.add(v.duration);
+    if ((last == null || v.size != last.size) &&
+        v.size.width > 0 &&
+        v.size.height > 0) {
+      _aspectRatio.add(v.size.aspectRatio);
+    }
     final end = _bufferedEnd(v);
     if (last == null || end != _bufferedEnd(last)) _buffered.add(end);
     if (last == null || v.isPlaying != last.isPlaying) {
@@ -283,6 +291,7 @@ class ExoPlayerEngine implements PlayerEngine {
     for (final c in [
       _position,
       _duration,
+      _aspectRatio,
       _buffered,
       _playing,
       _buffering,

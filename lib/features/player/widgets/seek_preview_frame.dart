@@ -15,14 +15,34 @@ ImageProvider seekSheetImage(String url) =>
     CachedNetworkImageProvider(url, headers: ApiClient.defaultHeaders);
 
 /// One seek-preview frame: its cell of the sprite sheet, drawn with
-/// `drawImageRect` (PLAYER.md §7.8). A `booth` box while the sheet loads,
-/// or when it can't.
+/// `drawImageRect` (PLAYER.md §7.8), stretched to [width] × [height]. A
+/// `booth` box while the sheet loads, or when it can't.
 class SeekPreviewFrame extends ConsumerStatefulWidget {
-  const SeekPreviewFrame({super.key, required this.frame});
+  const SeekPreviewFrame({
+    super.key,
+    required this.frame,
+    this.aspectRatio,
+    this.height = minHeight,
+  });
 
   final SeekFrame frame;
+  final double height;
 
-  static const size = Size(120, 68);
+  /// The video's shape. The server squeezes every frame into a 16:9 cell,
+  /// so drawing the cell at the video's shape undoes it.
+  final double? aspectRatio;
+
+  static const minHeight = 90.0;
+  static const maxHeight = 150.0;
+  static const _cellRatio = 16 / 9;
+
+  /// 90 dp on a phone, growing with the window to 150 dp on a big monitor.
+  static double heightFor(double screenWidth) =>
+      (screenWidth * 0.09).clamp(minHeight, maxHeight).roundToDouble();
+
+  /// Wide enough for the video's shape, within reason.
+  double get width =>
+      height * (aspectRatio ?? _cellRatio).clamp(1.2, 2.5).toDouble();
   static const radius = Radius.circular(6);
 
   @override
@@ -74,7 +94,7 @@ class _SeekPreviewFrameState extends ConsumerState<SeekPreviewFrame> {
 
   @override
   Widget build(BuildContext context) => SizedBox.fromSize(
-    size: SeekPreviewFrame.size,
+    size: Size(widget.width, widget.height),
     child: CustomPaint(painter: _FramePainter(_sheet?.image, widget.frame)),
   );
 }
@@ -107,7 +127,7 @@ class _FramePainter extends CustomPainter {
         sheet,
         src,
         dst,
-        Paint()..filterQuality = FilterQuality.low,
+        Paint()..filterQuality = FilterQuality.high,
       )
       ..restore();
   }

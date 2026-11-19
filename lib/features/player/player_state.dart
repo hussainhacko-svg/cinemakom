@@ -60,6 +60,7 @@ class PlayerState {
     this.upNext = UpNext.none,
     this.intro,
     this.introPinned = false,
+    this.aspectRatio,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -108,6 +109,10 @@ class PlayerState {
   /// each range. After that it shows with the controls only.
   final bool introPinned;
 
+  /// The picture's width ÷ height, once known. Seek previews are drawn at
+  /// this shape: the server squeezes every frame into a 16:9 cell.
+  final double? aspectRatio;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -145,6 +150,8 @@ class PlayerState {
     SkipRange? intro,
     bool clearIntro = false,
     bool? introPinned,
+    double? aspectRatio,
+    bool clearAspectRatio = false,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -169,5 +176,6 @@ class PlayerState {
     upNext: upNext ?? this.upNext,
     intro: clearIntro ? null : (intro ?? this.intro),
     introPinned: introPinned ?? this.introPinned,
+    aspectRatio: clearAspectRatio ? null : (aspectRatio ?? this.aspectRatio),
   );
 }

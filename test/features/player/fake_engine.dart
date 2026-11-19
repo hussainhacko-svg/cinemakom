@@ -28,6 +28,7 @@ class FakeEngine implements PlayerEngine {
 
   final _position = StreamController<Duration>.broadcast(sync: true);
   final _duration = StreamController<Duration>.broadcast(sync: true);
+  final _aspectRatio = StreamController<double>.broadcast(sync: true);
   final _buffered = StreamController<Duration>.broadcast(sync: true);
   final _playing = StreamController<bool>.broadcast(sync: true);
   final _buffering = StreamController<bool>.broadcast(sync: true);
@@ -58,6 +59,7 @@ class FakeEngine implements PlayerEngine {
     _duration.add(d);
   }
 
+  void emitAspectRatio(double r) => _aspectRatio.add(r);
   void emitBuffering(bool b) => _buffering.add(b);
   void emitCompleted() => _completed.add(true);
   void emitError(String e) => _errors.add(e);
@@ -68,6 +70,8 @@ class FakeEngine implements PlayerEngine {
   Stream<Duration> get position => _position.stream;
   @override
   Stream<Duration> get duration => _duration.stream;
+  @override
+  Stream<double> get aspectRatio => _aspectRatio.stream;
   @override
   Stream<Duration> get buffered => _buffered.stream;
   @override

@@ -212,6 +212,7 @@ class ControlsOverlay extends StatelessWidget {
                     onSeek: controller.seek,
                     onScrub: onScrub,
                     preview: state.seekPreview,
+                    aspectRatio: state.aspectRatio,
                     semanticLabel: l10n.playerSeekBar,
                   ),
                 ),

@@ -48,6 +48,9 @@ abstract interface class PlayerEngine {
   Stream<Duration> get position;
   Stream<Duration> get duration;
 
+  /// The picture's width ÷ height, once the file shows it.
+  Stream<double> get aspectRatio;
+
   /// The end of the buffered range.
   Stream<Duration> get buffered;
   Stream<bool> get playing;

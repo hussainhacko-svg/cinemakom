@@ -441,6 +441,7 @@ void main() {
       duration: const Duration(hours: 1),
       at: const Duration(minutes: 1),
     );
+    engine.emitAspectRatio(1.9);
     await tester.pump();
 
     final bar = tester.getRect(find.byType(SeekBar));
@@ -452,6 +453,11 @@ void main() {
     await tester.pump();
     // 6 sheets of 100 frames, one every 10 s: frames up to 100 min.
     expect(find.byType(SeekPreviewFrame), findsOneWidget);
+    // Drawn at the video's shape, not the 16:9 cell's; 90 dp tall on a
+    // phone, larger in a wide window.
+    expect(tester.getSize(find.byType(SeekPreviewFrame)), const Size(171, 90));
+    expect(SeekPreviewFrame.heightFor(1600), 144);
+    expect(SeekPreviewFrame.heightFor(3000), 150);
     expect(find.text('30:00'), findsOneWidget);
     await drag.up();
     await tester.pump();
@@ -478,7 +484,7 @@ void main() {
     expect(find.byType(SeekPreviewFrame), findsNothing);
     expect(find.text('30:00'), findsOneWidget);
     // A finger is on the thumb: the time sits well above it.
-    expect(tester.getRect(find.text('30:00')).bottom, lessThan(bar.top - 48));
+    expect(tester.getRect(find.text('30:00')).bottom, lessThan(bar.top - 20));
     await drag.up();
   });
 }

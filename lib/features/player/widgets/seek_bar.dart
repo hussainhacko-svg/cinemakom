@@ -24,6 +24,7 @@ class SeekBar extends StatefulWidget {
     required this.onSeek,
     this.onScrub,
     this.preview,
+    this.aspectRatio,
     this.semanticLabel,
   });
 
@@ -35,6 +36,9 @@ class SeekBar extends StatefulWidget {
   /// While dragging: the time under the thumb, or `null` when the drag ends.
   final ValueChanged<Duration?>? onScrub;
   final SeekPreview? preview;
+
+  /// The video's width ÷ height, for the preview frame's shape.
+  final double? aspectRatio;
   final String? semanticLabel;
 
   @override
@@ -52,7 +56,7 @@ class _SeekBarState extends State<SeekBar> {
   bool _touch = false;
 
   /// How far a finger hides what's above it.
-  static const _fingerLift = 56.0;
+  static const _fingerLift = 28.0;
 
   static const _height = 44.0;
 
@@ -106,6 +110,7 @@ class _SeekBarState extends State<SeekBar> {
                   barWidth: width,
                   lift: _drag != null && _touch ? _fingerLift : 0,
                   frame: widget.preview?.frameAt(_at(at)),
+                  aspectRatio: widget.aspectRatio,
                 ),
             ],
           );
@@ -159,6 +164,7 @@ class _Bubble extends StatelessWidget {
     required this.x,
     required this.barWidth,
     required this.frame,
+    this.aspectRatio,
     this.lift = 0,
   });
 
@@ -166,23 +172,33 @@ class _Bubble extends StatelessWidget {
   final double x;
   final double barWidth;
   final SeekFrame? frame;
+  final double? aspectRatio;
 
   /// Extra height above the bar (a finger is on it).
   final double lift;
 
-  static const _width = 120.0;
-
   @override
   Widget build(BuildContext context) {
     final frame = this.frame;
-    final left = (x - _width / 2).clamp(
+    final view = frame == null
+        ? null
+        : SeekPreviewFrame(
+            frame: frame,
+            aspectRatio: aspectRatio,
+            height: SeekPreviewFrame.heightFor(
+              MediaQuery.sizeOf(context).width,
+            ),
+          );
+    // The time alone is narrow; a frame sets the width.
+    final width = view?.width ?? 96.0;
+    final left = (x - width / 2).clamp(
       0.0,
-      (barWidth - _width).clamp(0.0, double.infinity),
+      (barWidth - width).clamp(0.0, double.infinity),
     );
     return Positioned(
       left: left,
       bottom: _SeekBarState._height - MarqueeSpace.xs + lift,
-      width: _width,
+      width: width,
       child: IgnorePointer(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -195,7 +211,7 @@ class _Bubble extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.all(SeekPreviewFrame.radius),
                 ),
-                child: SeekPreviewFrame(frame: frame),
+                child: view,
               ),
               const SizedBox(height: MarqueeSpace.xs),
             ],
