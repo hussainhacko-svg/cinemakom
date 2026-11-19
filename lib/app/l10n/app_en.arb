@@ -494,5 +494,47 @@
   "playerMore": "More options",
   "@playerMore": {
     "description": "Player: the menu that holds the chips on narrow screens"
+  },
+  "playerResumingFrom": "Resuming from {time}",
+  "@playerResumingFrom": {
+    "description": "Shown for 5 s when the player resumed a saved position",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "playerStartOver": "Start over",
+  "@playerStartOver": {
+    "description": "Button next to 'Resuming from': play from the beginning"
+  },
+  "resume": "Resume",
+  "@resume": {
+    "description": "Details primary button when a title was partly watched"
+  },
+  "minutesLeft": "{minutes} min left",
+  "@minutesLeft": {
+    "description": "Time left of a partly watched video",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonEpisodeShort": "S{season} E{episode}",
+  "@seasonEpisodeShort": {
+    "description": "Short episode label on buttons, e.g. 'S2 E5'",
+    "placeholders": {
+      "season": {
+        "type": "int"
+      },
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "rowContinueWatching": "Continue watching",
+  "@rowContinueWatching": {
+    "description": "Home row of partly watched titles"
   }
 }

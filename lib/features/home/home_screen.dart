@@ -15,6 +15,7 @@ import '../../data/paging/media_sources.dart';
 import '../../data/paging/paged_media.dart';
 import 'home_providers.dart';
 import 'widgets/home_hero.dart';
+import 'widgets/continue_row.dart';
 
 /// How many genres get a row of their own at the end of Home.
 const _genreRows = 12;
@@ -107,6 +108,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               SliverToBoxAdapter(child: HomeHero(gutter: gutter)),
+              const SliverToBoxAdapter(child: ContinueRow()),
               SliverList.builder(
                 itemCount: rows.length,
                 itemBuilder: (_, i) => rows[i],

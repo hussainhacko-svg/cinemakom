@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart' show VideoKind;
 import '../../core/network/api_providers.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/player/exo_player_engine.dart';
@@ -12,6 +13,8 @@ import '../../core/player/player_engine.dart';
 import '../../core/storage/preferences.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
+import '../../data/models/watch_progress.dart';
+import '../../data/repositories/library_repository.dart';
 import '../../data/repositories/media_repository.dart';
 import 'player_state.dart';
 import 'quality.dart';
@@ -62,7 +65,12 @@ class PlayerController extends Notifier<PlayerState> {
   /// Playing this far past a recovery resets the attempt count.
   static const recoveredAfter = Duration(seconds: 30);
 
+  /// Progress is saved this often while playing (PLAYER.md §7.6).
+  static const saveEverySeconds = 10;
+
   late final PlayerEngine engine;
+  late final LibraryRepository _library;
+  int _saveTicks = 0;
 
   /// The playhead. Kept out of [state] so only the seek bar and the clock
   /// repaint every tick.
@@ -103,6 +111,7 @@ class PlayerController extends Notifier<PlayerState> {
   @override
   PlayerState build() {
     engine = ref.read(playerEngineFactoryProvider)();
+    _library = ref.read(libraryRepositoryProvider);
     _subscriptions.addAll([
       engine.position.listen(_onPosition),
       engine.buffered.listen((b) => buffered.value = b),
@@ -174,12 +183,16 @@ class PlayerController extends Notifier<PlayerState> {
       clearError: true,
       clearDetails: true,
       clearSeekPreview: true,
+      clearResumedFrom: true,
       subtitleFailed: false,
       duration: Duration.zero,
       playing: false,
     );
 
     final repo = _repo;
+    final saved = start == null
+        ? _quietly(_library.progress(videoId), null)
+        : Future<WatchProgress?>.value();
     final streams = repo.streams(videoId);
     final details = _quietly(repo.details(videoId), null);
     final tracks = _quietly(repo.subtitles(videoId), const <SubtitleTrack>[]);
@@ -202,7 +215,12 @@ class PlayerController extends Notifier<PlayerState> {
       await preview,
       await episodes,
     );
+    final resumeAt = (await saved)?.resumeAt;
     if (!_isCurrent(session)) return;
+    if (resumeAt != null) {
+      _resumeAt = resumeAt;
+      position.value = resumeAt;
+    }
     if (sources.isEmpty) {
       _fail(PlayerFailure.unavailable);
       return;
@@ -235,6 +253,7 @@ class PlayerController extends Notifier<PlayerState> {
       subtitles: options,
       subtitle: subtitle,
       seekPreview: loadedPreview,
+      resumedFrom: resumeAt,
     );
     await _openCurrent(session, start: _resumeAt);
   }
@@ -317,6 +336,7 @@ class PlayerController extends Notifier<PlayerState> {
     final at = position.value;
     if (duration > Duration.zero && at >= duration - endTolerance) {
       state = state.copyWith(phase: PlayerPhase.ended, playing: false);
+      saveProgress();
     } else {
       unawaited(_recover());
     }
@@ -350,6 +370,12 @@ class PlayerController extends Notifier<PlayerState> {
 
   void _tick() {
     if (_recovering || !ref.mounted) return;
+    if (state.playing && state.phase == PlayerPhase.ready) {
+      if (++_saveTicks >= saveEverySeconds) {
+        _saveTicks = 0;
+        saveProgress();
+      }
+    }
     final phase = state.phase;
     // A file opened paused (a quality switch while paused) never moves, so
     // it isn't watched; its open errors still trigger recovery.
@@ -437,6 +463,7 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> pause() async {
     _userPaused = true;
     await engine.pause();
+    saveProgress();
   }
 
   Future<void> seek(Duration to) async {
@@ -451,6 +478,49 @@ class PlayerController extends Notifier<PlayerState> {
       state = state.copyWith(phase: PlayerPhase.ready);
     }
     await engine.seek(clamped);
+    saveProgress();
+  }
+
+  /// From the beginning, after an automatic resume.
+  Future<void> startOver() async {
+    state = state.copyWith(clearResumedFrom: true);
+    await seek(Duration.zero);
+  }
+
+  /// Hides "Resuming from …".
+  void dismissResumed() => state = state.copyWith(clearResumedFrom: true);
+
+  /// Saves how far the current video was watched. Called on a timer, on
+  /// pause, seek, episode change, the end, leaving the player and the app
+  /// going to the background.
+  void saveProgress() {
+    final duration = state.duration;
+    // Nothing is known before the file opened (a resume shows its start).
+    if (duration <= Duration.zero) return;
+    if (state.phase == PlayerPhase.loading || state.phase == PlayerPhase.failed) {
+      return;
+    }
+    final at = state.phase == PlayerPhase.ended ? duration : position.value;
+    final item = request.item;
+    final episode = state.episode;
+    unawaited(
+      _library
+          .save(
+            WatchProgress(
+              videoId: state.videoId,
+              seriesId: request.isSeries ? item.seriesId : null,
+              season: episode?.season,
+              episode: episode?.episode,
+              position: at,
+              duration: duration,
+              updatedAt: DateTime.now(),
+              title: item.title,
+              posterUrl: item.posterUrl,
+              kind: request.isSeries ? VideoKind.series : VideoKind.movies,
+            ),
+          )
+          .catchError((Object _) {}),
+    );
   }
 
   Future<void> seekBy(Duration delta) => seek(position.value + delta);
@@ -519,7 +589,10 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> retry() =>
       _load(state.videoId, episode: state.episode, start: _resumeAt);
 
-  /// Switches to [episode], keeping quality, subtitle choice and speed.
-  Future<void> playEpisode(Episode episode) =>
-      _load(episode.id, episode: episode);
+  /// Switches to [episode], keeping quality, subtitle choice and speed. It
+  /// resumes where that episode was left, if it was.
+  Future<void> playEpisode(Episode episode) {
+    saveProgress();
+    return _load(episode.id, episode: episode);
+  }
 }

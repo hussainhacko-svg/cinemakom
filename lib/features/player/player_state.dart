@@ -55,6 +55,7 @@ class PlayerState {
     this.buffering = false,
     this.duration = Duration.zero,
     this.seekPreview,
+    this.resumedFrom,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -89,6 +90,10 @@ class PlayerState {
   final Duration duration;
   final SeekPreview? seekPreview;
 
+  /// Set when the player resumed a saved position ("Resuming from 14:32 ·
+  /// Start over", PLAYER.md §7.6).
+  final Duration? resumedFrom;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -120,6 +125,8 @@ class PlayerState {
     Duration? duration,
     SeekPreview? seekPreview,
     bool clearSeekPreview = false,
+    Duration? resumedFrom,
+    bool clearResumedFrom = false,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -140,5 +147,6 @@ class PlayerState {
     buffering: buffering ?? this.buffering,
     duration: duration ?? this.duration,
     seekPreview: clearSeekPreview ? null : (seekPreview ?? this.seekPreview),
+    resumedFrom: clearResumedFrom ? null : (resumedFrom ?? this.resumedFrom),
   );
 }

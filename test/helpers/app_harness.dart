@@ -3,6 +3,7 @@ import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/network/api_providers.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/features/player/player_controller.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,6 +85,7 @@ Future<void> pumpApp(
   MemoryPreferenceStore? store,
   FakeApiClient? api,
   FakeEngine? engine,
+  MemoryLibraryRepository? library,
   double width = 390,
   double height = 844,
 }) async {
@@ -103,6 +105,9 @@ Future<void> pumpApp(
         networkImagesProvider.overrideWithValue(false),
         playerEngineFactoryProvider.overrideWithValue(
           () => engine ?? FakeEngine(),
+        ),
+        libraryRepositoryProvider.overrideWithValue(
+          library ?? MemoryLibraryRepository(),
         ),
       ],
       child: const CinemakomApp(),

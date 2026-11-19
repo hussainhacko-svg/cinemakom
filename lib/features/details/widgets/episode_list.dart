@@ -11,6 +11,9 @@ import '../../../app/widgets/media_text.dart';
 import '../../../app/widgets/section_header.dart';
 import '../../../data/models/playback_models.dart';
 import '../details_providers.dart';
+import '../../../app/widgets/progress_line.dart';
+import '../../../data/models/watch_progress.dart';
+import '../../../data/repositories/library_repository.dart';
 
 /// A series' seasons and episodes (DESIGN.md §5): season chips, then one row
 /// per episode labelled from its numbering ("Episode 7", "Episodes 7 & 8",
@@ -46,6 +49,8 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
     final gutter = widget.gutter;
     final episodes = ref.watch(episodesProvider(widget.seriesId));
     final all = episodes.value ?? const <Episode>[];
+    final watched =
+        ref.watch(seriesProgressProvider(widget.seriesId)).value ?? const {};
 
     final Widget body;
     if (all.isEmpty) {
@@ -89,7 +94,11 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
           const SizedBox(height: MarqueeSpace.m),
           for (final e in all)
             if (e.season == season)
-              _EpisodeRow(episode: e, onTap: () => widget.onPlay(e)),
+              _EpisodeRow(
+                episode: e,
+                progress: watched[e.id],
+                onTap: () => widget.onPlay(e),
+              ),
         ],
       );
     }
@@ -113,9 +122,14 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
 }
 
 class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode, required this.onTap});
+  const _EpisodeRow({
+    required this.episode,
+    required this.onTap,
+    this.progress,
+  });
 
   final Episode episode;
+  final WatchProgress? progress;
   final VoidCallback onTap;
 
   @override
@@ -124,6 +138,9 @@ class _EpisodeRow extends StatelessWidget {
     final text = MarqueeText.of(context);
     final numbering = episode.numbering;
     final duration = episode.duration;
+    final progress = this.progress;
+    final finished = progress?.isFinished ?? false;
+    final started = progress != null && !finished;
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(vertical: 2),
       child: InkWell(
@@ -142,7 +159,13 @@ class _EpisodeRow extends StatelessWidget {
                   width: 52,
                   child: Text(
                     '${numbering.first}'.padLeft(2, '0'),
-                    style: text.numeral.copyWith(color: MarqueeColors.dustDim),
+                    style: text.numeral.copyWith(
+                      color: started
+                          ? MarqueeColors.bulb
+                          : finished
+                          ? MarqueeColors.cream
+                          : MarqueeColors.dustDim,
+                    ),
                   ),
                 ),
                 const SizedBox(width: MarqueeSpace.s),
@@ -164,11 +187,20 @@ class _EpisodeRow extends StatelessWidget {
                           ],
                         ],
                       ),
-                      if (duration != null)
+                      if (started)
+                        Text(
+                          minutesLeft(l10n, progress.remaining),
+                          style: text.caption,
+                        )
+                      else if (duration != null)
                         Text(
                           formatDuration(l10n, duration),
                           style: text.caption,
                         ),
+                      if (started) ...[
+                        const SizedBox(height: MarqueeSpace.xs),
+                        ProgressLine(value: progress.fraction),
+                      ],
                     ],
                   ),
                 ),

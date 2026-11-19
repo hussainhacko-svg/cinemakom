@@ -6,6 +6,8 @@ import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/playback_request.dart';
+import 'package:cinemakom/data/models/watch_progress.dart';
+import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/features/player/player_controller.dart';
 import 'package:cinemakom/features/player/player_state.dart';
 import 'package:cinemakom/main.dart' show noRetry;
@@ -68,6 +70,7 @@ Env start(
   PlaybackRequest request = movie,
   Map<String, Object> prefs = const {},
   FakeEngine? fake,
+  MemoryLibraryRepository? library,
 }) {
   final engine = fake ?? FakeEngine();
   final api = F([
@@ -87,6 +90,9 @@ Env start(
       ),
       apiClientProvider.overrideWithValue(api),
       playerEngineFactoryProvider.overrideWithValue(() => engine),
+      libraryRepositoryProvider.overrideWithValue(
+        library ?? MemoryLibraryRepository(),
+      ),
     ],
   );
   c.read(preferenceStoreProvider.future);
@@ -416,6 +422,87 @@ void main() {
       expect(exo.state.subtitles.where((o) => o.languageCode == 'ar'), [
         isA<Object>(),
       ]);
+    });
+  });
+
+  test('resumes a saved position, and Start over goes back to 0', () {
+    fakeAsync((async) {
+      final library = MemoryLibraryRepository([
+        WatchProgress(
+          videoId: '7',
+          position: const Duration(minutes: 14),
+          duration: const Duration(minutes: 100),
+          updatedAt: DateTime(2026, 11, 19),
+          title: const LocalizedText(en: 'Movie'),
+        ),
+      ]);
+      final env = start(async, library: library);
+      expect(env.engine.opened.single.start, const Duration(minutes: 14));
+      expect(env.state.resumedFrom, const Duration(minutes: 14));
+
+      env.engine.emitReady(at: const Duration(minutes: 14, seconds: 1));
+      env.controller.startOver();
+      env.flush();
+      expect(env.engine.seeks.last, Duration.zero);
+      expect(env.state.resumedFrom, isNull);
+    });
+  });
+
+  test('saves every 10 s while playing, on pause, and finished at the end', () {
+    fakeAsync((async) {
+      final library = MemoryLibraryRepository();
+      final env = start(async, library: library);
+      // Nothing is saved before the file opened.
+      expect(library.rows, isEmpty);
+
+      env.engine.emitReady(
+        duration: const Duration(minutes: 100),
+        at: const Duration(minutes: 5),
+      );
+      env.flush(const Duration(seconds: 10));
+      final saved = library.rows['7']!;
+      expect(saved.position, const Duration(minutes: 5));
+      expect(saved.duration, const Duration(minutes: 100));
+      expect(saved.kind, VideoKind.movies);
+      expect(saved.title.en, 'Movie');
+      expect(saved.seriesId, isNull);
+
+      env.engine.emitPosition(const Duration(minutes: 6));
+      env.controller.pause();
+      env.flush();
+      expect(library.rows['7']!.position, const Duration(minutes: 6));
+      expect(library.rows['7']!.isFinished, isFalse);
+
+      env.engine.emitPosition(const Duration(minutes: 100));
+      env.engine.emitCompleted();
+      env.flush();
+      expect(env.state.phase, PlayerPhase.ended);
+      expect(library.rows['7']!.isFinished, isTrue);
+    });
+  });
+
+  test('an episode is saved with its series, season and number', () {
+    fakeAsync((async) {
+      const series = PlaybackRequest(
+        item: MediaItem(
+          id: '4328',
+          title: LocalizedText(en: 'Friends'),
+          kind: VideoKind.series,
+        ),
+      );
+      final library = MemoryLibraryRepository();
+      final env = start(async, request: series, library: library);
+      final playing = env.state.episodes.first;
+      env.controller.playEpisode(playing);
+      env.flush();
+      env.engine.emitReady(at: const Duration(minutes: 3));
+      env.controller.playEpisode(env.state.episodes[1]);
+      env.flush();
+      final first = library.rows[playing.id]!;
+      expect(first.seriesId, '4328');
+      expect((first.season, first.episode), (playing.season, playing.episode));
+      expect(first.position, const Duration(minutes: 3));
+      expect(first.kind, VideoKind.series);
     });
   });
 

@@ -34,3 +34,7 @@ String episodeLabel(AppLocalizations l10n, EpisodeNumbering numbering) {
       ? l10n.episodeNumber(numbers.single)
       : l10n.episodeNumbers(numbers.join(l10n.episodeNumbersJoiner));
 }
+
+/// "14 min left" (at least 1).
+String minutesLeft(AppLocalizations l10n, Duration remaining) =>
+    l10n.minutesLeft((remaining.inSeconds / 60).ceil().clamp(1, 1 << 20));

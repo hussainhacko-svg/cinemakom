@@ -107,5 +107,11 @@
   "playerSyncLater": "إظهار الترجمة لاحقًا",
   "playerSyncReset": "إعادة الضبط",
   "playerSyncSeconds": "{value} ث",
-  "playerMore": "خيارات أكثر"
+  "playerMore": "خيارات أكثر",
+  "playerResumingFrom": "استئناف من {time}",
+  "playerStartOver": "من البداية",
+  "resume": "استئناف",
+  "minutesLeft": "متبقٍ {minutes} د",
+  "seasonEpisodeShort": "م{season} ح{episode}",
+  "rowContinueWatching": "تابع المشاهدة"
 }

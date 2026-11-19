@@ -21,6 +21,7 @@ import 'player_state.dart';
 import 'quality.dart';
 import 'widgets/chip_menus.dart';
 import 'widgets/controls_overlay.dart';
+import 'widgets/seek_bar.dart' show formatClock;
 import 'widgets/subtitle_layer.dart';
 
 /// The full-screen player (docs/PLAYER.md §8). It owns what only the screen
@@ -40,6 +41,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   static const _bufferingDelay = Duration(milliseconds: 300);
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
   static const _toastFor = Duration(milliseconds: 1200);
+  static const _resumedFor = Duration(seconds: 5);
 
   bool _visible = true;
   bool _menuOpen = false;
@@ -48,17 +50,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Timer? _hideTimer;
   Timer? _bufferingTimer;
   Timer? _toastTimer;
+  Timer? _resumedTimer;
 
   /// A short note in the middle of the screen ("Fill" after the fit chip).
   ({IconData icon, String label})? _toast;
 
   PlayerController get _controller =>
       ref.read(playerControllerProvider(widget.request).notifier);
+
+  /// Kept for dispose, where `ref` can't be used.
+  late final PlayerController _session;
+  late final AppLifecycleListener _lifecycle;
   PlayerState get _state => ref.read(playerControllerProvider(widget.request));
 
   @override
   void initState() {
     super.initState();
+    _session = _controller;
+    // Progress survives the app being killed in the background.
+    _lifecycle = AppLifecycleListener(
+      onInactive: () => _session.saveProgress(),
+      onHide: () => _session.saveProgress(),
+    );
     if (isMobile) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -70,9 +83,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    _session.saveProgress();
+    _lifecycle.dispose();
     _hideTimer?.cancel();
     _bufferingTimer?.cancel();
     _toastTimer?.cancel();
+    _resumedTimer?.cancel();
     unawaited(_wakelock(on: false));
     if (isMobile) {
       SystemChrome.setPreferredOrientations(const []);
@@ -284,6 +300,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         if (phase == PlayerPhase.failed || phase == PlayerPhase.ended) {
           _show();
         }
+        // "Resuming from …" stays 5 s once the video plays.
+        if (phase == PlayerPhase.ready && _state.resumedFrom != null) {
+          _resumedTimer?.cancel();
+          _resumedTimer = Timer(_resumedFor, () {
+            if (mounted) _controller.dismissResumed();
+          });
+        }
       });
   }
 
@@ -386,6 +409,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 if (failed)
                   _Failure(error: state.error, onRetry: controller.retry),
+                if (state.resumedFrom case final from?
+                    when phase == PlayerPhase.ready)
+                  _Resumed(from: from, onStartOver: controller.startOver),
                 if (toast != null && !busy && !failed)
                   IgnorePointer(
                     child: _Toast(icon: toast.icon, label: toast.label),
@@ -429,6 +455,60 @@ class _Busy extends StatelessWidget {
             Text(label, style: MarqueeText.of(context).label),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "Resuming from 14:32 · Start over", above the seek bar at the start
+/// edge. It shows even when the controls are hidden.
+class _Resumed extends StatelessWidget {
+  const _Resumed({required this.from, required this.onStartOver});
+
+  final Duration from;
+  final VoidCallback onStartOver;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    return SafeArea(
+      child: Align(
+        alignment: AlignmentDirectional.bottomStart,
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(
+            start: width >= 600 ? MarqueeSpace.xxxl : MarqueeSpace.l,
+            bottom: 72,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: MarqueeColors.booth,
+              border: Border.all(color: MarqueeColors.velvet),
+              borderRadius: const BorderRadius.all(Radius.circular(999)),
+            ),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: MarqueeSpace.l),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.playerResumingFrom(formatClock(from)),
+                    style: MarqueeText.of(context).label,
+                  ),
+                  const SizedBox(width: MarqueeSpace.xs),
+                  TextButton(
+                    onPressed: onStartOver,
+                    style: TextButton.styleFrom(
+                      foregroundColor: MarqueeColors.bulb,
+                      minimumSize: const Size(44, 44),
+                    ),
+                    child: Text(l10n.playerStartOver),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -182,7 +182,8 @@ Every error message goes in the ARB files.
 - **Finished:** 95% watched, or less than 2 min left. A finished episode resumes the series at the next one.
 - **Resume:** offered when ≥ 30 s were watched and the video isn't finished. The player starts there directly and shows "Resuming from 14:32 · Start over" for 5 s.
 - **Details:** the primary button becomes "Resume · S2 E5 · 14 min left" (DESIGN.md §8), and episode rows show progress and watched numerals (DESIGN.md §5).
-- **Home's Continue watching row** reads the same table. Phase 5 adds the Library tab on top.
+- **Home's Continue watching row** reads the same table: the newest movie or episode of each title, unfinished only (a finished episode's "Up next" card comes with the Library tab in Phase 5). A card plays straight away, and the player resumes by itself. Phase 5 adds the Library tab on top.
+- *Built (M4):* `lib/core/storage/database.dart` (drift, `drift_flutter`), `LibraryRepository` (`DriftLibraryRepository`; `MemoryLibraryRepository` for tests, because drift's timers don't mix with widget tests). The screen saves on leaving and on `AppLifecycleListener` hide/inactive (a provider can't save from its own dispose).
 
 ### 7.7 Next episode and Up next
 - **Next** = the next entry in the sorted episode list, across seasons. Double episodes are one entry. Nothing after the last episode.
