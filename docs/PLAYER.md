@@ -22,7 +22,7 @@ These are the targets. Every milestone below is checked against them.
 
 *Made 2026-11-19.*
 1. **Resume is stored in drift from Phase 4.** The `watch_history` table and its repository are built now (save and read). Phase 5 only adds the Library UI and the metadata refresh.
-2. **The seek bar always runs left → right**, in Arabic too. The ±10 s buttons, double-tap zones and swipe-to-seek follow the same physical direction. Only the top bar's text and chips follow RTL.
+2. **The seek bar always runs left → right**, in Arabic too. The ±10 s buttons, double-tap zones and the brightness/volume halves follow the same physical direction. Only the top bar's text and chips follow RTL.
 3. **Next episode autoplays with a countdown.** An "Up next" card appears near the end, and a 10 s countdown starts the next episode. **Next episode** is always available.
 4. **Extras in Phase 4:** subtitle size and delay, seek-bar previews (moved up from Phase 7), and a controls lock on mobile.
 5. **Not in Phase 4:** picture-in-picture, casting, background audio, lock-screen media controls (§12).
@@ -251,7 +251,6 @@ Every error message goes in the ARB files.
 |---|---|
 | Tap | Show or hide the controls |
 | Double-tap left / right third | −10 s / +10 s. Repeated taps add up ("+30 s") with a ripple on that side |
-| Horizontal drag | Seek, with the preview frame and the target time |
 | Vertical drag, left half | Brightness (app-level, through `screen_brightness`, restored on exit) |
 | Vertical drag, right half | Volume (system volume through `volume_controller`, without the system slider) |
 | Pinch | Fill / Fit |
@@ -260,7 +259,13 @@ Every error message goes in the ARB files.
   - The brightness and volume levels show as a slim vertical bar (`bulb` on `velvet`) with an icon.
 - **Controls lock:** a lock button in the top bar. While locked, touches are ignored except a small unlock button that appears on tap and hides after 3 s.
 - **Audio interruptions:** pause on headphone unplug, incoming calls and other apps taking audio focus. iOS plays sound even with the silent switch on. This needs **`audio_session`** (new dependency): it is the standard package for this and doesn't add background playback.
+  - *Built (M7):* `lib/core/player/audio_focus.dart` is the only file that imports it. **audio_session owns audio focus on every platform, and ExoPlayer is told not to take focus itself** (`VideoPlayerOptions(mixWithOthers: true)`): two focus requests from one app take focus from each other (ExoPlayer would pause itself), and audio_session only reports unplugged headphones while it holds focus. A short interruption (a call) resumes afterwards; another app taking the sound for good doesn't; a notification "duck" doesn't pause.
 - **Back:** the system back button or gesture leaves the player (saving progress), or unlocks first when locked, or closes an open menu first.
+- *Built (M7):* `gesture_layer.dart` (the only place that touches brightness and volume). Choices made while building:
+  - A single tap on a side third waits 250 ms for a second tap before toggling the controls; the middle third toggles at once. After a double tap, more taps on that side within 0.7 s keep adding 10 s.
+  - **No swipe-to-seek** (*owner's decision, 2026-11-19*): a sideways swipe over the video does nothing; seek with the bar, double taps or ±10 s. Swipes are measured from where the finger came down: a scale gesture only starts past its slop (about 36 dp later), which was too late for the 24 dp edge check.
+  - The seek bar still wins its own drags, and the buttons their taps.
+  - The lock hides Skip intro, Up next and "Resuming from", and unlocks by itself for errors, the end and "Still watching?".
 
 ### 9.2 Desktop (Linux, Windows)
 - **Mouse:**

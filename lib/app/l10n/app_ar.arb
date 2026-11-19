@@ -124,5 +124,10 @@
   "playerPlayNow": "شغّل الآن",
   "playerHide": "إخفاء",
   "playerStillWatching": "هل ما زلت تشاهد؟",
-  "playerSkipIntro": "تخطَّ المقدمة"
+  "playerSkipIntro": "تخطَّ المقدمة",
+  "playerLock": "قفل الأزرار",
+  "playerUnlock": "فتح القفل",
+  "playerSeekAmount": "{amount} ث",
+  "playerBrightness": "السطوع",
+  "playerVolume": "الصوت"
 }

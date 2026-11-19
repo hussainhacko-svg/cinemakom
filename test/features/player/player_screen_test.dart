@@ -9,6 +9,7 @@ import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
 import 'package:cinemakom/features/player/widgets/chip_menus.dart';
 import 'package:cinemakom/features/player/widgets/controls_overlay.dart';
+import 'package:cinemakom/features/player/widgets/gesture_layer.dart';
 import 'package:cinemakom/features/player/widgets/seek_bar.dart';
 import 'package:cinemakom/features/player/widgets/seek_preview_frame.dart';
 import 'package:cinemakom/features/player/widgets/skip_intro_button.dart';
@@ -121,7 +122,8 @@ void main() {
     expect(opacity(), 1);
     expect(find.byTooltip('Play'), findsOneWidget);
     await tester.tapAt(const Offset(120, 200)); // clear of the centre buttons
-    await tester.pump();
+    // A tap on a side waits for a possible double tap first.
+    await tester.pump(GestureLayer.doubleTapWindow);
     expect(opacity(), 0);
   });
 
@@ -486,5 +488,133 @@ void main() {
     // A finger is on the thumb: the time sits well above it.
     expect(tester.getRect(find.text('30:00')).bottom, lessThan(bar.top - 20));
     await drag.up();
+  });
+  group('phone gestures (PLAYER.md §9.1)', () {
+    Future<FakeEngine> playing(WidgetTester tester) async {
+      final engine = FakeEngine();
+      await pumpApp(tester, engine: engine, width: 844, height: 390);
+      await openMovie(tester);
+      engine.emitReady(
+        duration: const Duration(hours: 2),
+        at: const Duration(minutes: 10),
+      );
+      await tester.pump();
+      // Let the controls hide.
+      await tester.pump(const Duration(seconds: 4));
+      return engine;
+    }
+
+    double opacity(WidgetTester tester) =>
+        tester.widget<AnimatedOpacity>(controlsFade).opacity;
+
+    testWidgets('double taps on a side seek, and more taps add up', (
+      tester,
+    ) async {
+      final engine = await playing(tester);
+      const right = Offset(760, 150);
+      for (var i = 0; i < 3; i++) {
+        await tester.tapAt(right);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      // Two taps make a double tap (+10 s), the third adds 10 s more.
+      expect(engine.seeks, [
+        const Duration(minutes: 10, seconds: 10),
+        const Duration(minutes: 10, seconds: 20),
+      ]);
+      expect(find.text('\u2066+20\u2069 s'), findsOneWidget);
+      await tester.pump(GestureLayer.streakWindow);
+      // The controls stayed hidden.
+      expect(opacity(tester), 0);
+
+      // The left side goes back, in Arabic too (physical sides).
+      await tester.tapAt(const Offset(80, 150));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tapAt(const Offset(80, 150));
+      await tester.pump(GestureLayer.streakWindow);
+      expect(engine.seeks.last, const Duration(minutes: 10, seconds: 10));
+    });
+
+    testWidgets('swipes: up and down set brightness, sideways does nothing', (
+      tester,
+    ) async {
+      final engine = await playing(tester);
+      final brightness = find.byIcon(Icons.brightness_6_outlined);
+
+      /// Swipes, checks the level mid-swipe, then lifts the finger.
+      Future<void> swipe(Offset from, Offset by, Matcher level) async {
+        final g = await tester.startGesture(from);
+        await tester.pump();
+        for (var i = 0; i < 4; i++) {
+          await g.moveBy(by / 4);
+          await tester.pump();
+        }
+        expect(brightness, level);
+        await g.up();
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      // Sideways: no seek, no level.
+      await swipe(const Offset(300, 150), const Offset(200, 0), findsNothing);
+      expect(engine.seeks, isEmpty);
+
+      // From the screen edge: left to the system.
+      await swipe(const Offset(10, 300), const Offset(0, -150), findsNothing);
+
+      // The left half: brightness.
+      await swipe(
+        const Offset(200, 300),
+        const Offset(0, -150),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('pinch out fills the screen, pinch in fits it', (tester) async {
+      await playing(tester);
+      Future<void> pinch(double from, double to) async {
+        final a = await tester.startGesture(Offset(422 - from, 195));
+        final b = await tester.startGesture(Offset(422 + from, 195));
+        await tester.pump();
+        await a.moveTo(Offset(422 - to, 195));
+        await b.moveTo(Offset(422 + to, 195));
+        await tester.pump();
+        await a.up();
+        await b.up();
+        await tester.pump();
+      }
+
+      await pinch(60, 160);
+      expect(find.text('Fill'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await pinch(160, 60);
+      expect(find.text('Fit'), findsOneWidget);
+    });
+
+    testWidgets('the lock ignores touches until Unlock', (tester) async {
+      final engine = await playing(tester);
+      await tester.tapAt(const Offset(422, 195));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Lock controls'));
+      await tester.pump();
+      expect(opacity(tester), 0);
+      expect(find.text('Unlock'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('Unlock'), findsNothing);
+
+      // Taps only bring back Unlock; double taps and swipes do nothing.
+      await tester.tapAt(const Offset(760, 150));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tapAt(const Offset(760, 150));
+      await tester.pump(GestureLayer.streakWindow);
+      expect(engine.seeks, isEmpty);
+      expect(opacity(tester), 0);
+      expect(find.text('Unlock'), findsOneWidget);
+
+      // Back unlocks instead of leaving.
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.byType(PlayerScreen), findsOneWidget);
+      expect(find.text('Unlock'), findsNothing);
+      expect(opacity(tester), 1);
+    });
   });
 }

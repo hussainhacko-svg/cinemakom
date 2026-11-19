@@ -593,5 +593,30 @@
   "playerSkipIntro": "Skip intro",
   "@playerSkipIntro": {
     "description": "Player: jump to the end of the intro (shown while the playhead is inside one)"
+  },
+  "playerLock": "Lock controls",
+  "@playerLock": {
+    "description": "Player (phones): ignore touches so the video isn't changed by accident"
+  },
+  "playerUnlock": "Unlock",
+  "@playerUnlock": {
+    "description": "Player: the button that ends the controls lock"
+  },
+  "playerSeekAmount": "{amount} s",
+  "@playerSeekAmount": {
+    "description": "Double-tap seek feedback, e.g. '+30 s'. The amount carries its sign",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "playerBrightness": "Brightness",
+  "@playerBrightness": {
+    "description": "Player: label of the brightness level shown while swiping"
+  },
+  "playerVolume": "Volume",
+  "@playerVolume": {
+    "description": "Player: label of the volume level shown while swiping"
   }
 }

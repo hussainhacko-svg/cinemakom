@@ -15,6 +15,7 @@ import '../../app/widgets/media_image.dart' show networkImagesProvider;
 import '../../core/network/api_exception.dart';
 import '../../core/platform/orientation.dart';
 import '../../core/platform/platform_info.dart';
+import '../../core/player/audio_focus.dart';
 import '../../core/storage/preferences.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
@@ -25,6 +26,7 @@ import 'widgets/chip_menus.dart';
 import 'up_next.dart';
 import 'widgets/controls_overlay.dart';
 import 'widgets/episodes_panel.dart';
+import 'widgets/gesture_layer.dart';
 import 'widgets/seek_bar.dart' show formatClock;
 import 'widgets/seek_preview_frame.dart';
 import 'widgets/skip_intro_button.dart';
@@ -54,6 +56,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _menuOpen = false;
   bool _scrubbing = false;
   bool _showBuffering = false;
+
+  /// The controls lock (phones): touches do nothing but show [_Unlock].
+  bool _locked = false;
+  bool _unlockShown = false;
+  Timer? _unlockTimer;
+
+  /// Calls, other apps and unplugged headphones pause playback (phones).
+  AudioFocus? _audio;
   Timer? _hideTimer;
   Timer? _bufferingTimer;
   Timer? _toastTimer;
@@ -85,6 +95,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       onHide: () => _session.saveProgress(),
     );
     if (isMobile) {
+      _audio = AudioFocus(
+        onPause: () => _session.pause(),
+        onResume: () => _session.play(),
+      );
+      unawaited(_audio!.start());
       // Either landscape side; Android and iOS only flip between them when
       // the device's auto-rotate allows it.
       setPlayerOrientation();
@@ -100,6 +115,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _bufferingTimer?.cancel();
     _toastTimer?.cancel();
     _resumedTimer?.cancel();
+    _unlockTimer?.cancel();
+    unawaited(_audio?.dispose());
     unawaited(_wakelock(on: false));
     if (isMobile) {
       setBrowseOrientation(_rotation);
@@ -180,6 +197,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _back() {
     if (context.canPop()) context.pop();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Controls lock (PLAYER.md §9.1)
+
+  void _lock() {
+    _hideTimer?.cancel();
+    setState(() {
+      _locked = true;
+      _visible = false;
+    });
+    _showUnlock();
+  }
+
+  /// A tap while locked: the unlock button, for 3 s.
+  void _showUnlock() {
+    _unlockTimer?.cancel();
+    setState(() => _unlockShown = true);
+    _unlockTimer = Timer(_hideAfter, () {
+      if (mounted) setState(() => _unlockShown = false);
+    });
+  }
+
+  void _unlock() {
+    if (!_locked) return;
+    _unlockTimer?.cancel();
+    setState(() {
+      _locked = false;
+      _unlockShown = false;
+    });
+    _show();
+  }
+
+  /// A pinch: Fill or Fit, with the same note as the fit chip.
+  void _pinchFit(AppLocalizations l10n, VideoFit fit) {
+    if (fit == _state.fit) return;
+    _controller.setFit(fit);
+    _showToast(fitIcon(fit), fitLabel(l10n, fit));
   }
 
   Future<void> _episodesPanel() async {
@@ -320,6 +375,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ref
       ..listen(provider.select((s) => s.playing), (_, playing) {
         unawaited(_wakelock(on: playing));
+        _audio?.playing(playing);
         if (playing) {
           _scheduleHide();
         } else {
@@ -339,6 +395,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           }
         });
       })
+      ..listen(provider.select((s) => s.upNext), (_, upNext) {
+        // "Still watching?" needs an answer.
+        if (upNext == UpNext.stillWatching) _unlock();
+      })
       ..listen(provider.select((s) => s.seekPreview), (_, preview) {
         if (preview != null) _prefetch(preview);
       })
@@ -349,6 +409,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       })
       ..listen(provider.select((s) => s.phase), (_, phase) {
         if (phase == PlayerPhase.failed || phase == PlayerPhase.ended) {
+          // Try again and the end need the controls.
+          _unlock();
           _show();
         }
         // "Resuming from …" stays 5 s once the video plays.
@@ -417,103 +479,209 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         (_showBuffering && state.buffering);
     final failed = phase == PlayerPhase.failed;
 
-    return Scaffold(
-      backgroundColor: MarqueeColors.screen,
-      body: CallbackShortcuts(
-        bindings: _shortcuts,
-        child: Focus(
-          autofocus: true,
-          child: MouseRegion(
-            cursor: _visible ? MouseCursor.defer : SystemMouseCursors.none,
-            onHover: (_) => _input(),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                controller.engine.buildVideo(
-                  fit: switch (state.fit) {
-                    VideoFit.fit => BoxFit.contain,
-                    VideoFit.fill => BoxFit.cover,
-                    VideoFit.stretch => BoxFit.fill,
-                  },
-                ),
-                SubtitleLayer(
-                  lines: controller.subtitleLines,
-                  lifted: _visible,
-                  scale: subtitleScale,
-                ),
-                // Wraps the controls: the scrim takes every hit, so a tap
-                // detector under it would never fire. Buttons inside still
-                // win their own taps.
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggle,
-                  child: IgnorePointer(
-                    ignoring: !_visible,
-                    child: AnimatedOpacity(
-                      opacity: _visible ? 1 : 0,
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOut,
-                      child: ControlsOverlay(
-                        state: state,
-                        controller: controller,
-                        busy: busy || failed,
-                        onBack: _back,
-                        onSubtitles: _subtitleMenu,
-                        onQuality: (anchor) => _qualityMenu(l10n, anchor),
-                        onSpeed: (anchor) => _speedMenu(l10n, anchor),
-                        onFit: () => _cycleFit(l10n),
-                        onMore: (anchor) => _moreMenu(l10n, anchor),
-                        onEpisodes: widget.request.isSeries
-                            ? _episodesPanel
-                            : null,
-                        onScrub: (at) {
-                          _scrubbing = at != null;
-                          if (_scrubbing) {
-                            _hideTimer?.cancel();
-                          } else {
-                            _scheduleHide();
-                          }
-                        },
+    // Back unlocks first.
+    return PopScope(
+      canPop: !_locked,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _unlock();
+      },
+      child: Scaffold(
+        backgroundColor: MarqueeColors.screen,
+        body: CallbackShortcuts(
+          bindings: _shortcuts,
+          child: Focus(
+            autofocus: true,
+            child: MouseRegion(
+              cursor: _visible ? MouseCursor.defer : SystemMouseCursors.none,
+              onHover: (_) => _input(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  controller.engine.buildVideo(
+                    fit: switch (state.fit) {
+                      VideoFit.fit => BoxFit.contain,
+                      VideoFit.fill => BoxFit.cover,
+                      VideoFit.stretch => BoxFit.fill,
+                    },
+                  ),
+                  SubtitleLayer(
+                    lines: controller.subtitleLines,
+                    lifted: _visible,
+                    scale: subtitleScale,
+                  ),
+                  // Wraps the controls: the scrim takes every hit, so a tap
+                  // detector under it would never fire. Buttons inside still
+                  // win their own taps. Phones get the touch gestures.
+                  _gestures(
+                    l10n,
+                    state,
+                    IgnorePointer(
+                      ignoring: !_visible || _locked,
+                      child: AnimatedOpacity(
+                        opacity: _visible && !_locked ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOut,
+                        child: ControlsOverlay(
+                          state: state,
+                          controller: controller,
+                          busy: busy || failed,
+                          onBack: _back,
+                          onSubtitles: _subtitleMenu,
+                          onQuality: (anchor) => _qualityMenu(l10n, anchor),
+                          onSpeed: (anchor) => _speedMenu(l10n, anchor),
+                          onFit: () => _cycleFit(l10n),
+                          onMore: (anchor) => _moreMenu(l10n, anchor),
+                          onEpisodes: widget.request.isSeries
+                              ? _episodesPanel
+                              : null,
+                          trailing: [
+                            if (isMobile)
+                              _ChipIcon(
+                                icon: Icons.lock_outline,
+                                tooltip: l10n.playerLock,
+                                onPressed: _lock,
+                              ),
+                          ],
+                          onScrub: (at) {
+                            _scrubbing = at != null;
+                            if (_scrubbing) {
+                              _hideTimer?.cancel();
+                            } else {
+                              _scheduleHide();
+                            }
+                          },
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (busy && !failed)
-                  IgnorePointer(
-                    child: _Busy(
-                      label: phase == PlayerPhase.recovering
-                          ? l10n.playerReconnecting
-                          : null,
+                  if (busy && !failed)
+                    IgnorePointer(
+                      child: _Busy(
+                        label: phase == PlayerPhase.recovering
+                            ? l10n.playerReconnecting
+                            : null,
+                      ),
                     ),
-                  ),
-                if (failed)
-                  _Failure(error: state.error, onRetry: controller.retry),
-                if (state.resumedFrom case final from?
-                    when phase == PlayerPhase.ready)
-                  _Resumed(from: from, onStartOver: controller.startOver),
-                if (state.nextEpisode case final next?
-                    when state.upNext != UpNext.none && !failed)
-                  UpNextCard(
-                    next: next,
-                    upNext: state.upNext,
-                    onPlayNow: controller.playNext,
-                    onHide: controller.hideUpNext,
-                  )
-                else if (state.intro != null &&
-                    phase == PlayerPhase.ready &&
-                    !failed)
-                  SkipIntroButton(
-                    visible: state.introPinned || _visible,
-                    onPressed: () {
-                      _controller.noteActivity();
-                      _controller.skipIntro();
-                    },
-                  ),
-                if (toast != null && !busy && !failed)
-                  IgnorePointer(
-                    child: _Toast(icon: toast.icon, label: toast.label),
-                  ),
-              ],
+                  if (failed)
+                    _Failure(error: state.error, onRetry: controller.retry),
+                  if (state.resumedFrom case final from?
+                      when phase == PlayerPhase.ready && !_locked)
+                    _Resumed(from: from, onStartOver: controller.startOver),
+                  if (state.nextEpisode case final next?
+                      when state.upNext != UpNext.none && !failed && !_locked)
+                    UpNextCard(
+                      next: next,
+                      upNext: state.upNext,
+                      onPlayNow: controller.playNext,
+                      onHide: controller.hideUpNext,
+                    )
+                  else if (state.intro != null &&
+                      phase == PlayerPhase.ready &&
+                      !failed &&
+                      !_locked)
+                    SkipIntroButton(
+                      visible: state.introPinned || _visible,
+                      onPressed: () {
+                        _controller.noteActivity();
+                        _controller.skipIntro();
+                      },
+                    ),
+                  if (toast != null && !busy && !failed)
+                    IgnorePointer(
+                      child: _Toast(icon: toast.icon, label: toast.label),
+                    ),
+                  if (_locked && _unlockShown) _Unlock(onPressed: _unlock),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Phones: taps, double taps, swipes and pinches over the controls.
+  /// Desktop: a tap shows or hides them (mouse and keys come in M8).
+  Widget _gestures(AppLocalizations l10n, PlayerState state, Widget controls) =>
+      isMobile
+      ? GestureLayer(
+          controller: _controller,
+          state: state,
+          locked: _locked,
+          onTap: _toggle,
+          onLockedTap: _showUnlock,
+          onPinch: (fit) => _pinchFit(l10n, fit),
+          child: controls,
+        )
+      : GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggle,
+          child: controls,
+        );
+}
+
+enum _ChipMenu { subtitles, quality, speed, fit }
+
+/// A round icon button in the top bar, styled like the chips.
+class _ChipIcon extends StatelessWidget {
+  const _ChipIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: MarqueeSpace.s),
+    child: IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: MarqueeColors.booth,
+        foregroundColor: MarqueeColors.cream,
+        side: const BorderSide(color: MarqueeColors.velvet),
+        fixedSize: const Size.square(44),
+      ),
+    ),
+  );
+}
+
+/// While locked: a small Unlock pill at the top end, shown for 3 s after a
+/// tap.
+class _Unlock extends StatelessWidget {
+  const _Unlock({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return SafeArea(
+      child: Align(
+        alignment: AlignmentDirectional.topEnd,
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(
+            top: MarqueeSpace.m,
+            end: width >= 600 ? MarqueeSpace.xxxl : MarqueeSpace.l,
+          ),
+          child: TextButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.lock_open_outlined, size: 20),
+            label: Text(AppLocalizations.of(context).playerUnlock),
+            style: TextButton.styleFrom(
+              backgroundColor: MarqueeColors.booth,
+              foregroundColor: MarqueeColors.cream,
+              side: const BorderSide(color: MarqueeColors.velvet),
+              shape: const StadiumBorder(),
+              minimumSize: const Size(44, 44),
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: MarqueeSpace.l,
+              ),
             ),
           ),
         ),
@@ -521,8 +689,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 }
-
-enum _ChipMenu { subtitles, quality, speed, fit }
 
 /// Keeps the screen on while playing. A missing plugin (tests, odd
 /// platforms) just means no wakelock.

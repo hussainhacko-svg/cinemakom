@@ -110,6 +110,9 @@ class ExoPlayerEngine implements PlayerEngine {
       Uri.parse(source.uri),
       httpHeaders: source.headers,
       viewType: VideoViewType.textureView,
+      // Audio focus is AudioFocus's (audio_session): a second request from
+      // ExoPlayer would take focus from it (PLAYER.md §9.1).
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
     );
     try {
       await controller.initialize();
