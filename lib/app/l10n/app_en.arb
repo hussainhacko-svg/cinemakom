@@ -202,6 +202,23 @@
   "@searchHint": {
     "description": "Placeholder in the search field"
   },
+  "recentSearches": "Recent searches",
+  "@recentSearches": {
+    "description": "Search page heading over the search history"
+  },
+  "clearSearchHistory": "Clear all",
+  "@clearSearchHistory": {
+    "description": "Removes every recent search"
+  },
+  "removeSearch": "Remove “{query}”",
+  "@removeSearch": {
+    "description": "Tooltip of the button that removes one recent search",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "clearSearch": "Clear search",
   "@clearSearch": {
     "description": "Tooltip of the button that empties the search field"

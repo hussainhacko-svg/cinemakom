@@ -191,6 +191,9 @@ abstract final class PreferenceKeys {
   /// use the system volume.
   static const playerVolume = 'playerVolume';
 
+  /// Recent searches, a JSON list of strings, newest first.
+  static const searchHistory = 'searchHistory';
+
   static const all = {
     language,
     defaultQuality,
@@ -198,6 +201,7 @@ abstract final class PreferenceKeys {
     subtitleSize,
     screenRotation,
     playerVolume,
+    searchHistory,
   };
 }
 

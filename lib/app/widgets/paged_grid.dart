@@ -33,12 +33,17 @@ class PagedGridSlivers extends ConsumerWidget {
     required this.gutter,
     this.filter,
     this.emptyMessage,
+    this.onOpen,
   });
 
   final MediaSource source;
   final double gutter;
   final bool Function(MediaItem)? filter;
   final String? emptyMessage;
+
+  /// Called when a title is opened from the grid (Search remembers the
+  /// query then).
+  final ValueChanged<MediaItem>? onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -84,6 +89,7 @@ class PagedGridSlivers extends ConsumerWidget {
         PosterGridSliver(
           items: items,
           gutter: gutter,
+          onOpen: onOpen,
           onBuild: (i) {
             if (i >= items.length - _prefetchItems) prefetch();
           },
@@ -122,11 +128,13 @@ class PosterGridSliver extends StatelessWidget {
     required this.items,
     required this.gutter,
     this.onBuild,
+    this.onOpen,
   });
 
   final List<MediaItem> items;
   final double gutter;
   final void Function(int index)? onBuild;
+  final ValueChanged<MediaItem>? onOpen;
 
   @override
   Widget build(BuildContext context) => SliverPadding(
@@ -149,7 +157,10 @@ class PosterGridSliver extends StatelessWidget {
             onBuild?.call(i);
             return PosterCard(
               item: items[i],
-              onTap: () => openTitle(context, items[i]),
+              onTap: () {
+                onOpen?.call(items[i]);
+                openTitle(context, items[i]);
+              },
             );
           },
         );

@@ -141,6 +141,7 @@ Drawn on the canvas's "App screens" page (*decisions 2026-11-19*). Every tab scr
 - **Home:** lockup header (no search icon, since Search is a tab), hero, Continue watching, then the poster rows from PLAN.md §4.1. Each row has a "See all" link.
 - **Search:**
   - Field at the top (`booth` pill, 48 tall, `bulb` border while focused, clear button), then kind chips (All · Movies · Series) and a **Filters** button that opens the advanced filters (Phase 7, with the advanced search).
+  - Before typing: **Recent searches** (when there are any) above the genres: a section header with a "Clear all" text button, then up to 10 rows (history icon, the query in `cream`, an ✕ to remove that one). A row searches again. A search is remembered only when meant: the keyboard's search key, a recent search, or a title opened from its results, never the searches made while typing. Stored on the device, newest first, no duplicates.
   - Before typing: a two-column **genre grid** (`booth` tiles, 64 tall). A tile opens that genre's page.
   - Results: the title grid (3 columns or more on wide windows), infinitely scrolling. The kind chips filter it. Titles also match by cast or crew name. *There is no People row: the API has no people search, and list items carry no cast (2026-11-19).*
 - **Genre:** back button and genre name, a Movies | Series segmented control, a sort button ("Recently added ▾") at the end, language chips (the genre × language filter), then the 3-column grid with infinite scroll.
