@@ -11,8 +11,11 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:cinemakom/app/app.dart';
+import 'package:cinemakom/app/router.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter/rendering.dart';
+import 'package:material_ui/material_ui.dart' show Scrollable, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -23,8 +26,19 @@ final _dir = Directory(
       : Platform.environment['SCREENSHOT_DIR'] ?? 'build/screenshots',
 )..createSync(recursive: true);
 
-Future<void> _shot(WidgetTester tester, String name) async {
-  await tester.pumpAndSettle();
+/// Lets real time pass (live API calls, images) while pumping frames.
+/// pumpAndSettle can't be used: the bulb loader animates while loading.
+Future<void> _wait(WidgetTester tester, [int ms = 2500]) async {
+  for (var t = 0; t < ms; t += 250) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+    await tester.pump();
+  }
+}
+
+Future<void> _shot(WidgetTester tester, String name, {int wait = 2500}) async {
+  await _wait(tester, wait);
   final view = tester.binding.renderViews.first;
   final layer = view.debugLayer! as OffsetLayer;
   await tester.runAsync(() async {
@@ -49,11 +63,20 @@ Future<void> _pump(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
+      retry: noRetry,
       overrides: [preferenceStoreProvider.overrideWith((ref) => store)],
       child: const CinemakomApp(),
     ),
   );
-  await tester.pumpAndSettle();
+  await _wait(tester, 500);
+}
+
+/// Pushes [location] on the current tab, as tapping a list item would.
+Future<void> _push(WidgetTester tester, String location) async {
+  ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+      .read(routerProvider)
+      .push(location);
+  await _wait(tester, 500);
 }
 
 void main() {
@@ -67,7 +90,7 @@ void main() {
     await tester.tap(find.text('العربية'));
     await _shot(tester, '02-phone-language-ar-preview');
     await tester.tap(find.text('English'));
-    await tester.pumpAndSettle();
+    await _wait(tester, 500);
     await tester.tap(find.text('Continue'));
     await _shot(tester, '03-phone-home');
 
@@ -79,10 +102,10 @@ void main() {
     await tester.tap(find.text('Default quality'));
     await _shot(tester, '06-phone-quality-sheet');
     await tester.tap(find.text('2160p · 4K'));
-    await tester.pumpAndSettle();
+    await _wait(tester, 500);
 
     await tester.tap(find.text('Language'));
-    await tester.pumpAndSettle();
+    await _wait(tester, 500);
     await tester.tap(find.text('العربية').last);
     await _shot(tester, '07-phone-settings-ar');
     await tester.tap(find.text('الرئيسية'));
@@ -111,10 +134,66 @@ void main() {
     await tester.tap(find.text('Default subtitles'));
     await _shot(tester, '12-desktop-subtitle-dialog');
     await tester.tapAt(const Offset(20, 20));
-    await tester.pumpAndSettle();
+    await _wait(tester, 500);
     await tester.tap(find.text('Language'));
-    await tester.pumpAndSettle();
+    await _wait(tester, 500);
     await tester.tap(find.text('العربية').last);
     await _shot(tester, '13-desktop-settings-ar');
+  });
+
+  testWidgets('phone: browsing with live data', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      phone,
+    );
+    await _shot(tester, '20-phone-home-live', wait: 6000);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+    await _shot(tester, '21-phone-home-rows', wait: 4000);
+
+    // Details of the first banner (the hero's Play opens it until Phase 4).
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 2000));
+    await _wait(tester, 500);
+    await tester.tap(find.text('Play').first);
+    await _shot(tester, '22-phone-details-hero', wait: 5000);
+    await tester.tap(find.byTooltip('Back'));
+    await _wait(tester, 500);
+
+    await _push(tester, '/home/title/4328'); // Friends
+    await _shot(tester, '23-phone-details-series', wait: 5000);
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -600));
+    await _shot(tester, '24-phone-details-episodes', wait: 3000);
+
+    await tester.tap(find.text('Search'));
+    await _wait(tester, 2000);
+    await _shot(tester, '25-phone-search-empty');
+    await tester.enterText(find.byType(TextField), 'batman');
+    await _shot(tester, '26-phone-search-results', wait: 6000);
+    await tester.tap(find.byTooltip('Clear search'));
+    await _wait(tester, 2000);
+    await tester.tap(find.text('Action').first);
+    await _shot(tester, '27-phone-genre', wait: 6000);
+  });
+
+  testWidgets('desktop: browsing with live data', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      const Size(1280, 800),
+    );
+    await _shot(tester, '30-desktop-home-live', wait: 6000);
+    await _push(tester, '/home/title/4328');
+    await _shot(tester, '31-desktop-details-series', wait: 5000);
+  });
+
+  testWidgets('phone: Arabic browsing', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'ar'}),
+      phone,
+    );
+    await _shot(tester, '40-phone-home-ar-live', wait: 6000);
+    await _push(tester, '/home/title/4328');
+    await _shot(tester, '41-phone-details-ar', wait: 5000);
   });
 }

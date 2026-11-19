@@ -78,7 +78,7 @@ Use it sparingly. It is never a divider between every section.
 
 ## 5. Components
 
-- **Poster card:** 2:3 image, radius 10, `title` below (1 line, ellipsis), then a `caption` with year · genre. The only badge is **4K** (`bulb` background, `onBulb` text, radius 4, at the top start corner). The placeholder is a plain `booth` block (no shimmer).
+- **Poster card:** 2:3 image, radius 10, `title` below (1 line, ellipsis), then a `caption` with year · genre. The only badge is **4K** (`bulb` background, `onBulb` text, radius 4, at the top start corner). The placeholder is a plain `booth` block (no shimmer). Keyboard focus draws a 2 px `bulb` ring. *Lists don't say which titles have 4K (only a title's streams do), so the badge can only appear where streams are loaded.*
 - **Hero (Home):** a `booth` panel (radius 16, padding 10). It holds a bulb-dot row, then the **wide banner cover at its real 2.7:1 ratio** (radius 8), then page bars (active is a wide `bulb` bar, the others short `velvetStrong` bars). Below the panel: `eyebrow` "NOW SHOWING", `heroTitle`, `caption` meta, then **Play** (primary) and a Favorite icon button.
 - **Continue card:** `booth` row (radius 12, padding 8) with a 56 × 84 poster, title, "Season 2 · Episode 5", a 3 px progress bar (`velvet` track, `bulb` fill) and "14 min left".
 - **Episode row:** `numeral` (bulb when in progress, `cream` when watched, `dustDim` when unwatched), then "Episode N" (the API has no episode titles), length, and progress when started. The current episode sits on `boothRaised`.
@@ -137,9 +137,9 @@ Drawn on the canvas's "App screens" page (*decisions 2026-11-19*). Every tab scr
 - **First launch:** the large mark and lockup, "Choose your language / اختر لغتك", two option cards (English in the Latin display face, العربية in Reem Kufi; selected = 2 px `bulb` border and a filled radio), then **Continue**. Picking Arabic flips the screen to RTL straight away. Caption: "You can change this later in Settings."
 - **Home:** lockup header (no search icon, since Search is a tab), hero, Continue watching, then the poster rows from PLAN.md §4.1. Each row has a "See all" link.
 - **Search:**
-  - Field at the top (`booth` pill, 48 tall, `bulb` border while focused, clear button), then kind chips (All · Movies · Series) and a **Filters** button that opens the advanced filters.
+  - Field at the top (`booth` pill, 48 tall, `bulb` border while focused, clear button), then kind chips (All · Movies · Series) and a **Filters** button that opens the advanced filters (Phase 7, with the advanced search).
   - Before typing: a two-column **genre grid** (`booth` tiles, 64 tall). A tile opens that genre's page.
-  - Results: the **title grid first** (3 columns), then a **People** row (round 64 px photos or initials, name, role) for cast and crew matches.
+  - Results: the title grid (3 columns or more on wide windows), infinitely scrolling. The kind chips filter it. Titles also match by cast or crew name. *There is no People row: the API has no people search, and list items carry no cast (2026-11-19).*
 - **Genre:** back button and genre name, a Movies | Series segmented control, a sort button ("Recently added ▾") at the end, language chips (the genre × language filter), then the 3-column grid with infinite scroll.
 - **Details:** a **full page** pushed inside the current tab, so the nav stays visible. It is not a bottom sheet, because related titles and people open further pages and back must step through them.
   - Back button, then the poster (128 × 192) beside the title, meta, audio language and the external link.

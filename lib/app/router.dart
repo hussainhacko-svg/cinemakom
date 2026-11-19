@@ -1,16 +1,21 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart' show Widget;
 
 import '../core/storage/preferences.dart';
+import '../data/models/catalog_models.dart';
+import '../features/browse/media_list_screen.dart';
 import '../features/debug/debug_screen.dart';
+import '../features/details/details_screen.dart';
 import '../features/downloads/downloads_screen.dart';
+import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/onboarding/language_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
+import 'navigation.dart';
 import 'shell/app_shell.dart';
 
 /// App locations. Screens navigate with these, never with literal strings.
@@ -51,10 +56,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(navigationShell: shell),
         branches: [
-          _branch(AppRoutes.home, const HomeScreen()),
-          _branch(AppRoutes.search, const SearchScreen()),
-          _branch(AppRoutes.library, const LibraryScreen()),
-          _branch(AppRoutes.downloads, const DownloadsScreen()),
+          _branch(AppRoutes.home, const HomeScreen(), routes: _browse),
+          _branch(AppRoutes.search, const SearchScreen(), routes: _browse),
+          _branch(AppRoutes.library, const LibraryScreen(), routes: _browse),
+          _branch(
+            AppRoutes.downloads,
+            const DownloadsScreen(),
+            routes: _browse,
+          ),
           _branch(
             AppRoutes.settings,
             const SettingsScreen(),
@@ -79,3 +88,31 @@ StatefulShellBranch _branch(
 }) => StatefulShellBranch(
   routes: [GoRoute(path: path, builder: (_, _) => screen, routes: routes)],
 );
+
+/// Pages any tab can open from its lists (see navigation.dart): details,
+/// a genre, and "See all". They open inside that tab.
+final _browse = <RouteBase>[
+  GoRoute(
+    path: 'title/:id',
+    builder: (_, state) => DetailsScreen(
+      id: state.pathParameters['id']!,
+      args: state.extra is TitleArgs ? state.extra! as TitleArgs : null,
+    ),
+  ),
+  GoRoute(
+    path: 'genre/:id',
+    builder: (_, state) => GenreScreen(
+      categoryId: state.pathParameters['id']!,
+      genre: state.extra is Category ? state.extra! as Category : null,
+    ),
+  ),
+  GoRoute(
+    path: 'list',
+    // "See all" needs the list it was opened from; without it (a restored
+    // or typed location) go back to the tab.
+    redirect: (_, state) => state.extra is MediaListArgs
+        ? null
+        : '/${state.uri.pathSegments.first}',
+    builder: (_, state) => MediaListScreen(args: state.extra! as MediaListArgs),
+  ),
+];

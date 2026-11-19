@@ -1,36 +1,13 @@
-import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/brand/cinemakom_mark.dart';
 import 'package:cinemakom/app/l10n/app_localizations.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/features/home/home_screen.dart';
 import 'package:cinemakom/features/onboarding/language_screen.dart';
 import 'package:cinemakom/features/settings/settings_screen.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Pumps the whole app on [store] at a phone-sized window ([width] dp).
-Future<void> pumpApp(
-  WidgetTester tester,
-  MemoryPreferenceStore store, {
-  double width = 390,
-  double height = 844,
-}) async {
-  tester.view
-    ..physicalSize = Size(width, height) * 3
-    ..devicePixelRatio = 3;
-  addTearDown(tester.view.reset);
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [preferenceStoreProvider.overrideWith((ref) => store)],
-      child: const CinemakomApp(),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
-
-TextDirection directionAt(WidgetTester tester, Finder finder) =>
-    Directionality.of(tester.element(finder));
+import 'helpers/app_harness.dart';
 
 void main() {
   test('Arabic and English are both supported', () {
@@ -42,7 +19,7 @@ void main() {
 
   group('first launch', () {
     testWidgets('asks for the language before showing Home', (tester) async {
-      await pumpApp(tester, MemoryPreferenceStore());
+      await pumpApp(tester, store: MemoryPreferenceStore());
 
       expect(find.byType(LanguageScreen), findsOneWidget);
       expect(find.byType(HomeScreen), findsNothing);
@@ -56,7 +33,7 @@ void main() {
       tester,
     ) async {
       final store = MemoryPreferenceStore();
-      await pumpApp(tester, store);
+      await pumpApp(tester, store: store);
       expect(directionAt(tester, find.text('Continue')), TextDirection.ltr);
 
       await tester.tap(find.text('العربية'));
@@ -77,7 +54,7 @@ void main() {
     testWidgets('a returning user goes straight to Home', (tester) async {
       await pumpApp(
         tester,
-        MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+        store: MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
       );
       expect(find.byType(LanguageScreen), findsNothing);
       expect(find.byType(HomeScreen), findsOneWidget);
@@ -89,7 +66,7 @@ void main() {
     testWidgets('switch between the five tabs', (tester) async {
       await pumpApp(
         tester,
-        MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+        store: MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
       );
       for (final (label, title) in [
         ('Search', 'SEARCH'),
@@ -114,7 +91,7 @@ void main() {
       testWidgets('uses a $layout at $width dp', (tester) async {
         await pumpApp(
           tester,
-          MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+          store: MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
           width: width,
         );
         final rail = find.byType(NavigationRail);
@@ -141,7 +118,7 @@ void main() {
 
     testWidgets('changing the language switches the app live', (tester) async {
       final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
-      await pumpApp(tester, store);
+      await pumpApp(tester, store: store);
       await openSettings(tester);
 
       await tester.tap(find.text('Language'));
@@ -162,7 +139,7 @@ void main() {
 
     testWidgets('quality and subtitle choices are saved', (tester) async {
       final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
-      await pumpApp(tester, store);
+      await pumpApp(tester, store: store);
       await openSettings(tester);
       expect(find.text('1080p'), findsOneWidget);
       expect(find.text('Arabic'), findsOneWidget);
@@ -185,7 +162,7 @@ void main() {
 
     testWidgets('settings survive a restart', (tester) async {
       final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
-      await pumpApp(tester, store);
+      await pumpApp(tester, store: store);
       await openSettings(tester);
       await tester.tap(find.text('Default quality'));
       await tester.pumpAndSettle();
@@ -194,7 +171,7 @@ void main() {
 
       // A new app (new ProviderScope) on the same storage.
       await tester.pumpWidget(const SizedBox());
-      await pumpApp(tester, store);
+      await pumpApp(tester, store: store);
       await openSettings(tester);
       expect(find.text('720p'), findsOneWidget);
     });

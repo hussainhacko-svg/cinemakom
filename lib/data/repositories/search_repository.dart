@@ -23,17 +23,25 @@ class SearchRepository {
   /// match first). Like the website, `AdvancedSearch` gets the query as both
   /// title and staff name (OR-ed), so an actor's or director's name finds
   /// their titles too. Throws only when all three requests fail.
-  Future<List<MediaItem>> search(String query) async {
+  Future<List<MediaItem>> search(String query) async =>
+      (await searchPage(query)).items;
+
+  /// One page of [search]: [page] of each of the three sources (0-based),
+  /// merged and ranked within the page. [SearchPage.hasMore] is false once
+  /// every source returned nothing (pages can be short mid-list, so a short
+  /// page doesn't end the results).
+  Future<SearchPage> searchPage(String query, {int page = 0}) async {
     final q = query.trim();
-    if (q.isEmpty) return const [];
+    if (q.isEmpty) return const SearchPage([], hasMore: false);
 
     final calls = [
-      _api.fetch(ApiEndpoints.titleSearch(q)),
+      _api.fetch(ApiEndpoints.titleSearch(q, page: page)),
       _api.fetch(
         ApiEndpoints.advancedSearch(
           videoTitle: q,
           staffTitle: q,
           kind: VideoKind.series,
+          page: page,
           now: _clock(),
         ),
       ),
@@ -42,6 +50,7 @@ class SearchRepository {
           videoTitle: q,
           staffTitle: q,
           kind: VideoKind.movies,
+          page: page,
           now: _clock(),
         ),
       ),
@@ -64,7 +73,12 @@ class SearchRepository {
     final byTitle = parseMediaItems(results[0]);
     final series = parseMediaItems(results[1], fallbackKind: VideoKind.series);
     final movies = parseMediaItems(results[2], fallbackKind: VideoKind.movies);
-    return rankSearchResults(q, mergeSearchResults(byTitle, series, movies));
+    final hasMore =
+        byTitle.isNotEmpty || series.isNotEmpty || movies.isNotEmpty;
+    return SearchPage(
+      rankSearchResults(q, mergeSearchResults(byTitle, series, movies)),
+      hasMore: hasMore,
+    );
   }
 
   /// `AdvancedSearch` with filters, 12 per page. The year range defaults to
@@ -94,6 +108,16 @@ class SearchRepository {
     ),
     fallbackKind: kind,
   );
+}
+
+/// One page of search results.
+class SearchPage {
+  const SearchPage(this.items, {required this.hasMore});
+
+  final List<MediaItem> items;
+
+  /// Whether the next page may have more results.
+  final bool hasMore;
 }
 
 /// Merges the three search sources in order (title search, series, movies).

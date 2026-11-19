@@ -20,7 +20,10 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   }
 
-  runApp(const ProviderScope(child: CinemakomApp()));
+  // No automatic provider retries: ApiClient already retries a failed GET
+  // once, and the screens show errors with a "Try again" button instead of
+  // a loader that silently spins.
+  runApp(const ProviderScope(retry: noRetry, child: CinemakomApp()));
 }
 
 /// The bundled fonts' licenses (SIL OFL 1.1), for the app's licenses page.
@@ -30,6 +33,9 @@ const fontLicenses = {
   'IBM Plex Sans': 'IBMPlexSans-OFL.txt',
   'IBM Plex Sans Arabic': 'IBMPlexSansArabic-OFL.txt',
 };
+
+/// For [ProviderScope.retry]: never retry a failed provider.
+Duration? noRetry(int retryCount, Object error) => null;
 
 void registerFontLicenses() {
   LicenseRegistry.addLicense(() async* {

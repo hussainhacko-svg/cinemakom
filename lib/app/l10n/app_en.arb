@@ -113,5 +113,265 @@
   "retry": "Try again",
   "@retry": {
     "description": "Button that retries a failed action"
+  },
+  "nowShowing": "Now showing",
+  "@nowShowing": {
+    "description": "Eyebrow above the hero title on Home"
+  },
+  "seeAll": "See all",
+  "@seeAll": {
+    "description": "Link at the end of a row header"
+  },
+  "rowFeatured": "Featured",
+  "@rowFeatured": {
+    "description": "Home row"
+  },
+  "rowLatestMovies": "Latest movies",
+  "@rowLatestMovies": {
+    "description": "Home row"
+  },
+  "rowLatestSeries": "Latest series",
+  "@rowLatestSeries": {
+    "description": "Home row"
+  },
+  "rowMostWatched": "Most watched",
+  "@rowMostWatched": {
+    "description": "Home row: catalog sorted by views"
+  },
+  "rowNewReleases": "New releases",
+  "@rowNewReleases": {
+    "description": "Home row: catalog sorted by release year"
+  },
+  "rowRecentlyAdded": "Recently added",
+  "@rowRecentlyAdded": {
+    "description": "Home row: catalog sorted by date added"
+  },
+  "play": "Play",
+  "@play": {
+    "description": "Primary button that plays a title"
+  },
+  "kindAll": "All",
+  "@kindAll": {
+    "description": "Search filter: movies and series"
+  },
+  "kindMovies": "Movies",
+  "@kindMovies": {
+    "description": "Movies, as a filter or tab"
+  },
+  "kindSeries": "Series",
+  "@kindSeries": {
+    "description": "Series, as a filter or tab"
+  },
+  "sortTitle": "Sort",
+  "@sortTitle": {
+    "description": "Title of the sort picker"
+  },
+  "sortRecentlyAdded": "Recently added",
+  "@sortRecentlyAdded": {
+    "description": "Sort: newest additions first"
+  },
+  "sortOldestAdded": "Oldest added",
+  "@sortOldestAdded": {
+    "description": "Sort: oldest additions first"
+  },
+  "sortNewestRelease": "Newest release",
+  "@sortNewestRelease": {
+    "description": "Sort: newest release year first"
+  },
+  "sortOldestRelease": "Oldest release",
+  "@sortOldestRelease": {
+    "description": "Sort: oldest release year first"
+  },
+  "sortMostWatched": "Most watched",
+  "@sortMostWatched": {
+    "description": "Sort: by views"
+  },
+  "sortTitleAscending": "A to Z",
+  "@sortTitleAscending": {
+    "description": "Sort: by title, ascending"
+  },
+  "sortTitleDescending": "Z to A",
+  "@sortTitleDescending": {
+    "description": "Sort: by title, descending"
+  },
+  "allLanguages": "All languages",
+  "@allLanguages": {
+    "description": "Genre page: no audio-language filter"
+  },
+  "searchHint": "Titles, actors, directors",
+  "@searchHint": {
+    "description": "Placeholder in the search field"
+  },
+  "clearSearch": "Clear search",
+  "@clearSearch": {
+    "description": "Tooltip of the button that empties the search field"
+  },
+  "browseGenres": "Browse genres",
+  "@browseGenres": {
+    "description": "Heading of the genre grid on the empty Search tab"
+  },
+  "searchTitles": "Titles",
+  "@searchTitles": {
+    "description": "Heading of the search results grid"
+  },
+  "searchNoResults": "Nothing found for “{query}”",
+  "@searchNoResults": {
+    "description": "Search found nothing",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "listEmpty": "Nothing here yet",
+  "@listEmpty": {
+    "description": "A list that has no titles"
+  },
+  "errorNetwork": "No connection. Check your internet and try again.",
+  "@errorNetwork": {
+    "description": "Network error"
+  },
+  "errorTimeout": "Cinemana is taking too long to answer.",
+  "@errorTimeout": {
+    "description": "Request timed out"
+  },
+  "errorServer": "Something went wrong on Cinemana's side.",
+  "@errorServer": {
+    "description": "Server answered with an error"
+  },
+  "errorCinemanaDown": "Cinemana is down right now. Try again later.",
+  "@errorCinemanaDown": {
+    "description": "The status page says Cinemana is down"
+  },
+  "titleUnavailable": "This title isn't available.",
+  "@titleUnavailable": {
+    "description": "Details could not be found"
+  },
+  "seasonNumber": "Season {number}",
+  "@seasonNumber": {
+    "description": "Season chip",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "episodeNumber": "Episode {number}",
+  "@episodeNumber": {
+    "description": "Episode label",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "episodeNumbers": "Episodes {numbers}",
+  "@episodeNumbers": {
+    "description": "Label for a file that holds several episodes, e.g. Episodes 7 & 8",
+    "placeholders": {
+      "numbers": {
+        "type": "String"
+      }
+    }
+  },
+  "episodeNumbersJoiner": " & ",
+  "@episodeNumbersJoiner": {
+    "description": "Joins episode numbers in episodeNumbers"
+  },
+  "finalEpisode": "Final",
+  "@finalEpisode": {
+    "description": "Badge on a season finale"
+  },
+  "episodesHeading": "Episodes",
+  "@episodesHeading": {
+    "description": "Section heading on series details"
+  },
+  "castAndCrew": "Cast and crew",
+  "@castAndCrew": {
+    "description": "Section heading on details"
+  },
+  "moreLikeThis": "More like this",
+  "@moreLikeThis": {
+    "description": "Section heading on details"
+  },
+  "trailer": "Trailer",
+  "@trailer": {
+    "description": "Button that opens the trailer"
+  },
+  "audioLanguages": "Audio: {languages}",
+  "@audioLanguages": {
+    "description": "Audio languages on details",
+    "placeholders": {
+      "languages": {
+        "type": "String"
+      }
+    }
+  },
+  "roleActor": "Actor",
+  "@roleActor": {
+    "description": "Cast role"
+  },
+  "roleDirector": "Director",
+  "@roleDirector": {
+    "description": "Crew role"
+  },
+  "roleWriter": "Writer",
+  "@roleWriter": {
+    "description": "Crew role"
+  },
+  "showMore": "More",
+  "@showMore": {
+    "description": "Expands the synopsis"
+  },
+  "showLess": "Less",
+  "@showLess": {
+    "description": "Collapses the synopsis"
+  },
+  "movie": "Movie",
+  "@movie": {
+    "description": "A movie, in metadata"
+  },
+  "durationHoursMinutes": "{hours}h {minutes}m",
+  "@durationHoursMinutes": {
+    "description": "Duration, e.g. 2h 46m",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{hours}h",
+  "@durationHours": {
+    "description": "Duration in whole hours",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{minutes}m",
+  "@durationMinutes": {
+    "description": "Duration under an hour",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonCount": "{count, plural, =1{1 season} other{{count} seasons}}",
+  "@seasonCount": {
+    "description": "Number of seasons in series metadata",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loading": "Loading",
+  "@loading": {
+    "description": "Screen-reader label of the loader"
   }
 }
