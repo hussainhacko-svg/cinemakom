@@ -192,6 +192,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 ### Phase 2: App shell
 - go_router with the tab shell and per-tab back stacks.
 - The single Marquee theme (`lib/app/theme/`, done), bundled fonts, ARB localization in en and ar, RTL switching.
+- In-app splash: the logo with the marquee-bulb loader (`docs/DESIGN.md` §4 and §7), shown while the app starts.
 - First-launch language picker (English or Arabic), shown once before Home and saved to preferences.
 - Preferences provider and the Settings screen.
 - Responsive navigation (bar or rail).
@@ -203,7 +204,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** you can browse, search and open details for movies and series on Android and Linux.
 
 ### Phase 4: Player
-- media_kit with headers, a quality menu, external subtitles (srt/vtt) with Arabic font rendering, speed, fit modes, next episode, saving position and resuming.
+- media_kit with headers, a quality menu, external subtitles (plain SRT, plus "Arabic (styled)" ASS for anime with the bundled Arabic fallback font for libass, see §4.1), speed, fit modes, next episode, saving position and resuming.
 - **Mobile:** gestures, forced landscape, wakelock.
 - **Desktop:** keyboard shortcuts (space, ←/→ seek, ↑/↓ volume, F fullscreen, Esc), mouse-hover controls, fullscreen through `window_manager`.
 - Skip intro.
@@ -225,14 +226,14 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** a download finishes, plays offline with subtitles, and survives an app restart in the middle.
 
 ### Phase 7: New features
-- Everything in §4.2: cast and crew, actor pages, related titles, extra home rows, group "see all", genre × language filter, advanced filters, comments, FAQ.
+- The rest of §4.2 (skip intro is built in Phase 4): cast and crew, actor pages, related titles, seek-bar previews, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
 
 ### Phase 8: Polish and release
-- App icons and splash screen on all platforms, empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).
+- Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).
 - Packaging:
   - Android: APK/AAB
   - Windows: MSIX or an installer (Inno Setup)
-  - Linux: AppImage or Flatpak
+  - Linux: AppImage or Flatpak, installing the `.desktop` file and the icons
   - iOS: IPA through TestFlight
 
 ---
