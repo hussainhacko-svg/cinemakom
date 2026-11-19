@@ -345,6 +345,14 @@ def ios():
     board.write_text(text)
 
 
+def macos():
+    icons = ROOT / 'macos/Runner/Assets.xcassets/AppIcon.appiconset'
+    if not icons.exists():
+        return
+    for px in (16, 32, 64, 128, 256, 512, 1024):
+        png(svg(detail_for(px), tile=True, scale=0.8, tile_radius=22), px, icons / f'app_icon_{px}.png')
+
+
 # ---- Windows and Linux --------------------------------------------------------
 
 def windows():
@@ -450,7 +458,7 @@ def main():
     for detail in DETAIL:
         (out / f'mark-{detail}.svg').write_text(svg(detail))
     (out / 'app-icon.svg').write_text(svg('full', tile=True, scale=0.86))
-    for step in (android, ios, windows, linux, dart):
+    for step in (android, ios, macos, windows, linux, dart):
         step()
         print('✓', step.__name__)
     print(f'kaf width: full {KAF_FULL_W:.1f}, small {KAF_SMALL_W:.1f} (main field is 56 wide)')
