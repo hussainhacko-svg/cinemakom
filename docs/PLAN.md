@@ -80,7 +80,7 @@ lib/
     json/
       json_utils.dart           # firstNonBlank(), parseIntLoose(), unescapeUrl()
     storage/
-      database.dart             # drift DB: downloads, watch_history, favorites
+      database.dart             # drift DB (schema 2): watch_history, favorites, continue_hidden; downloads in Phase 6
       preferences.dart          # language, default resolution, default subtitle
     platform/
       platform_info.dart        # isDesktop / isMobile / isAndroid helpers
@@ -106,7 +106,8 @@ lib/
     home/  search/  genre/  details/  browse/ ("See all")  onboarding/ (language picker)  settings/
     player/                     # player_screen, player_controller (session, recovery), player_state,
                                 # quality, subtitles, widgets/ (controls_overlay, seek_bar, subtitle_layer)
-    library/  downloads/        # placeholders until Phases 5 and 6
+    library/                    # Library tab, Continue cards (Home uses them too), Favorite buttons
+    downloads/                  # placeholder until Phase 6
     staff/                      # person page (actor, director, writer)
     faq/                        # to come
     debug/                      # debug-build-only API check screen (Phase 1)
@@ -163,9 +164,11 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - brightness and volume swipe gestures (mobile only)
   - always fetch stream URLs right before playing (`MediaRepository.streams`, which refreshes stale ones); on a 403, fetch them again
   - when the API fails, ask `StatusRepository.cinemanaHealth()` once. If Cinemana is reported down, say so instead of blaming the connection (*decision 2026-11-19*)
-- [ ] **Library tab:** a [Continue watching | Favorites] segmented control.
-- [ ] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
-- [ ] **Favorites:** add, remove and list.
+- [x] **Library tab:** a [Continue watching | Favorites] segmented control (`lib/features/library`). *Done 2026-11-19.*
+- [x] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
+  - A finished episode shows the next one as "Up next", on Home and in the Library (`continueEntriesProvider`). After a series' last episode it leaves the list.
+  - *Decision (2026-11-19):* a long press (or right click) offers **Remove from Continue watching**. It only hides the title (`continue_hidden` table) until it's watched again; the watch history and the episodes' watched marks stay.
+- [x] **Favorites:** add, remove and list. A bookmark (not a heart, so it can't read as a like; *decision 2026-11-19*): a pill on Details, an icon button on the Home hero. Stored in the drift `favorites` table, the last added first.
 - [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume.
 - [x] **Settings:**
   - language (English or Arabic, default English. Arabic flips the layout to RTL)
@@ -184,7 +187,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 - [x] **"See all"** page for each video group (`videoListPagination`).
 - [x] **Genre × language filter** (`categoryLangFreqVideo` + `videosByCategoryAndLanguage`), e.g. Anime = Animation (57) × Japanese.
 - [ ] **Advanced search filters:** kind, genre (`category_id`), year range, actor or director name (`staffTitle`). No rating filter, no sort (the server ignores it).
-- [ ] **Library refresh:** update favorites and history metadata with `POST getVideosByIds` (40 numeric IDs per request).
+- [x] **Library refresh:** update favorites and history metadata with `POST getVideosByIds` (40 numeric IDs per request). Once per session, when the Library tab opens (`libraryRefreshProvider`); a failure keeps what's stored. The answer has no genres, so a favorite keeps the genre it was saved with.
 - [ ] **FAQ / help** screen in Settings (`faqQuestion`).
 
 ### 4.3 Not possible or excluded
@@ -257,9 +260,9 @@ Each phase ends with something that runs. **Every phase is tested on Android and
   - No picture-in-picture for now.
 - **Done when:** a movie and a full series play smoothly on Android, Linux and Windows, and every target in PLAYER.md §1 is met.
 
-### Phase 5: Library
+### Phase 5: Library ✅ *(done 2026-11-19)*
 - drift `favorites` table (`watch_history` already exists from Phase 4), the Library tab (Continue watching and Favorites), and a background metadata refresh with `getVideosByIds`.
-- **Done when:** history and favorites survive a restart and resume works.
+- **Done when:** history and favorites survive a restart and resume works. Checked by the drift repository tests (including the upgrade of a schema 1 database), the Library widget tests and `integration_test/screenshots_test.dart` on Linux (phone, desktop, Arabic).
 
 ### Phase 6: Downloads
 - background_downloader for video plus subtitle, with the headers.
@@ -273,7 +276,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** a download finishes, plays offline with subtitles, and survives an app restart in the middle.
 
 ### Phase 7: New features
-- The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4; cast and crew and actor pages are done): related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
+- The rest of §4.2 (skip intro and seek-bar previews are built in Phase 4; cast and crew, actor pages and the library refresh are done): related titles, season picker, group "see all", genre × language filter, advanced filters, library refresh, FAQ.
 
 ### Phase 8: Polish and release
 - Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).

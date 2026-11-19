@@ -4,7 +4,7 @@ import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/watch_progress.dart';
 import 'package:cinemakom/data/repositories/library_repository.dart';
-import 'package:cinemakom/features/home/widgets/continue_row.dart';
+import 'package:cinemakom/features/library/widgets/continue_card.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

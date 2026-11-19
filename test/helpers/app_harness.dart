@@ -76,6 +76,7 @@ FakeApiClient fixtureApi([List<Route> overrides = const []]) => FakeApiClient([
   FakeApiClient.fixtureAt('https://recommend', 'recommendations'),
   FakeApiClient.fixtureAt('relatedVideos/', 'related_movie'),
   FakeApiClient.fixtureAt('staff/actorID/', 'staff'),
+  FakeApiClient.fixtureAt('getVideosByIds', 'videos_by_ids'),
   FakeApiClient.fixtureAt('https://6b1m6vnfz2jk', 'service_status'),
 ]);
 

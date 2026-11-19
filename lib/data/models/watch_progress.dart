@@ -55,6 +55,9 @@ class WatchProgress {
 
   bool get isSeries => seriesId != null;
 
+  /// The movie, or the series this episode belongs to.
+  String get titleId => seriesId ?? videoId;
+
   /// Where to start again, or `null` (barely started, or finished).
   Duration? get resumeAt =>
       !isFinished && position >= resumeAfter ? position : null;

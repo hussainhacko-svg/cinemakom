@@ -12,7 +12,12 @@ import 'dart:ui' as ui;
 
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/core/network/api_endpoints.dart' show VideoKind;
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/data/models/localized_text.dart';
+import 'package:cinemakom/data/models/media_item.dart';
+import 'package:cinemakom/data/models/watch_progress.dart';
+import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart' show Icons, Scrollable, TextField;
@@ -57,8 +62,9 @@ Future<void> _shot(WidgetTester tester, String name, {int wait = 2500}) async {
 Future<void> _pump(
   WidgetTester tester,
   MemoryPreferenceStore store,
-  Size size,
-) async {
+  Size size, {
+  LibraryRepository? library,
+}) async {
   tester.view
     ..physicalSize = size * 2
     ..devicePixelRatio = 2;
@@ -66,7 +72,11 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       retry: noRetry,
-      overrides: [preferenceStoreProvider.overrideWith((ref) => store)],
+      overrides: [
+        preferenceStoreProvider.overrideWith((ref) => store),
+        if (library != null)
+          libraryRepositoryProvider.overrideWithValue(library),
+      ],
       child: const CinemakomApp(),
     ),
   );
@@ -178,6 +188,87 @@ void main() {
     await _wait(tester, 2000);
     await tester.tap(find.text('Action').first);
     await _shot(tester, '27-phone-genre', wait: 6000);
+  });
+
+  // A library in memory (never the real database), refreshed from the API.
+  MemoryLibraryRepository savedLibrary() {
+    const min = Duration(minutes: 1);
+    final now = DateTime.now();
+    return MemoryLibraryRepository(
+      [
+        // Friends S1E1 finished: Up next is S1E2.
+        WatchProgress(
+          videoId: '4328',
+          seriesId: '4328',
+          season: 1,
+          episode: 1,
+          position: min * 22,
+          duration: min * 22,
+          updatedAt: now,
+          title: const LocalizedText(en: 'Friends'),
+          kind: VideoKind.series,
+        ),
+        WatchProgress(
+          videoId: '3119279',
+          position: min * 86,
+          duration: min * 100,
+          updatedAt: now.subtract(const Duration(hours: 1)),
+          title: const LocalizedText(en: 'Eve of Destruction'),
+          kind: VideoKind.movies,
+        ),
+      ],
+      const [
+        MediaItem(id: '3157703'),
+        MediaItem(id: '4328', kind: VideoKind.series),
+        MediaItem(id: '3119279'),
+      ],
+    );
+  }
+
+  testWidgets('phone: library with saved titles', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      phone,
+      library: savedLibrary(),
+    );
+    await _wait(tester, 2000);
+    await tester.tap(find.text('Library'));
+    await _shot(tester, '60-phone-library-continue', wait: 5000);
+    await tester.tap(find.text('Favorites'));
+    await _shot(tester, '61-phone-library-favorites', wait: 4000);
+    await tester.tap(find.text('Home'));
+    await _wait(tester, 1000);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
+    await _shot(tester, '62-phone-home-continue', wait: 3000);
+  });
+
+  testWidgets('desktop: library', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      const Size(1280, 800),
+      library: savedLibrary(),
+    );
+    await _wait(tester, 2000);
+    await tester.tap(find.text('Library'));
+    await _shot(tester, '65-desktop-library-continue', wait: 5000);
+    await tester.tap(find.text('Favorites'));
+    await _shot(tester, '66-desktop-library-favorites', wait: 4000);
+  });
+
+  testWidgets('phone: library in Arabic', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'ar'}),
+      phone,
+      library: savedLibrary(),
+    );
+    await _wait(tester, 2000);
+    await tester.tap(find.text('مكتبتي'));
+    await _shot(tester, '63-phone-library-continue-ar', wait: 5000);
+    await _push(tester, '/library/title/3119279');
+    await _shot(tester, '64-phone-details-favorite-ar', wait: 4000);
   });
 
   testWidgets('desktop: browsing with live data', (tester) async {

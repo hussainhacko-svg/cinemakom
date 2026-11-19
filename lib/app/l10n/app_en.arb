@@ -361,6 +361,38 @@
   "@personUnavailable": {
     "description": "An actor or director page could not be found"
   },
+  "libraryFavorites": "Favorites",
+  "@libraryFavorites": {
+    "description": "Library: the segment with saved titles"
+  },
+  "favorite": "Favorite",
+  "@favorite": {
+    "description": "Details: the button that saves a title to Favorites"
+  },
+  "inFavorites": "In favorites",
+  "@inFavorites": {
+    "description": "Details: the Favorite button once the title is saved"
+  },
+  "addToFavorites": "Add to favorites",
+  "@addToFavorites": {
+    "description": "Tooltip of the Favorite icon button"
+  },
+  "removeFromFavorites": "Remove from favorites",
+  "@removeFromFavorites": {
+    "description": "Tooltip of the Favorite icon button once saved"
+  },
+  "removeFromContinue": "Remove from Continue watching",
+  "@removeFromContinue": {
+    "description": "Continue card menu: hides the title until it is watched again"
+  },
+  "continueEmpty": "Movies and episodes you start watching show up here.",
+  "@continueEmpty": {
+    "description": "Library: empty Continue watching"
+  },
+  "favoritesEmpty": "Tap Favorite on any title to keep it here.",
+  "@favoritesEmpty": {
+    "description": "Library: empty Favorites"
+  },
   "showMore": "More",
   "@showMore": {
     "description": "Expands the synopsis"

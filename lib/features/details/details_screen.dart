@@ -20,6 +20,7 @@ import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
 import '../../data/repositories/library_repository.dart';
+import '../library/widgets/favorite_button.dart';
 import 'details_providers.dart';
 import 'widgets/credits_row.dart';
 import 'widgets/episode_list.dart';
@@ -196,6 +197,7 @@ class _Header extends ConsumerWidget {
       runSpacing: MarqueeSpace.m,
       children: [
         _PlayButton(item: item),
+        FavoritePill(item: item),
         if (trailer != null)
           OutlinedButton.icon(
             onPressed: () => _open(trailer),
