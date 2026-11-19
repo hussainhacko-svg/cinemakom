@@ -44,7 +44,7 @@ Each role is one family plus a fallback (`fontFamilyFallback`), so mixed-script 
 
 | Style | Size / line height | Weight | Notes |
 |---|---|---|---|
-| `heroTitle` | 58 / 0.9 | Display 900 | Latin titles uppercased |
+| `heroTitle` | 58 / 0.9 | Display 900 | Latin titles uppercased. On the Home hero, `HeroTitle` steps it down to fit (§8) |
 | `displayLarge` | 40 / 1.0 | Display 800 | Details title |
 | `sectionTitle` | 22 / 1.1 | Display 800 | Latin: uppercase, tracking 0.04 em |
 | `numeral` | 34 / 1.0 | Display 900 | Episode numbers ("04") |
@@ -64,7 +64,7 @@ Each role is one family plus a fallback (`fontFamilyFallback`), so mixed-script 
 ## 3. Space, shape, motion
 
 - **Spacing:** multiples of 4 (`4 8 12 16 20 24 32 40`). Screen gutter: 20 on phones, 32 at 600 dp and up, 48 at 1200 dp and up.
-- **Radii:** 6 thumbnails · 10 posters · 12 rows and cards · 16 panels and hero · pill for buttons (height / 2).
+- **Radii:** 6 thumbnails · 10 posters · 12 rows, cards and hero banners · 16 panels · pill for buttons (height / 2).
 - **Touch targets:** at least 44 × 44. The primary button is 48 tall.
 - **Motion:** 150 ms ease-out for state changes and 250 ms for page transitions. Nothing loops except the loading indicator, and the only thing that moves by itself is the Home hero carousel (a 10 s timer, no frames in between). Respect `MediaQuery.disableAnimations`.
 
@@ -72,7 +72,7 @@ Each role is one family plus a fallback (`fontFamilyFallback`), so mixed-script 
 
 A row of small `bulb` dots (4–6 px, gap 5–7 px, with an occasional dimmed dot) has three uses:
 - **The loading indicator:** dots light in sequence. It replaces spinners and shimmer.
-- **The hero pager:** a row of bulbs above the banner, one per banner, the current one lit.
+- **The hero pager:** a centred row of bulbs above the banner, one per banner, the current one lit.
 - **Brand marks:** the logo, the splash screen and the header.
 
 Use it sparingly. It is never a divider between every section.
@@ -107,7 +107,7 @@ Use it sparingly. It is never a divider between every section.
 
 ## 7. Logo (final: mark 1, "Ticket")
 
-**The mark** is a solid `bulb` ticket stub with **ك** knocked out of it. ك is the "your" in سينماكم: *your* ticket, *your* cinema. The letter is traced from Reem Kufi Bold, so the logo never depends on a font. It has three levels of detail, chosen by size (`CinemakomMark.detailFor`):
+**The mark** is a solid `bulb` ticket stub with **ك** knocked out of it. ك is the "your" in سينماكم: *your* ticket, *your* cinema. The letter is traced from Reem Kufi Bold, so the logo never depends on a font. The font draws ك as two overlapping contours; the generator merges them into one outline before knocking it out, because the even-odd fill would otherwise turn their overlap back to solid (a stray triangle). It has three levels of detail, chosen by size (`CinemakomMark.detailFor`):
 
 | Detail | Size | Shows |
 |---|---|---|

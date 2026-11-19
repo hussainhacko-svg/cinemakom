@@ -66,7 +66,7 @@ lib/
     splash_screen.dart          # mark + BulbLoader, retry when startup fails
     shell/app_shell.dart        # bottom bar / rail / extended rail by width (Breakpoints)
     widgets/                    # shared UI: TabPage, SubPageHeader/BackPill, MediaImage, PosterCard, MediaRow/SourceRow,
-                                # PagedGridSlivers, ErrorView, SectionHeader, Segmented/FilterPill, BulbLoader/BulbRow,
+                                # PagedGridSlivers, ErrorView, SectionHeader, Segmented/FilterPill, BulbLoader,
                                 # showChoicePicker, media_text.dart (titles, metadata, durations, episode labels)
     brand/                      # CinemakomMark / CinemakomLogo, brand_paths.g.dart (generated)
     theme/                      # the one Marquee theme: colour tokens, type scale, ThemeData
@@ -235,6 +235,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 
 ### Phase 3: Browsing ✅ *(done 2026-11-19)*
 - [x] Home (hero carousel, groups, catalog and genre rows, plain `booth` placeholders instead of shimmer per DESIGN.md, pull-to-refresh), genre detail and "See all" with infinite scroll, search, and details with episodes, cast and "More like this".
+- [x] Home hero redesign (2026-11-19, DESIGN.md §8): peek carousel that loops forever and advances every 10 s, a centred bulb pager, the first 10 of the API's 85 banners (`heroBannerCap`), and fitted titles (`HeroTitle`: biggest size that shows the title whole, no broken words, balanced lines; real-font tests in `test/features/home/hero_title_test.dart`).
 - [x] Paging: every long list is a `MediaSource` (`lib/data/paging/`) behind one `pagedMediaProvider`, which hides each endpoint's paging rules. The next page loads about 12 posters before the end; a failed page shows "Try again" and keeps what loaded. *Decision (2026-11-19): infinite scroll, not a "Load more" button or numbered pages.*
 - [x] Image loading with the shared headers (`MediaImage`, decoded at display size, no fade). The parser picks card, HD and backdrop images (`posterUrl` / `hdPosterUrl` / `backdropUrl`).
 - [x] Errors say what happened, and ask the status page once when the API fails (`ErrorView`). Riverpod's automatic provider retry is off (`noRetry`): `ApiClient` already retries once.
