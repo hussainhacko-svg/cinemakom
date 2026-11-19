@@ -62,6 +62,7 @@
   "episodeNumber": "الحلقة {number}",
   "episodeNumbers": "الحلقات {numbers}",
   "episodeNumbersJoiner": " و",
+  "episodeRange": "{first}–{last}",
   "finalEpisode": "الأخيرة",
   "episodesHeading": "الحلقات",
   "castAndCrew": "طاقم العمل",

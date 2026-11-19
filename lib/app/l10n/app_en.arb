@@ -278,6 +278,18 @@
   "@episodeNumbersJoiner": {
     "description": "Joins episode numbers in episodeNumbers"
   },
+  "episodeRange": "{first}–{last}",
+  "@episodeRange": {
+    "description": "Range chip of a long season's episodes, e.g. 51–100",
+    "placeholders": {
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      }
+    }
+  },
   "finalEpisode": "Final",
   "@finalEpisode": {
     "description": "Badge on a season finale"

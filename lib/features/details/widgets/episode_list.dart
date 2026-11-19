@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,9 +17,18 @@ import '../../../app/widgets/progress_line.dart';
 import '../../../data/models/watch_progress.dart';
 import '../../../data/repositories/library_repository.dart';
 
-/// A series' seasons and episodes (DESIGN.md §5): season chips, then one row
-/// per episode labelled from its numbering ("Episode 7", "Episodes 7 & 8",
-/// a Final badge), never from its title.
+/// A season longer than this is split into blocks of this many episodes,
+/// picked with range chips ("1–50", "51–100"), so the page below the list
+/// (cast, "More like this") stays in reach: One Piece is one season of
+/// 1,179 episodes.
+const episodeBlockSize = 50;
+
+/// A series' seasons and episodes (DESIGN.md §5): season chips, range chips
+/// for a long season, then one row per episode labelled from its numbering
+/// ("Episode 7", "Episodes 7 & 8", a Final badge), never from its title.
+///
+/// It opens on the season and block of [currentId], else of the episode
+/// watched last.
 class EpisodeList extends ConsumerStatefulWidget {
   const EpisodeList({
     super.key,
@@ -47,6 +58,9 @@ class EpisodeList extends ConsumerStatefulWidget {
 class _EpisodeListState extends ConsumerState<EpisodeList> {
   int? _season;
 
+  /// The picked block of the season; `null` follows the anchor episode.
+  int? _block;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -71,39 +85,91 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
             )
           : const SizedBox.shrink();
     } else {
+      // The episode to open on: the one playing, else the one watched last.
+      final anchorId =
+          widget.currentId ??
+          watched.values
+              .fold<WatchProgress?>(
+                null,
+                (a, b) => a == null || b.updatedAt.isAfter(a.updatedAt) ? b : a,
+              )
+              ?.videoId;
+      final anchor = [
+        for (final e in all)
+          if (e.id == anchorId) e,
+      ].firstOrNull;
       final seasons = {for (final e in all) e.season}.toList()..sort();
       final season = seasons.contains(_season)
           ? _season!
           : seasons.contains(widget.initialSeason)
           ? widget.initialSeason!
-          : seasons.first;
+          : anchor?.season ?? seasons.first;
+      final inSeason = [
+        for (final e in all)
+          if (e.season == season) e,
+      ];
+      final blocks = (inSeason.length / episodeBlockSize).ceil();
+      final anchorAt = anchor == null ? -1 : inSeason.indexOf(anchor);
+      final block =
+          (_block ?? (anchorAt < 0 ? 0 : anchorAt ~/ episodeBlockSize)).clamp(
+            0,
+            blocks - 1,
+          );
+      final shown = inSeason
+          .skip(block * episodeBlockSize)
+          .take(episodeBlockSize);
+      String range(int b) {
+        final first = inSeason[b * episodeBlockSize].numbering.first;
+        final last =
+            inSeason[math.min((b + 1) * episodeBlockSize, inSeason.length) - 1]
+                .numbering
+                .last;
+        return first == last ? '$first' : l10n.episodeRange(first, last);
+      }
+
+      Widget chips(int count, Widget Function(int i) chip) => SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: count,
+          separatorBuilder: (_, _) => const SizedBox(width: MarqueeSpace.s),
+          itemBuilder: (_, i) => chip(i),
+        ),
+      );
+
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (seasons.length > 1)
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: seasons.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: MarqueeSpace.s),
-                itemBuilder: (_, i) => FilterPill(
-                  label: l10n.seasonNumber(seasons[i]),
-                  selected: seasons[i] == season,
-                  onTap: () => setState(() => _season = seasons[i]),
-                ),
+            chips(
+              seasons.length,
+              (i) => FilterPill(
+                label: l10n.seasonNumber(seasons[i]),
+                selected: seasons[i] == season,
+                onTap: () => setState(() {
+                  _season = seasons[i];
+                  _block = null;
+                }),
               ),
             ),
+          if (blocks > 1) ...[
+            if (seasons.length > 1) const SizedBox(height: MarqueeSpace.s),
+            _BlockChips(
+              key: ValueKey(season),
+              count: blocks,
+              selected: block,
+              label: range,
+              onSelect: (b) => setState(() => _block = b),
+            ),
+          ],
           const SizedBox(height: MarqueeSpace.m),
-          for (final e in all)
-            if (e.season == season)
-              _EpisodeRow(
-                episode: e,
-                progress: watched[e.id],
-                current: e.id == widget.currentId,
-                onTap: () => widget.onPlay(e),
-              ),
+          for (final e in shown)
+            _EpisodeRow(
+              episode: e,
+              progress: watched[e.id],
+              current: e.id == widget.currentId,
+              onTap: () => widget.onPlay(e),
+            ),
         ],
       );
     }
@@ -124,6 +190,73 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
       ),
     );
   }
+}
+
+/// The range chips of a long season, built at once (a few dozen at most) so
+/// the picked one can be scrolled into view: it can be far along (episode
+/// 1,100 of One Piece).
+class _BlockChips extends StatefulWidget {
+  const _BlockChips({
+    super.key,
+    required this.count,
+    required this.selected,
+    required this.label,
+    required this.onSelect,
+  });
+
+  final int count;
+  final int selected;
+  final String Function(int block) label;
+  final ValueChanged<int> onSelect;
+
+  @override
+  State<_BlockChips> createState() => _BlockChipsState();
+}
+
+class _BlockChipsState extends State<_BlockChips> {
+  final _selected = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal(animate: false);
+  }
+
+  @override
+  void didUpdateWidget(_BlockChips old) {
+    super.didUpdateWidget(old);
+    // The anchor can arrive after the first frame (watch progress loads).
+    if (old.selected != widget.selected) _reveal(animate: true);
+  }
+
+  void _reveal({required bool animate}) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final chip = _selected.currentContext;
+        if (!mounted || chip == null) return;
+        Scrollable.ensureVisible(
+          chip,
+          alignment: 0.5,
+          duration: animate ? const Duration(milliseconds: 200) : Duration.zero,
+        );
+      });
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        for (var i = 0; i < widget.count; i++) ...[
+          if (i > 0) const SizedBox(width: MarqueeSpace.s),
+          FilterPill(
+            key: i == widget.selected ? _selected : null,
+            label: widget.label(i),
+            selected: i == widget.selected,
+            onTap: () => widget.onSelect(i),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _EpisodeRow extends StatelessWidget {
