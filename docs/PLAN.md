@@ -89,8 +89,8 @@ lib/
       library_repository.dart   # favorites + continue watching (drift)
       downloads_repository.dart # background_downloader + drift
   features/
-    home/  search/  genre/  details/  player/  continue_watching/
-    favorites/  downloads/  settings/  staff/  faq/
+    home/  search/  genre/  details/  player/  library/
+    downloads/  settings/  staff/  faq/  onboarding/
     debug/                      # debug-build-only API check screen (Phase 1)
       # each: <feature>_screen.dart, widgets/, <feature>_providers.dart
 test/
@@ -111,19 +111,22 @@ Key rules:
 Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, no parental features) and **no ratings of any kind** (no scores, no likes, no "Top rated", no rating filters). Every feature below is backed by an endpoint verified in `docs/API.md`.
 
 ### 4.1 Core
-- [ ] **App shell:** five tabs (Home, Continue, Favorites, Downloads, Settings). Bottom `NavigationBar` below 600 dp width, `NavigationRail` at 600 dp and up.
+- [ ] **App shell:** five tabs: **Home, Search, Library, Downloads, Settings**. Bottom `NavigationBar` below 600 dp width, `NavigationRail` at 600 dp and up, extended rail with the logo at 1200 dp and up. The active tab has a pill indicator (`docs/DESIGN.md` §5).
+  - *Decision (2026-11-19):* Search gets its own tab, and Continue watching and Favorites share the Library tab. This replaces the earlier Continue and Favorites tabs; Continue watching also stays a Home row.
 - [ ] **Home:** hero carousel from `banner` (wide covers), curated video groups, Featured, Latest movies, Latest series, Most watched (`views_desc`), New releases by year (`r_desc`), Recently added (`desc`), and genre rows. Load the above-the-fold sections first and the rest after.
 - [ ] **Genre detail:** paged grid (30 per page, offset paging that stops on a short page) with sort and kind (movies or series). Use `fallbackGenres` when the genre lists fail to load.
   - Sorts: recently added, oldest added, newest release, oldest release, most watched, **A→Z and Z→A**.
   - *Decision (2026-11-19):* A→Z / Z→A appear **only on genre pages**; the "All movies/series" lists don't offer them, because the catalog ignores title sorts (`SortOrder.worksOnCatalog`).
 - [ ] **Search:** 400 ms debounce, three requests in parallel (title search, AdvancedSearch movies, AdvancedSearch series), merged, de-duplicated and ranked. Never send an empty query. The year range is computed.
   - *Decision (2026-11-19):* search also matches **cast and crew names**, like the website (`staffTitle` = the query), with title matches ranked first.
-- [ ] **Details** (bottom sheet on mobile, page or side panel on desktop): poster, synopsis, year, duration, genres, audio languages, trailer (`trailerYoutubeId`), external link, season and episode picker. Add to favorites, download.
+  - *Decision (2026-11-19):* before you type, the Search tab shows a genre grid. Results show the title grid first, then a People row.
+- [ ] **Details** (a full page inside the current tab on every platform, two columns on desktop): poster, synopsis, year, duration, genres, audio languages, trailer (`trailerYoutubeId`), external link, season and episode picker. Add to favorites, download.
   - Label the external link "IMDb" only when `imdbUrlIsImdb`; anime links go to MyAnimeList.
+  - *Decision (2026-11-19):* Details is a page, not a bottom sheet, so related titles and actor pages can stack and the back gesture steps through them.
   - Episodes show as "Episode N" from `Episode.numbering`: "Episodes 7 & 8" for double episodes, a "Final" badge for finales. Never use episode titles. Use the season image.
 - [ ] **Player:**
   - quality selection (default from settings, closest match).
-    - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour).
+    - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour): it is an always-visible chip in the player's top bar.
   - subtitles (Arabic, English or off, default from settings; one plain track per language, SRT preferred)
     - *Decision (2026-11-19):* anime titles with a styled ASS track also get **"Arabic (styled)"** as an extra choice. Plain Arabic stays the default. Ship one Arabic fallback font for libass. Downloads save the plain file, plus the styled one if it was chosen.
   - playback speed
@@ -134,6 +137,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
   - brightness and volume swipe gestures (mobile only)
   - always fetch stream URLs right before playing (`MediaRepository.streams`, which refreshes stale ones); on a 403, fetch them again
   - when the API fails, ask `StatusRepository.cinemanaHealth()` once. If Cinemana is reported down, say so instead of blaming the connection (*decision 2026-11-19*)
+- [ ] **Library tab:** a [Continue watching | Favorites] segmented control.
 - [ ] **Continue watching:** progress saved to drift on pause, exit and every N seconds. Resume episodes using the series, season and episode fields.
 - [ ] **Favorites:** add, remove and list.
 - [ ] **Downloads:** video plus subtitle, live progress and speed, files grouped by series, delete, offline playback with the local subtitle file. When a long download gets a 403 (expired signed URL), fetch a new URL and resume.
@@ -168,7 +172,7 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 
 ## 5. Phases
 
-> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo and app icons are done too (`docs/DESIGN.md`). **Next: Phase 2 (app shell).** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
+> **Status (2026-11-19):** Phases 0 and 1 are done, including the second API deep dive (`docs/API.md` is complete, and the product decisions it raised are recorded in §4). The design system, logo, app icons and the screen designs are done too (`docs/DESIGN.md` §8 and the design canvas). **Next: Phase 2 (app shell).** The project runs on Flutter 3.47.9 through fvm (see AGENTS.md → Commands).
 
 Each phase ends with something that runs. **Every phase is tested on Android and Linux.** Windows is tested from Phase 4 on, iOS from Phase 6 on.
 
@@ -216,7 +220,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **Done when:** a movie and a full series play smoothly on Android, Linux and Windows.
 
 ### Phase 5: Library
-- drift tables (`watch_history`, `favorites`), the Continue and Favorites screens, and a background metadata refresh with `getVideosByIds`.
+- drift tables (`watch_history`, `favorites`), the Library tab (Continue watching and Favorites), and a background metadata refresh with `getVideosByIds`.
 - **Done when:** history and favorites survive a restart and resume works.
 
 ### Phase 6: Downloads
@@ -272,6 +276,6 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 ## 8. Open decisions
 1. ~~Application ID and org~~ ✅ `io.github.sharon_xa.cinemakom`.
 2. ~~Riverpod codegen~~ ✅ No codegen: plain `Provider`s, no `riverpod_generator` (and no freezed, see §2).
-3. ~~Details layout~~ ✅ A bottom sheet on mobile, a page or side panel on desktop (§4.1 Details).
+3. ~~Details layout~~ ✅ A full page on every platform, two columns on desktop (§4.1 Details). *Changed 2026-11-19 from "a sheet on mobile" during the screen design.*
 4. ~~Download folder on desktop~~ ✅ The user picks it, defaulting to `~/Videos/Cinemakom` (Phase 6). It can be changed in Settings.
 5. Add Shabakaty sign-in later (unlocks server-side history, likes, comments)? Out of scope for v1.

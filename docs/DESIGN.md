@@ -4,7 +4,7 @@
 
 **One theme.** There is no light mode, dark mode or theme setting. Every colour, size and radius comes from the tokens below (`lib/app/theme/`). Never hardcode a colour or font in a widget.
 
-Visual reference: the "A · Marquee" boards on the [design canvas](https://claude.ai/artifact/XEb3j3VhiknZVEpX4FuLnU).
+Visual reference: the [design canvas](https://claude.ai/artifact/XEb3j3VhiknZVEpX4FuLnU). The "Design directions" page holds the Marquee system and logo boards; the "App screens" page holds every screen in §8.
 
 ---
 
@@ -58,7 +58,7 @@ Each role is one family plus a fallback (`fontFamilyFallback`), so mixed-script 
 
 **Arabic rules.** Arabic is cursive, so **never apply letter-spacing or uppercase to Arabic**. Tracked styles (`sectionTitle`, `eyebrow`) drop their tracking in the Arabic locale, and media titles carry no tracking at all, because they can be in either script. Arabic line height is at least 1.5 for body text.
 
-**Metadata format:** `year · genre · length` (e.g. `2023 · Drama · 3h`). There are no ratings anywhere (AGENTS.md). Numbers and durations are formatted with `intl` for the active locale.
+**Metadata format:** `year · genre · length` (e.g. `2023 · Drama · 3h`). There are no ratings anywhere (AGENTS.md). Numbers and durations are formatted with `intl` for the active locale, but always with **Western digits (0–9)**, in Arabic too (`2024 · خيال علمي · 2 س 46 د`). *Decision 2026-11-19.*
 
 ## 3. Space, shape, motion
 
@@ -84,7 +84,14 @@ Use it sparingly. It is never a divider between every section.
 - **Episode row:** `numeral` (bulb when in progress, `cream` when watched, `dustDim` when unwatched), then "Episode N" (the API has no episode titles), length, and progress when started. The current episode sits on `boothRaised`.
 - **Buttons:** primary = `bulb` pill, `onBulb` label with an icon. Secondary = outlined pill (`velvetStrong` border, `cream` label). Icon button = 44 px circle, `booth` fill, `velvet` border.
 - **Section header:** `sectionTitle` at the start edge, a "See all" link (`bulb`, `label`) at the end edge.
-- **Navigation:** bottom bar (`navBar`, height 72, top border `boothRaised`) below 600 dp, `NavigationRail` from 600 dp. Active item = `bulb` icon and label, inactive = `dust`. Five destinations: Home, Continue, Favorites, Downloads, Settings.
+- **Navigation:** five destinations: **Home · Search · Library · Downloads · Settings** (*decision 2026-11-19*). Library holds Continue watching and Favorites.
+  - Below 600 dp: bottom `NavigationBar` (`navBar`, height 72, top border `boothRaised`).
+  - 600–1199 dp: `NavigationRail` (`navBar`, end border `boothRaised`), small mark at the top, labels under the icons.
+  - 1200 dp and up: extended rail, 232 wide, with the mark and CINEMAKOM at the top and labels beside the icons.
+  - Active item: a `boothRaised` **pill** behind the icon (the built-in indicator, `indicatorColor` + stadium shape), with a `bulb` icon and label at weight 600. Inactive: `dust`, weight 500.
+- **Segmented control** (Library, Genre kind): `booth` track (pill, padding 4), the selected segment is a `boothRaised` pill with a `cream` label at 600; the others are `dust` at 500.
+- **Filter chips** (search kind, seasons, languages): 32–36 tall pills. Selected = `boothRaised` fill, `velvetStrong` border, `cream` label. Unselected = transparent, `velvet` border, `dust` label.
+- **Settings row:** 56 tall inside a `booth` group (radius 12), `velvet` divider between rows, label at the start, value in `dust` and a chevron at the end. Group headings are 12 px, 600, tracked, `dust`.
 - **Icons:** outlined, 1.8 px stroke, 22 px in navigation and 18 px in buttons.
 
 ## 6. Performance rules
@@ -122,3 +129,27 @@ Use it sparingly. It is never a divider between every section.
 | Flutter | `lib/app/brand/brand_paths.g.dart` |
 
 To change the logo, edit the geometry in `tool/brand/generate.py`, then run it.
+
+## 8. Screens
+
+Drawn on the canvas's "App screens" page (*decisions 2026-11-19*). Every tab screen opens with its name in `displayLarge` at the start edge, except Home, which opens with the logo lockup.
+
+- **First launch:** the large mark and lockup, "Choose your language / اختر لغتك", two option cards (English in the Latin display face, العربية in Reem Kufi; selected = 2 px `bulb` border and a filled radio), then **Continue**. Picking Arabic flips the screen to RTL straight away. Caption: "You can change this later in Settings."
+- **Home:** lockup header (no search icon, since Search is a tab), hero, Continue watching, then the poster rows from PLAN.md §4.1. Each row has a "See all" link.
+- **Search:**
+  - Field at the top (`booth` pill, 48 tall, `bulb` border while focused, clear button), then kind chips (All · Movies · Series) and a **Filters** button that opens the advanced filters.
+  - Before typing: a two-column **genre grid** (`booth` tiles, 64 tall). A tile opens that genre's page.
+  - Results: the **title grid first** (3 columns), then a **People** row (round 64 px photos or initials, name, role) for cast and crew matches.
+- **Genre:** back button and genre name, a Movies | Series segmented control, a sort button ("Recently added ▾") at the end, language chips (the genre × language filter), then the 3-column grid with infinite scroll.
+- **Details:** a **full page** pushed inside the current tab, so the nav stays visible. It is not a bottom sheet, because related titles and people open further pages and back must step through them.
+  - Back button, then the poster (128 × 192) beside the title, meta, audio language and the external link.
+  - Primary button (Play, or "Resume · S2 E5 · 14 min left"), then Favorite and Trailer as secondary pills.
+  - Synopsis, genre chips (each opens the genre page), the season chips and episode rows (§5), Cast and crew, More like this.
+  - On desktop the same content sits in two columns.
+- **Library:** a [Continue watching | Favorites] segmented control. Continue is a list of continue cards (full width, with a play button; a finished episode shows the next one as "Up next" in `bulb`). Favorites is a 3-column poster grid.
+- **Downloads:** a storage bar (`creamSoft` on `velvet`) with "used by Cinemakom · free", then **Downloading** (progress, size, speed, time left, pause or cancel) and **On this device** (movies, and series grouped into one row with an episode count and a chevron).
+- **Settings:** groups General (Language), Playback (Default quality, Default subtitles), Help (Questions and answers, About and licenses). Desktop adds a Downloads group with the folder. Choices open a bottom sheet (phone) or menu (desktop) of radio rows. The mark and version sit at the bottom.
+- **Player** (landscape, controls over a 60 % `night` scrim):
+  - Top bar: back, title and "Season 2 · Episode 5", then chips for **subtitles, quality (always visible, e.g. "1080p" or "4K"), speed** and fit.
+  - Centre: back 10 s, a `bulb` play/pause circle, forward 10 s.
+  - Bottom: **Skip intro** (outlined pill, only during an intro range) above the seek bar (`bulb` played, `velvetStrong` buffered), with elapsed and remaining time and **Next episode**.
