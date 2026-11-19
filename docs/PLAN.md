@@ -150,11 +150,13 @@ Product rules (AGENTS.md): **zero censorship** (always the unrestricted level, n
 - [x] **Search:** 400 ms debounce, three requests in parallel (title search, AdvancedSearch movies, AdvancedSearch series), merged, de-duplicated and ranked. Never send an empty query. The year range is computed.
   - *Decision (2026-11-19):* search also matches **cast and crew names**, like the website (`staffTitle` = the query), with title matches ranked first.
   - *Decision (2026-11-19):* before you type, the Search tab shows a genre grid. Results show the title grid first, then a People row.
+  - *Decision (2026-11-19):* **recent searches** above the genre grid, on the device only (`searchHistoryProvider`, a JSON list in the preference store): up to 10, newest first, no duplicates, an ✕ per row and "Clear all". Only searches the user meant are saved (the keyboard's search key, a recent search, or a title opened from the results), never the ones made while typing. DESIGN.md §8.
 - [x] **Details** (a full page inside the current tab on every platform, two columns on desktop): poster, synopsis, year, duration, genres, audio languages, trailer (`trailerYoutubeId`), external link, season and episode picker. Add to favorites, download.
   - *Done in Phase 3 except:* Play (Phase 4), Favorite (Phase 5) and Download (Phase 6). Until Phase 4, Play is shown disabled and the hero's Play opens the details.
   - Label the external link "IMDb" only when `imdbUrlIsImdb`; anime links go to MyAnimeList.
   - *Decision (2026-11-19):* Details is a page, not a bottom sheet, so related titles and actor pages can stack and the back gesture steps through them.
   - Episodes show as "Episode N" from `Episode.numbering`: "Episodes 7 & 8" for double episodes, a "Final" badge for finales. Never use episode titles. Use the season image.
+  - *Decision (2026-11-19):* **long seasons** (One Piece is one season of 1,179 episodes) are split into blocks of 50 (`episodeBlockSize`) picked with range chips, so cast and "More like this" stay in reach. The list opens on the block of the episode playing or watched last. The number column fits the widest number in the block, so 3- and 4-digit numbers stay on one line. The player's episode panel shares the list. DESIGN.md §5.
 - [x] **Player** (full plan: [`PLAYER.md`](PLAYER.md)). *Done 2026-11-19 (M0–M9, PLAYER.md §15), on Android and Linux; Windows still to run:*
   - quality selection (default from settings, closest match).
     - *Decision (2026-11-19):* **2160p is treated like any other quality**, so "highest" picks 4K when a title has it, even on mobile data. Show the quality in the player so users know (4K is about 10 GB per hour): it is an always-visible chip in the player's top bar.
