@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../core/platform/orientation.dart';
 import '../core/storage/preferences.dart';
 import 'l10n/app_localizations.dart';
 import 'router.dart';
@@ -48,15 +49,45 @@ class CinemakomApp extends ConsumerWidget {
     final language = ref.watch(
       settingsProvider.select((s) => s.effectiveLanguage),
     );
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      locale: language.locale,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: _localizationsDelegates,
-      // The one and only theme (docs/DESIGN.md). Arabic only drops tracking.
-      theme: buildMarqueeTheme(arabic: language == AppLanguage.arabic),
-      routerConfig: ref.watch(routerProvider),
+    return _BrowseOrientation(
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+        locale: language.locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: _localizationsDelegates,
+        // The one and only theme (docs/DESIGN.md). Arabic only drops tracking.
+        theme: buildMarqueeTheme(arabic: language == AppLanguage.arabic),
+        routerConfig: ref.watch(routerProvider),
+      ),
     );
+  }
+}
+
+/// Applies the Settings screen-rotation choice on start and when it changes
+/// (DESIGN.md §8). The player sets landscape itself and restores this.
+class _BrowseOrientation extends ConsumerStatefulWidget {
+  const _BrowseOrientation({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_BrowseOrientation> createState() => _BrowseOrientationState();
+}
+
+class _BrowseOrientationState extends ConsumerState<_BrowseOrientation> {
+  @override
+  void initState() {
+    super.initState();
+    setBrowseOrientation(ref.read(settingsProvider).screenRotation);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(
+      settingsProvider.select((s) => s.screenRotation),
+      (_, rotation) => setBrowseOrientation(rotation),
+    );
+    return widget.child;
   }
 }

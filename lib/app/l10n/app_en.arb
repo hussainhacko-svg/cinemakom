@@ -446,6 +446,18 @@
   "@quality4kCaption": {
     "description": "The 2160p choice in the quality menu"
   },
+  "settingsScreenRotation": "Screen rotation",
+  "@settingsScreenRotation": {
+    "description": "Settings row (phones and tablets): whether the app turns sideways with the device"
+  },
+  "rotationPortrait": "Portrait only",
+  "@rotationPortrait": {
+    "description": "Screen rotation choice: the app stays upright"
+  },
+  "rotationAuto": "Rotate with device",
+  "@rotationAuto": {
+    "description": "Screen rotation choice: follow the device's auto-rotate setting"
+  },
   "settingsSubtitleSize": "Subtitle size",
   "@settingsSubtitleSize": {
     "description": "Settings row: how big subtitles are drawn"

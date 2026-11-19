@@ -12,6 +12,7 @@ void main() {
       expect(settings.defaultQuality, PreferredQuality.p1080);
       expect(settings.defaultSubtitle, SubtitlePreference.arabic);
       expect(settings.subtitleSize, SubtitleSize.medium);
+      expect(settings.screenRotation, ScreenRotation.portrait);
     });
 
     test('reads stored values', () {
@@ -21,12 +22,14 @@ void main() {
           PreferenceKeys.defaultQuality: 2160,
           PreferenceKeys.defaultSubtitle: 'off',
           PreferenceKeys.subtitleSize: 'large',
+          PreferenceKeys.screenRotation: 'auto',
         }),
       );
       expect(settings.language, AppLanguage.arabic);
       expect(settings.defaultQuality, PreferredQuality.p2160);
       expect(settings.defaultSubtitle, SubtitlePreference.off);
       expect(settings.subtitleSize, SubtitleSize.large);
+      expect(settings.screenRotation, ScreenRotation.auto);
     });
 
     test('unknown or mistyped values fall back to the defaults', () {
@@ -36,6 +39,7 @@ void main() {
           PreferenceKeys.defaultQuality: 1440,
           PreferenceKeys.defaultSubtitle: 42,
           PreferenceKeys.subtitleSize: 'huge',
+          PreferenceKeys.screenRotation: 'sideways',
         }),
       );
       expect(settings, const AppSettings());
@@ -62,6 +66,7 @@ void main() {
       await notifier.setDefaultQuality(PreferredQuality.p720);
       await notifier.setDefaultSubtitle(SubtitlePreference.english);
       await notifier.setSubtitleSize(SubtitleSize.small);
+      await notifier.setScreenRotation(ScreenRotation.auto);
 
       expect(
         container.read(settingsProvider),
@@ -70,6 +75,7 @@ void main() {
           defaultQuality: PreferredQuality.p720,
           defaultSubtitle: SubtitlePreference.english,
           subtitleSize: SubtitleSize.small,
+          screenRotation: ScreenRotation.auto,
         ),
       );
       expect(store.values, {
@@ -77,6 +83,7 @@ void main() {
         PreferenceKeys.defaultQuality: 720,
         PreferenceKeys.defaultSubtitle: 'english',
         PreferenceKeys.subtitleSize: 'small',
+        PreferenceKeys.screenRotation: 'auto',
       });
       // A restart reads back the same settings.
       expect(readSettings(store), container.read(settingsProvider));

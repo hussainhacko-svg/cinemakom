@@ -4,6 +4,7 @@ import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/features/home/home_screen.dart';
 import 'package:cinemakom/features/onboarding/language_screen.dart';
 import 'package:cinemakom/features/settings/settings_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -165,6 +166,36 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Large'), findsOneWidget);
       expect(store.values[PreferenceKeys.subtitleSize], 'large');
+    });
+
+    testWidgets('screen rotation is portrait until the user allows it', (
+      tester,
+    ) async {
+      final calls = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemChrome.setPreferredOrientations') {
+            calls.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      final store = MemoryPreferenceStore({PreferenceKeys.language: 'en'});
+      await pumpApp(tester, store: store);
+      expect(calls.last, ['DeviceOrientation.portraitUp']);
+      await openSettings(tester);
+      expect(find.text('Portrait only'), findsOneWidget);
+
+      await tester.tap(find.text('Screen rotation'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rotate with device'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rotate with device'), findsOneWidget);
+      expect(store.values[PreferenceKeys.screenRotation], 'auto');
+      // No preference: the system's auto-rotate decides.
+      expect(calls.last, isEmpty);
     });
 
     testWidgets('settings survive a restart', (tester) async {

@@ -12,6 +12,7 @@ import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/bulb_loader.dart';
 import '../../app/widgets/error_view.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/platform/orientation.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/storage/preferences.dart';
 import '../../data/models/playback_models.dart';
@@ -61,22 +62,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   /// Kept for dispose, where `ref` can't be used.
   late final PlayerController _session;
   late final AppLifecycleListener _lifecycle;
+
+  /// The browsing orientation to return to (Settings can't change while
+  /// the player is open).
+  late final ScreenRotation _rotation;
   PlayerState get _state => ref.read(playerControllerProvider(widget.request));
 
   @override
   void initState() {
     super.initState();
     _session = _controller;
+    _rotation = ref.read(settingsProvider).screenRotation;
     // Progress survives the app being killed in the background.
     _lifecycle = AppLifecycleListener(
       onInactive: () => _session.saveProgress(),
       onHide: () => _session.saveProgress(),
     );
     if (isMobile) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      // Either landscape side; Android and iOS only flip between them when
+      // the device's auto-rotate allows it.
+      setPlayerOrientation();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
   }
@@ -91,7 +96,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _resumedTimer?.cancel();
     unawaited(_wakelock(on: false));
     if (isMobile) {
-      SystemChrome.setPreferredOrientations(const []);
+      setBrowseOrientation(_rotation);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     super.dispose();

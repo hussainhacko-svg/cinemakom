@@ -10,11 +10,12 @@ import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/tab_page.dart';
+import '../../core/platform/platform_info.dart';
 import '../../core/storage/preferences.dart';
 import 'widgets/settings_group.dart';
 
-/// Settings: language, default quality, subtitles and subtitle size, help
-/// (DESIGN.md §8).
+/// Settings: language, screen rotation (phones and tablets), default
+/// quality, subtitles and subtitle size, help (DESIGN.md §8).
 /// Changes apply at once and are saved.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -61,8 +62,12 @@ class SettingsScreen extends ConsumerWidget {
       for (final s in SubtitlePreference.values)
         Choice(s, subtitleLabel(l10n, s)),
     ];
+    final rotations = [
+      for (final r in ScreenRotation.values) Choice(r, rotationLabel(l10n, r)),
+    ];
     final sizes = [
-      for (final s in SubtitleSize.values) Choice(s, subtitleSizeLabel(l10n, s)),
+      for (final s in SubtitleSize.values)
+        Choice(s, subtitleSizeLabel(l10n, s)),
     ];
 
     return TabPage(
@@ -94,6 +99,17 @@ class SettingsScreen extends ConsumerWidget {
                       notifier.setLanguage,
                     ),
                   ),
+                  if (isMobile)
+                    SettingsRow(
+                      label: l10n.settingsScreenRotation,
+                      value: rotationLabel(l10n, settings.screenRotation),
+                      onTap: () => pick(
+                        l10n.settingsScreenRotation,
+                        rotations,
+                        settings.screenRotation,
+                        notifier.setScreenRotation,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: MarqueeSpace.xxl),
@@ -194,4 +210,9 @@ String subtitleSizeLabel(AppLocalizations l10n, SubtitleSize s) => switch (s) {
   SubtitleSize.small => l10n.subtitleSizeSmall,
   SubtitleSize.medium => l10n.subtitleSizeMedium,
   SubtitleSize.large => l10n.subtitleSizeLarge,
+};
+
+String rotationLabel(AppLocalizations l10n, ScreenRotation r) => switch (r) {
+  ScreenRotation.portrait => l10n.rotationPortrait,
+  ScreenRotation.auto => l10n.rotationAuto,
 };

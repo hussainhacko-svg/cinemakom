@@ -231,7 +231,7 @@ Every error message goes in the ARB files.
 ## 9. Platform specifics
 
 ### 9.1 Mobile (Android, iOS)
-- **On enter:** landscape only, immersive mode (`SystemUiMode.immersiveSticky`), wakelock while playing. **On exit:** restore orientation, system UI, wakelock and brightness.
+- **On enter:** landscape only, immersive mode (`SystemUiMode.immersiveSticky`), wakelock while playing. **On exit:** restore the browsing orientation (portrait, unless Settings allows rotation: `setBrowseOrientation`), system UI, wakelock and brightness.
 - **Gestures** (`gesture_layer.dart`, physical sides):
 
 | Gesture | Action |

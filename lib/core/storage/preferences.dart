@@ -57,6 +57,11 @@ enum SubtitleSize {
   final double scale;
 }
 
+/// Whether the browsing screens on phones and tablets may turn sideways.
+/// Portrait by default, so lying down never flips the app; with [auto], the
+/// device's own auto-rotate setting decides. The player is always landscape.
+enum ScreenRotation { portrait, auto }
+
 /// The user's settings. [language] is null until the first-launch picker
 /// has been answered.
 class AppSettings {
@@ -65,12 +70,14 @@ class AppSettings {
     this.defaultQuality = PreferredQuality.p1080,
     this.defaultSubtitle = SubtitlePreference.arabic,
     this.subtitleSize = SubtitleSize.medium,
+    this.screenRotation = ScreenRotation.portrait,
   });
 
   final AppLanguage? language;
   final PreferredQuality defaultQuality;
   final SubtitlePreference defaultSubtitle;
   final SubtitleSize subtitleSize;
+  final ScreenRotation screenRotation;
 
   /// The language the UI shows: English until one has been chosen.
   AppLanguage get effectiveLanguage => language ?? AppLanguage.english;
@@ -82,11 +89,13 @@ class AppSettings {
     PreferredQuality? defaultQuality,
     SubtitlePreference? defaultSubtitle,
     SubtitleSize? subtitleSize,
+    ScreenRotation? screenRotation,
   }) => AppSettings(
     language: language ?? this.language,
     defaultQuality: defaultQuality ?? this.defaultQuality,
     defaultSubtitle: defaultSubtitle ?? this.defaultSubtitle,
     subtitleSize: subtitleSize ?? this.subtitleSize,
+    screenRotation: screenRotation ?? this.screenRotation,
   );
 
   @override
@@ -95,11 +104,17 @@ class AppSettings {
       other.language == language &&
       other.defaultQuality == defaultQuality &&
       other.defaultSubtitle == defaultSubtitle &&
-      other.subtitleSize == subtitleSize;
+      other.subtitleSize == subtitleSize &&
+      other.screenRotation == screenRotation;
 
   @override
-  int get hashCode =>
-      Object.hash(language, defaultQuality, defaultSubtitle, subtitleSize);
+  int get hashCode => Object.hash(
+    language,
+    defaultQuality,
+    defaultSubtitle,
+    subtitleSize,
+    screenRotation,
+  );
 }
 
 /// Key-value storage for settings. Reads are synchronous (the values are
@@ -170,8 +185,15 @@ abstract final class PreferenceKeys {
   static const defaultQuality = 'defaultQuality';
   static const defaultSubtitle = 'defaultSubtitle';
   static const subtitleSize = 'subtitleSize';
+  static const screenRotation = 'screenRotation';
 
-  static const all = {language, defaultQuality, defaultSubtitle, subtitleSize};
+  static const all = {
+    language,
+    defaultQuality,
+    defaultSubtitle,
+    subtitleSize,
+    screenRotation,
+  };
 }
 
 /// Reads [AppSettings] from [store]. Unknown or missing values fall back to
@@ -194,6 +216,11 @@ AppSettings readSettings(PreferenceStore store) {
           PreferenceKeys.subtitleSize,
         )] ??
         defaults.subtitleSize,
+    screenRotation:
+        ScreenRotation.values.asNameMap()[store.getString(
+          PreferenceKeys.screenRotation,
+        )] ??
+        defaults.screenRotation,
   );
 }
 
@@ -238,5 +265,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
   Future<void> setSubtitleSize(SubtitleSize size) async {
     state = state.copyWith(subtitleSize: size);
     await _store.setString(PreferenceKeys.subtitleSize, size.name);
+  }
+
+  Future<void> setScreenRotation(ScreenRotation rotation) async {
+    state = state.copyWith(screenRotation: rotation);
+    await _store.setString(PreferenceKeys.screenRotation, rotation.name);
   }
 }
