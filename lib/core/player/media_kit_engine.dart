@@ -31,6 +31,10 @@ class MediaKitEngine implements PlayerEngine {
     'cache-secs': isDesktop ? '60' : '30',
     // The disk cache fails on Android ("Failed to create file cache").
     'cache-on-disk': isDesktop ? 'yes' : 'no',
+    // mpv's frame dropping misjudges 4K on phones: it dropped about 1 frame
+    // in 40 that wasn't late, a visible stutter. With it off: 0 dropped,
+    // 0 late, full frame rate (PLAYER.md §13).
+    if (!isDesktop) 'framedrop': 'no',
   };
 
   Player? _player;

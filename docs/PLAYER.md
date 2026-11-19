@@ -107,6 +107,7 @@ Set in `media_kit_engine.dart`, once per player.
 | `network-timeout` | `20` | The default 5 s drops slow CDN nodes on the tail read that non-fast-start files need |
 | `demuxer-readahead-secs` / `cache-secs` | 20 / 60 (desktop), 20 / 30 (mobile) | Fast seeks near the playhead without filling a phone's memory |
 | `cache-on-disk` | `yes` desktop, **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0) |
+| `framedrop` | default desktop, **`no` mobile** | On a real phone (CPH2423) 4K dropped 14–20 frames per 25 s that were never late (`vo-delayed-frame-count` 0): a visible stutter. With `no`: 0 dropped, full 23.976 fps. Rendering tweaks (1080p surface, `gpu-dumb-mode`, `opengl-swapinterval=0`, `display-resample`) didn't help; `mediacodec_embed` only halved it. `integration_test/player_4k_test.dart` measures it |
 | `hwdec` | `auto` (default) | 4K H.264 needs hardware decoding on phones. Fall back to `no` once on decoder errors |
 | `libass` | `true` | Needed for the styled ASS track, and on Android it's the only way to give libass a font (§7.2) |
 | `sub-visibility` | toggled per track at runtime | Plain tracks are drawn by Flutter, styled tracks by libass (§7.2). Works at runtime (M0) |
