@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/marquee_colors.dart';
@@ -46,6 +47,12 @@ class _SeekBarState extends State<SeekBar> {
 
   /// The mouse's place over the bar, 0–1.
   double? _hover;
+
+  /// The drag is a finger: the bubble goes higher, clear of it.
+  bool _touch = false;
+
+  /// How far a finger hides what's above it.
+  static const _fingerLift = 56.0;
 
   static const _height = 44.0;
 
@@ -97,6 +104,7 @@ class _SeekBarState extends State<SeekBar> {
                   at: _at(at),
                   x: _SeekBarPainter.thumbX(at, width),
                   barWidth: width,
+                  lift: _drag != null && _touch ? _fingerLift : 0,
                   frame: widget.preview?.frameAt(_at(at)),
                 ),
             ],
@@ -115,7 +123,10 @@ class _SeekBarState extends State<SeekBar> {
           ? (d) => widget.onSeek(_at(_fraction(d.localPosition, width)))
           : null,
       onHorizontalDragStart: enabled
-          ? (d) => _scrub(_fraction(d.localPosition, width))
+          ? (d) {
+              _touch = d.kind == PointerDeviceKind.touch;
+              _scrub(_fraction(d.localPosition, width));
+            }
           : null,
       onHorizontalDragUpdate: enabled
           ? (d) => _scrub(_fraction(d.localPosition, width))
@@ -148,12 +159,16 @@ class _Bubble extends StatelessWidget {
     required this.x,
     required this.barWidth,
     required this.frame,
+    this.lift = 0,
   });
 
   final Duration at;
   final double x;
   final double barWidth;
   final SeekFrame? frame;
+
+  /// Extra height above the bar (a finger is on it).
+  final double lift;
 
   static const _width = 120.0;
 
@@ -166,7 +181,7 @@ class _Bubble extends StatelessWidget {
     );
     return Positioned(
       left: left,
-      bottom: _SeekBarState._height - MarqueeSpace.xs,
+      bottom: _SeekBarState._height - MarqueeSpace.xs + lift,
       width: _width,
       child: IgnorePointer(
         child: Column(

@@ -477,6 +477,8 @@ void main() {
     await tester.pump();
     expect(find.byType(SeekPreviewFrame), findsNothing);
     expect(find.text('30:00'), findsOneWidget);
+    // A finger is on the thumb: the time sits well above it.
+    expect(tester.getRect(find.text('30:00')).bottom, lessThan(bar.top - 48));
     await drag.up();
   });
 }

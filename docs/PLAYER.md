@@ -207,7 +207,7 @@ Every error message goes in the ARB files.
 ### 7.8 Seek-bar previews
 - When dragging the thumb or hovering the bar (desktop), show the frame from `SeekPreview.frameAt` above the thumb (120×68, radius 6, with the time under it). No frame (title without sprites, broken sheet, past the last sheet) = the time alone.
 - Sheets load through the shared headers and the image cache. Prefetch the sheet under the playhead and the next one when the player opens. The frame is drawn with `drawImageRect`, not by cropping a widget.
-- *Built (M6):* `seek_preview_frame.dart` (`seekSheetImage` is the one provider for both the prefetch and the frame, so the frame comes from the cache). Sheets are decoded at full size (1200 px), because the cells are in source pixels. The bubble stays inside the bar's width. *Bug found while building:* wrapping the bar in a `Stack` only while dragging rebuilt its gesture detector and dropped the drag, so the bar is always inside the `Stack`.
+- *Built (M6):* `seek_preview_frame.dart` (`seekSheetImage` is the one provider for both the prefetch and the frame, so the frame comes from the cache). Sheets are decoded at full size (1200 px), because the cells are in source pixels. The bubble stays inside the bar's width. *Bug found while building:* wrapping the bar in a `Stack` only while dragging rebuilt its gesture detector and dropped the drag, so the bar is always inside the `Stack`. *Found on the phone:* a finger on the thumb hid the bubble (the time alone is only 24 dp tall), so a touch drag lifts it 56 dp higher; mouse hover keeps it next to the bar.
 
 ### 7.9 Buffering and loading
 - Opening and seeking outside the buffer: `BulbLoader` in the centre, controls still usable.
@@ -300,7 +300,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 | **M3** ✅ | Chip menus: subtitles (with size and delay), quality, speed, fit. Settings → Subtitle size | Every switch keeps the position and the other choices |
 | **M4** ✅ | drift `database.dart`, `watch_history`, `LibraryRepository`, saving and resume, Details' Resume button, episode progress in the rows, Home's Continue watching row | Force-stop mid-episode, relaunch, and resume within 10 s of where it stopped |
 | **M5** ✅ | Series: Next episode, the Up next card and countdown, "Still watching?", the Episodes panel | A full season plays through by itself, and switching episodes keeps the choices. *Checked on the owner's phone 2026-11-19* |
-| **M6** | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't |
+| **M6** ✅ | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't. *Checked on the owner's phone and on Linux (live API) 2026-11-19* |
 | **M7** | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on a real Android phone (the emulator shows no video), including the ExoPlayer failure checks in §13 |
 | **M8** | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows |
 | **M9** | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked |
