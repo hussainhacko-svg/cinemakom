@@ -314,7 +314,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 | **M5** ✅ | Series: Next episode, the Up next card and countdown, "Still watching?", the Episodes panel | A full season plays through by itself, and switching episodes keeps the choices. *Checked on the owner's phone 2026-11-19* |
 | **M6** ✅ | Skip intro and seek-bar previews | Both work on a title that has them, and nothing shows on one that doesn't. *Checked on the owner's phone and on Linux (live API) 2026-11-19* |
 | **M7** | Mobile: orientation (done early, 2026-11-19: `setPlayerOrientation` and restoring the browsing choice, see AGENTS.md), immersive mode, wakelock, gestures, the lock, `audio_session` interruptions | Checked by hand on a real Android phone (the emulator shows no video), including the ExoPlayer failure checks in §13 |
-| **M8** | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows |
+| **M8** | Desktop: shortcuts, mouse, cursor hiding, fullscreen, saved volume. First Windows run | Every shortcut in §9.2 works on Linux and Windows. *Linux ✅ (owner, 2026-11-19); Windows not run yet (no machine)* |
 | **M9** | Hardening: profile mode on a mid-range phone (60 fps controls, memory with 4K), Arabic/RTL pass, every error state, the integration test | Every target in §1 is met, and PLAN.md §4.1 Player is ticked |
 
 ## 11. Testing
