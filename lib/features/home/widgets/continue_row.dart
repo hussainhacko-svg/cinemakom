@@ -48,8 +48,7 @@ class ContinueRow extends ConsumerWidget {
               scrollDirection: Axis.horizontal,
               padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
               itemCount: items.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: MarqueeSpace.m),
+              separatorBuilder: (_, _) => const SizedBox(width: MarqueeSpace.m),
               itemBuilder: (_, i) => SizedBox(
                 width: _cardWidth,
                 child: ContinueCard(progress: items[i]),
@@ -86,10 +85,7 @@ class ContinueCard extends StatelessWidget {
         // The player resumes the saved position by itself.
         onTap: () => openPlayer(
           context,
-          PlaybackRequest(
-            item: item,
-            episodeId: p.isSeries ? p.videoId : null,
-          ),
+          PlaybackRequest(item: item, episodeId: p.isSeries ? p.videoId : null),
         ),
         child: Padding(
           padding: const EdgeInsets.all(MarqueeSpace.s),
