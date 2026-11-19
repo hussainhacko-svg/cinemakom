@@ -78,6 +78,10 @@ class PlayerController extends Notifier<PlayerState> {
   Duration? _recoveredAt;
   bool _recovering = false;
 
+  /// Between a load starting and the new file being opened, the old file
+  /// may still play: its positions must not become the new start point.
+  bool _switching = false;
+
   /// The last position known to play, for reopening after a failure.
   Duration _resumeAt = Duration.zero;
 
@@ -145,6 +149,7 @@ class PlayerController extends Notifier<PlayerState> {
     Duration? start,
   }) async {
     final session = ++_session;
+    _switching = true;
     _recovering = false;
     _attempt = 0;
     _recoveredAt = null;
@@ -233,6 +238,7 @@ class PlayerController extends Notifier<PlayerState> {
       play: !_userPaused,
     );
     if (!_isCurrent(session)) return;
+    _switching = false;
     await _applySubtitle();
   }
 
@@ -246,6 +252,7 @@ class PlayerController extends Notifier<PlayerState> {
 
   void _fail(Object error) {
     _recovering = false;
+    _switching = false;
     state = state.copyWith(phase: PlayerPhase.failed, error: error);
   }
 
@@ -253,6 +260,7 @@ class PlayerController extends Notifier<PlayerState> {
   // Engine events
 
   void _onPosition(Duration p) {
+    if (_switching) return;
     position.value = p;
     if (state.phase == PlayerPhase.loading && p > _resumeAt) {
       state = state.copyWith(phase: PlayerPhase.ready);

@@ -380,6 +380,26 @@ void main() {
     });
   });
 
+  test('the next episode starts at 0, though the old one plays on', () {
+    fakeAsync((async) {
+      const series = PlaybackRequest(
+        item: MediaItem(
+          id: '4328',
+          title: LocalizedText(en: 'Friends'),
+          kind: VideoKind.series,
+        ),
+      );
+      final env = start(async, request: series);
+      env.engine.emitReady(at: const Duration(minutes: 12));
+      env.controller.playEpisode(env.state.episodes[1]);
+      // The old file is still playing while the new streams load.
+      env.engine.emitPosition(const Duration(minutes: 12, seconds: 1));
+      env.flush();
+      expect(env.engine.opened.last.start, Duration.zero);
+      expect(env.controller.position.value, Duration.zero);
+    });
+  });
+
   test('closing the player disposes the engine', () {
     fakeAsync((async) {
       final env = start(async);
