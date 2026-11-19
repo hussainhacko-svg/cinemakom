@@ -10,6 +10,7 @@ import 'package:cinemakom/data/models/watch_progress.dart';
 import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/features/player/player_controller.dart';
 import 'package:cinemakom/features/player/player_state.dart';
+import 'package:cinemakom/features/player/up_next.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -541,6 +542,142 @@ void main() {
       env.c.dispose();
       env.flush();
       expect(env.engine.disposed, isTrue);
+    });
+  });
+  group('Up next (PLAYER.md §7.7)', () {
+    const friends = PlaybackRequest(
+      item: MediaItem(
+        id: '4328',
+        title: LocalizedText(en: 'Friends'),
+        kind: VideoKind.series,
+      ),
+    );
+    const length = Duration(minutes: 22);
+    const last5s = Duration(minutes: 21, seconds: 55);
+
+    /// Friends, playing its first episode (the fixture has six, one per
+    /// season).
+    Env series(FakeAsync async) {
+      final env = start(async, request: friends);
+      env.controller.playEpisode(env.state.episodes.first);
+      env.flush();
+      return env;
+    }
+
+    test('the card shows at the finished point, then counts down', () {
+      fakeAsync((async) {
+        final env = series(async);
+        final second = env.state.episodes[1];
+        env.engine.emitReady(duration: length, at: const Duration(minutes: 19));
+        expect(env.state.upNext, UpNext.none);
+
+        env.engine.emitPosition(const Duration(minutes: 20, seconds: 30));
+        expect(env.state.upNext, UpNext.card);
+
+        env.engine.emitPosition(last5s);
+        expect(env.state.upNext, UpNext.countdown);
+        env.flush(upNextCountdown - const Duration(seconds: 1));
+        expect(env.state.videoId, env.state.episodes.first.id);
+
+        env.flush(const Duration(seconds: 1));
+        expect(env.state.videoId, second.id);
+        expect(env.state.upNext, UpNext.none);
+        expect(env.engine.opened.last.start, Duration.zero);
+      });
+    });
+
+    test('pause stops the countdown; Hide and a seek back hide the card', () {
+      fakeAsync((async) {
+        final env = series(async);
+        final first = env.state.episodes.first.id;
+        env.engine.emitReady(duration: length, at: last5s);
+        env.controller.pause();
+        env.flush(const Duration(seconds: 30));
+        expect(env.state.upNext, UpNext.card);
+        expect(env.state.videoId, first);
+
+        env.controller.seek(const Duration(minutes: 5));
+        env.flush();
+        expect(env.state.upNext, UpNext.none);
+
+        env.controller
+          ..seek(last5s)
+          ..play();
+        env.flush();
+        expect(env.state.upNext, UpNext.countdown);
+        env.controller.hideUpNext();
+        env.flush(const Duration(seconds: 30));
+        expect(env.state.upNext, UpNext.none);
+        expect(env.state.videoId, first);
+      });
+    });
+
+    test('the countdown carries on after the file ends', () {
+      fakeAsync((async) {
+        final env = series(async);
+        env.engine.emitReady(duration: length, at: last5s);
+        env.flush(const Duration(seconds: 4));
+        env.engine.emitPosition(length);
+        env.engine.emitCompleted();
+        expect(env.state.phase, PlayerPhase.ended);
+        expect(env.state.upNext, UpNext.countdown);
+        env.flush(const Duration(seconds: 6));
+        expect(env.state.videoId, env.state.episodes[1].id);
+      });
+    });
+
+    test('after 3 automatic episodes it pauses and asks', () {
+      fakeAsync((async) {
+        final env = series(async);
+        void playToEnd() {
+          env.engine.emitReady(duration: length, at: last5s);
+          env.flush(upNextCountdown);
+        }
+
+        for (var i = 1; i <= autoEpisodesBeforeAsking; i++) {
+          playToEnd();
+          expect(env.state.videoId, env.state.episodes[i].id);
+        }
+        playToEnd();
+        expect(env.state.upNext, UpNext.stillWatching);
+        expect(env.engine.isPlaying, isFalse);
+        expect(env.state.videoId, env.state.episodes[3].id);
+
+        env.controller.playNext();
+        env.flush();
+        expect(env.state.videoId, env.state.episodes[4].id);
+        expect(env.state.upNext, UpNext.none);
+        expect(env.engine.opened.last.play, isTrue);
+      });
+    });
+
+    test('any input starts the count again', () {
+      fakeAsync((async) {
+        final env = series(async);
+        for (var i = 1; i <= 4; i++) {
+          env.engine.emitReady(duration: length, at: last5s);
+          if (i == 3) env.controller.noteActivity();
+          env.flush(upNextCountdown);
+          expect(env.state.videoId, env.state.episodes[i].id);
+        }
+      });
+    });
+
+    test('nothing comes after the last episode, or after a movie', () {
+      fakeAsync((async) {
+        final env = series(async);
+        final last = env.state.episodes.last;
+        env.controller.playEpisode(last);
+        env.flush();
+        env.engine.emitReady(duration: length, at: last5s);
+        env.flush(const Duration(seconds: 30));
+        expect(env.state.upNext, UpNext.none);
+        expect(env.state.videoId, last.id);
+
+        final movie = start(async);
+        movie.engine.emitReady(duration: length, at: last5s);
+        expect(movie.state.upNext, UpNext.none);
+      });
     });
   });
 }

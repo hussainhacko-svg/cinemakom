@@ -197,6 +197,11 @@ Every error message goes in the ARB files.
 - **Up next card:** it appears at the "finished" point (less than 2 min left or 95%), in the bottom end corner. It shows the season image, "Up next · Season 2 · Episode 6", **Play now** and **Hide**. In the **last 10 s** a countdown ring fills, then the next episode starts. If the file ends sooner (a short credits roll), the countdown starts at the end.
 - **Still watching?** After 3 automatic episodes in a row with no input, pause and ask "Still watching?" instead of continuing (saves data overnight, especially in 4K).
 - **Episodes panel** (series only): an "Episodes" button next to Next episode opens a side panel (bottom sheet on phones) with the season chips and episode rows from Details. Picking one switches in place and keeps quality, subtitle choice and speed.
+- *Built (M5):* the rules are in `up_next.dart` and `PlayerController` (`PlayerState.upNext`: none, card, countdown, stillWatching), drawn by `up_next_card.dart`. The controller's 10 s timer starts the next episode; the ring is only a picture. Choices made while building:
+  - **Pause** stops the countdown and keeps the card. Playing again in the last 10 s starts a full countdown.
+  - **Hide** also cancels autoplay for that episode. Next episode stays available. A seek back before the finished point hides the card, and it comes back when the playhead returns (unless hidden).
+  - **"Still watching?"** is the same card, paused, with Play now and Hide (no extra dialog). "Input" is any tap, key, mouse move or choice in the player (`noteActivity`), so hovering a desktop window counts.
+  - The **Episodes panel** reuses Details' `EpisodeList` (it marks the current episode) as a side sheet from the end edge from 600 dp, so landscape phones get the side panel too, and a bottom sheet below 600 dp. A picked episode plays even if the player was paused.
 
 ### 7.8 Seek-bar previews
 - When dragging the thumb or hovering the bar (desktop), show the frame from `SeekPreview.frameAt` above the thumb (120×68, radius 6, with the time under it). No frame (title without sprites, broken sheet, past the last sheet) = the time alone.

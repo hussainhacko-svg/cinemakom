@@ -18,7 +18,8 @@ typedef MenuOpener = void Function(Rect anchor);
 /// - top: back, title and episode, then the subtitle, quality, speed and fit
 ///   chips (one "⋯" chip below [narrowWidth]);
 /// - centre: back 10 s, play/pause, forward 10 s;
-/// - bottom: elapsed time, the seek bar, remaining time, Next episode.
+/// - bottom: elapsed time, the seek bar, remaining time, then Episodes and
+///   Next episode for a series.
 ///
 /// The seek row and the centre buttons keep their physical layout in
 /// Arabic (PLAYER.md §2); the top bar follows the text direction.
@@ -35,6 +36,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onFit,
     required this.onMore,
     required this.onScrub,
+    this.onEpisodes,
     this.trailing = const [],
   });
 
@@ -54,6 +56,9 @@ class ControlsOverlay extends StatelessWidget {
   /// The "⋯" chip on narrow screens.
   final MenuOpener onMore;
   final ValueChanged<Duration?> onScrub;
+
+  /// Opens the Episodes panel (series only).
+  final VoidCallback? onEpisodes;
 
   /// Extra top-bar buttons (fullscreen on desktop, the lock on mobile).
   final List<Widget> trailing;
@@ -220,8 +225,20 @@ class ControlsOverlay extends StatelessWidget {
             ),
           ),
         ),
-        if (next != null) ...[
+        if (onEpisodes case final open? when state.episodes.length > 1) ...[
           const SizedBox(width: MarqueeSpace.l),
+          TextButton.icon(
+            onPressed: open,
+            icon: const Icon(Icons.video_library_outlined, size: 22),
+            label: Text(l10n.episodesHeading),
+            style: TextButton.styleFrom(
+              foregroundColor: MarqueeColors.cream,
+              minimumSize: const Size(44, 44),
+            ),
+          ),
+        ],
+        if (next != null) ...[
+          const SizedBox(width: MarqueeSpace.s),
           TextButton.icon(
             onPressed: () => controller.playEpisode(next),
             icon: const Icon(Icons.skip_next_outlined, size: 22),

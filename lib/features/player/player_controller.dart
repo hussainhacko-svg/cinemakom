@@ -19,6 +19,7 @@ import '../../data/repositories/media_repository.dart';
 import 'player_state.dart';
 import 'quality.dart';
 import 'subtitles.dart';
+import 'up_next.dart';
 
 /// Makes the engine for each player session: ExoPlayer on Android (mpv
 /// stuttered there, PLAYER.md §13), mpv elsewhere. Tests override it with a
@@ -102,6 +103,12 @@ class PlayerController extends Notifier<PlayerState> {
   /// The last position known to play, for reopening after a failure.
   Duration _resumeAt = Duration.zero;
 
+  /// Up next (PLAYER.md §7.7): Hide was pressed for this episode, the
+  /// countdown to the next one, and the episodes started by it in a row.
+  bool _upNextHidden = false;
+  Timer? _countdown;
+  int _autoEpisodes = 0;
+
   /// Session choices: they win over Settings for the next episodes.
   int? _chosenHeight;
   SubtitleOption? _chosenSubtitle;
@@ -147,6 +154,7 @@ class PlayerController extends Notifier<PlayerState> {
   void _dispose() {
     _session++;
     _watchdog?.cancel();
+    _countdown?.cancel();
     for (final s in _subscriptions) {
       s.cancel();
     }
@@ -172,6 +180,9 @@ class PlayerController extends Notifier<PlayerState> {
     _attempt = 0;
     _recoveredAt = null;
     _stallTicks = 0;
+    _upNextHidden = false;
+    _countdown?.cancel();
+    _countdown = null;
     _resumeAt = start ?? Duration.zero;
     position.value = _resumeAt;
     buffered.value = Duration.zero;
@@ -187,6 +198,7 @@ class PlayerController extends Notifier<PlayerState> {
       subtitleFailed: false,
       duration: Duration.zero,
       playing: false,
+      upNext: UpNext.none,
     );
 
     final repo = _repo;
@@ -298,6 +310,7 @@ class PlayerController extends Notifier<PlayerState> {
       state = state.copyWith(phase: PlayerPhase.ready);
     }
     if (state.phase == PlayerPhase.ready) {
+      _updateUpNext();
       _resumeAt = p;
       final recoveredAt = _recoveredAt;
       if (recoveredAt != null && p - recoveredAt >= recoveredAfter) {
@@ -313,6 +326,7 @@ class PlayerController extends Notifier<PlayerState> {
 
   void _onPlaying(bool playing) {
     if (playing != state.playing) state = state.copyWith(playing: playing);
+    if (!_switching) _updateUpNext();
   }
 
   void _onBuffering(bool buffering) {
@@ -337,6 +351,7 @@ class PlayerController extends Notifier<PlayerState> {
     if (duration > Duration.zero && at >= duration - endTolerance) {
       state = state.copyWith(phase: PlayerPhase.ended, playing: false);
       saveProgress();
+      _updateUpNext();
     } else {
       unawaited(_recover());
     }
@@ -403,6 +418,71 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   // ---------------------------------------------------------------------------
+  // Up next (PLAYER.md §7.7)
+
+  /// Shows the card from the "finished" point, runs the countdown in the
+  /// last seconds while playing (or once the file ended), and hides both
+  /// after a seek back.
+  void _updateUpNext() {
+    if (state.upNext == UpNext.stillWatching) return;
+    final phase = state.phase;
+    final duration = state.duration;
+    final at = position.value;
+    final ended = phase == PlayerPhase.ended;
+    final due =
+        state.nextEpisode != null &&
+        !_upNextHidden &&
+        (ended || (phase == PlayerPhase.ready && upNextDue(at, duration)));
+    if (!due) return _setUpNext(UpNext.none);
+    final counting = ended || (state.playing && countdownDue(at, duration));
+    _setUpNext(counting ? UpNext.countdown : UpNext.card);
+  }
+
+  void _setUpNext(UpNext upNext) {
+    if (upNext == UpNext.countdown) {
+      _countdown ??= Timer(upNextCountdown, _autoAdvance);
+    } else {
+      _countdown?.cancel();
+      _countdown = null;
+    }
+    if (upNext != state.upNext) state = state.copyWith(upNext: upNext);
+  }
+
+  /// The countdown ran out: the next episode, unless enough of them
+  /// started by themselves that it's time to ask "Still watching?".
+  void _autoAdvance() {
+    _countdown = null;
+    final next = state.nextEpisode;
+    if (next == null || !ref.mounted) return;
+    saveProgress();
+    if (_autoEpisodes >= autoEpisodesBeforeAsking) {
+      _userPaused = true;
+      unawaited(engine.pause());
+      _setUpNext(UpNext.stillWatching);
+      return;
+    }
+    _autoEpisodes++;
+    unawaited(_load(next.id, episode: next));
+  }
+
+  /// Someone is there (a tap, a key, the mouse): "Still watching?" waits
+  /// for [autoEpisodesBeforeAsking] more automatic episodes.
+  void noteActivity() => _autoEpisodes = 0;
+
+  /// Play now: the next episode at once.
+  Future<void> playNext() async {
+    final next = state.nextEpisode;
+    if (next != null) await playEpisode(next);
+  }
+
+  /// Hide: no card and no countdown for this episode.
+  void hideUpNext() {
+    noteActivity();
+    _upNextHidden = true;
+    _setUpNext(UpNext.none);
+  }
+
+  // ---------------------------------------------------------------------------
   // Recovery (PLAYER.md §6)
 
   Future<void> _recover() async {
@@ -455,7 +535,11 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> togglePlay() => state.playing ? pause() : play();
 
   Future<void> play() async {
+    noteActivity();
     _userPaused = false;
+    if (state.upNext == UpNext.stillWatching) {
+      state = state.copyWith(upNext: UpNext.none);
+    }
     if (state.phase == PlayerPhase.ended) {
       state = state.copyWith(phase: PlayerPhase.ready);
       await seek(Duration.zero);
@@ -464,6 +548,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> pause() async {
+    noteActivity();
     _userPaused = true;
     await engine.pause();
     saveProgress();
@@ -480,8 +565,10 @@ class PlayerController extends Notifier<PlayerState> {
     if (state.phase == PlayerPhase.ended && clamped < duration) {
       state = state.copyWith(phase: PlayerPhase.ready);
     }
+    noteActivity();
     await engine.seek(clamped);
     saveProgress();
+    _updateUpNext();
   }
 
   /// From the beginning, after an automatic resume.
@@ -530,6 +617,7 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> seekBy(Duration delta) => seek(position.value + delta);
 
   Future<void> setSpeed(double speed) async {
+    noteActivity();
     state = state.copyWith(speed: speed);
     await engine.setRate(speed);
   }
@@ -551,6 +639,7 @@ class PlayerController extends Notifier<PlayerState> {
   /// Switches quality at the current position, keeping play/pause, speed and
   /// the subtitle. The choice holds for the next episodes too.
   Future<void> selectQuality(VideoSource source) async {
+    noteActivity();
     if (source.url == state.quality?.url) return;
     _chosenHeight = source.height;
     final at = position.value;
@@ -560,6 +649,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> selectSubtitle(SubtitleOption option) async {
+    noteActivity();
     _chosenSubtitle = option;
     state = state.copyWith(subtitle: option, subtitleFailed: false);
     await _applySubtitle();
@@ -596,6 +686,8 @@ class PlayerController extends Notifier<PlayerState> {
   /// Switches to [episode], keeping quality, subtitle choice and speed. It
   /// resumes where that episode was left, if it was.
   Future<void> playEpisode(Episode episode) {
+    noteActivity();
+    _userPaused = false;
     saveProgress();
     return _load(episode.id, episode: episode);
   }

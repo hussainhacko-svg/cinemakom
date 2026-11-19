@@ -244,7 +244,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 **The detailed plan is [`PLAYER.md`](PLAYER.md)**: targets, decisions, architecture, mpv setup, every feature, the controls, platform specifics, milestones M0–M9 and tests.
 - *Progress (2026-11-19):* M0–M4 are done: measurements, engine and controller, the player screen, chip menus (subtitle size and sync, quality, speed, fit), and resume with watch history (drift). Checked on the owner's phone: the picture, quality and episode switches, smooth 4K, and resume after a force-stop.
   - **Android plays with ExoPlayer** (`video_player`, texture view), not media_kit: mpv stuttered on 4K there. Desktop and iOS keep media_kit. Android has no styled (ASS) subtitles (PLAYER.md §2, decision 7).
-- **Next:** M5 (series: Next episode autoplay, the Up next card and countdown, "Still watching?", the Episodes panel).
+- **M5 built (2026-11-19), to check on the phone:** Next episode autoplay, the Up next card and countdown, "Still watching?", the Episodes panel. Then M6 (skip intro and seek-bar previews).
 - *Decisions (2026-11-19):*
   - The drift `watch_history` table is built in this phase, so resume works now. Phase 5 adds the Library UI.
   - The seek bar always runs left → right, in Arabic too.

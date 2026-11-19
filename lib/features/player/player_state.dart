@@ -2,6 +2,7 @@ import '../../data/models/media_details.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import 'subtitles.dart';
+import 'up_next.dart';
 
 enum PlayerPhase {
   /// Loading the streams, or opening a file (also after a quality switch).
@@ -56,6 +57,7 @@ class PlayerState {
     this.duration = Duration.zero,
     this.seekPreview,
     this.resumedFrom,
+    this.upNext = UpNext.none,
   });
 
   factory PlayerState.initial(PlaybackRequest request) => PlayerState(
@@ -94,6 +96,9 @@ class PlayerState {
   /// Start over", PLAYER.md §7.6).
   final Duration? resumedFrom;
 
+  /// The "Up next" card and its countdown (PLAYER.md §7.7).
+  final UpNext upNext;
+
   List<SkipRange> get introRanges => details?.introRanges ?? const [];
 
   /// The episode after the current one, across seasons. `null` after the
@@ -127,6 +132,7 @@ class PlayerState {
     bool clearSeekPreview = false,
     Duration? resumedFrom,
     bool clearResumedFrom = false,
+    UpNext? upNext,
   }) => PlayerState(
     request: request,
     videoId: videoId ?? this.videoId,
@@ -148,5 +154,6 @@ class PlayerState {
     duration: duration ?? this.duration,
     seekPreview: clearSeekPreview ? null : (seekPreview ?? this.seekPreview),
     resumedFrom: clearResumedFrom ? null : (resumedFrom ?? this.resumedFrom),
+    upNext: upNext ?? this.upNext,
   );
 }

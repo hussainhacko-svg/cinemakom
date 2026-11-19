@@ -1,12 +1,18 @@
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/data/models/localized_text.dart';
+import 'package:cinemakom/data/models/media_item.dart';
+import 'package:cinemakom/data/models/playback_request.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
 import 'package:cinemakom/features/player/widgets/chip_menus.dart';
 import 'package:cinemakom/features/player/widgets/controls_overlay.dart';
 import 'package:cinemakom/features/player/widgets/seek_bar.dart';
 import 'package:cinemakom/features/player/widgets/subtitle_layer.dart';
+import 'package:cinemakom/features/player/widgets/up_next_card.dart';
+import 'package:cinemakom/features/details/widgets/episode_list.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +29,26 @@ Future<void> openMovie(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Play'));
   // The player shows a BulbLoader while it opens: no pumpAndSettle.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
+/// Friends Season 2 Episode 1 (the fixture has six episodes, one per
+/// season), opened straight in the player.
+Future<void> openEpisode(WidgetTester tester) async {
+  ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+      .read(routerProvider)
+      .push(
+        '/watch/4401',
+        extra: const PlaybackRequest(
+          item: MediaItem(
+            id: '4328',
+            title: LocalizedText(en: 'Friends'),
+            kind: VideoKind.series,
+          ),
+          episodeId: '4401',
+        ),
+      );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -309,5 +335,70 @@ void main() {
     // Back sits at the start edge: the right side in RTL.
     final back = tester.getCenter(find.byIcon(Icons.arrow_back));
     expect(back.dx, greaterThan(844 / 2));
+  });
+  testWidgets('Up next shows near the end; Play now and Hide', (tester) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openEpisode(tester);
+    engine.emitReady(
+      duration: const Duration(minutes: 22),
+      at: const Duration(minutes: 10),
+    );
+    await tester.pump();
+    expect(find.byType(UpNextCard), findsNothing);
+    expect(find.text('Season 2 · Episode 1'), findsOneWidget);
+
+    engine.emitPosition(const Duration(minutes: 20, seconds: 30));
+    await tester.pump();
+    expect(find.text('Up next'), findsOneWidget);
+    expect(find.text('Season 3 · Episode 1'), findsOneWidget);
+    // It stays when the controls hide.
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byType(UpNextCard), findsOneWidget);
+
+    await tester.tap(find.text('Hide'));
+    await tester.pump();
+    expect(find.byType(UpNextCard), findsNothing);
+
+    await tester.tap(find.byType(PlayerScreen), warnIfMissed: false);
+    await tester.pump();
+    await tester.tap(find.text('Next episode'));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(engine.opened, hasLength(2));
+    engine.emitReady(duration: const Duration(minutes: 22));
+    await tester.pump();
+    expect(find.text('Season 3 · Episode 1'), findsOneWidget);
+  });
+
+  testWidgets('the Episodes panel switches episode in place', (tester) async {
+    final engine = FakeEngine();
+    await pumpApp(tester, engine: engine, width: 844, height: 390);
+    await openEpisode(tester);
+    engine.emitReady(duration: const Duration(minutes: 22));
+    engine.pause();
+    await tester.pump();
+
+    await tester.tap(find.text('Episodes'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // A side panel at the end edge, from 600 dp.
+    expect(find.byType(BottomSheet), findsNothing);
+    final panel = tester.getRect(find.byType(EpisodeList));
+    expect(panel.right, closeTo(844, 1));
+    expect(panel.left, greaterThan(844 / 2));
+
+    await tester.ensureVisible(find.text('Season 5'));
+    await tester.pump();
+    await tester.tap(find.text('Season 5'));
+    await tester.pump();
+    await tester.tap(find.text('Episode 1'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(EpisodeList), findsNothing);
+    expect(engine.opened, hasLength(2));
+    expect(engine.opened.last.play, isTrue);
+    engine.emitReady(duration: const Duration(minutes: 22));
+    await tester.pump();
+    expect(find.text('Season 5 · Episode 1'), findsOneWidget);
   });
 }

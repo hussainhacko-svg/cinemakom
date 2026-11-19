@@ -21,9 +21,12 @@ import 'player_controller.dart';
 import 'player_state.dart';
 import 'quality.dart';
 import 'widgets/chip_menus.dart';
+import 'up_next.dart';
 import 'widgets/controls_overlay.dart';
+import 'widgets/episodes_panel.dart';
 import 'widgets/seek_bar.dart' show formatClock;
 import 'widgets/subtitle_layer.dart';
+import 'widgets/up_next_card.dart';
 
 /// The full-screen player (docs/PLAYER.md §8). It owns what only the screen
 /// knows about: whether the controls show, the menus, orientation, the
@@ -120,8 +123,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
   }
 
+  /// A tap, a key or the mouse: someone is watching (PLAYER.md §7.7).
+  void _input() {
+    _controller.noteActivity();
+    _show();
+  }
+
   /// A tap on the video: hides the controls (paused too), or brings them back.
   void _toggle() {
+    _controller.noteActivity();
     if (_visible) {
       _hide();
     } else {
@@ -140,15 +150,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Rect anchor,
     WidgetBuilder builder, {
     double width = 340,
-  }) async {
-    _menuOpen = true;
-    _show();
-    final picked = await showPlayerMenu<T>(
+  }) => _open(
+    () => showPlayerMenu<T>(
       context,
       anchor: anchor,
       builder: builder,
       width: width,
-    );
+    ),
+  );
+
+  /// Keeps the controls up while [show]'s menu or panel is open.
+  Future<T?> _open<T>(Future<T?> Function() show) async {
+    _controller.noteActivity();
+    _menuOpen = true;
+    _show();
+    final picked = await show();
     _menuOpen = false;
     if (!mounted) return picked;
     if (picked == null) {
@@ -161,6 +177,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _back() {
     if (context.canPop()) context.pop();
+  }
+
+  Future<void> _episodesPanel() async {
+    final picked = await _open(
+      () => showEpisodesPanel(
+        context,
+        seriesId: widget.request.item.seriesId,
+        current: _state.episode,
+      ),
+    );
+    if (picked != null && picked.id != _state.videoId) {
+      await _controller.playEpisode(picked);
+    }
   }
 
   void _showToast(IconData icon, String label) {
@@ -328,16 +357,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Map<ShortcutActivator, VoidCallback> get _shortcuts => {
     const SingleActivator(LogicalKeyboardKey.space): () {
-      _show();
+      _input();
       _controller.togglePlay();
     },
     const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
-      _show();
+      _input();
       _controller.seekBy(const Duration(seconds: -10));
     },
     const SingleActivator(LogicalKeyboardKey.arrowRight): () {
-      _show();
+      _input();
       _controller.seekBy(const Duration(seconds: 10));
+    },
+    const SingleActivator(LogicalKeyboardKey.keyN): () {
+      _input();
+      _controller.playNext();
     },
     const SingleActivator(LogicalKeyboardKey.escape): _back,
   };
@@ -368,7 +401,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           autofocus: true,
           child: MouseRegion(
             cursor: _visible ? MouseCursor.defer : SystemMouseCursors.none,
-            onHover: (_) => _show(),
+            onHover: (_) => _input(),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -406,6 +439,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         onSpeed: (anchor) => _speedMenu(l10n, anchor),
                         onFit: () => _cycleFit(l10n),
                         onMore: (anchor) => _moreMenu(l10n, anchor),
+                        onEpisodes: widget.request.isSeries
+                            ? _episodesPanel
+                            : null,
                         onScrub: (at) {
                           _scrubbing = at != null;
                           if (_scrubbing) {
@@ -431,6 +467,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 if (state.resumedFrom case final from?
                     when phase == PlayerPhase.ready)
                   _Resumed(from: from, onStartOver: controller.startOver),
+                if (state.nextEpisode case final next?
+                    when state.upNext != UpNext.none && !failed)
+                  UpNextCard(
+                    next: next,
+                    upNext: state.upNext,
+                    onPlayNow: controller.playNext,
+                    onHide: controller.hideUpNext,
+                  ),
                 if (toast != null && !busy && !failed)
                   IgnorePointer(
                     child: _Toast(icon: toast.icon, label: toast.label),

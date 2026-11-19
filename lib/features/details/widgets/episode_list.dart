@@ -25,6 +25,7 @@ class EpisodeList extends ConsumerStatefulWidget {
     required this.gutter,
     required this.onPlay,
     this.initialSeason,
+    this.currentId,
   });
 
   final String seriesId;
@@ -35,6 +36,9 @@ class EpisodeList extends ConsumerStatefulWidget {
 
   /// The season to open on (the one of the episode the list showed).
   final int? initialSeason;
+
+  /// The episode playing now, marked in `bulb` (the player's panel).
+  final String? currentId;
 
   @override
   ConsumerState<EpisodeList> createState() => _EpisodeListState();
@@ -97,6 +101,7 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
               _EpisodeRow(
                 episode: e,
                 progress: watched[e.id],
+                current: e.id == widget.currentId,
                 onTap: () => widget.onPlay(e),
               ),
         ],
@@ -126,10 +131,12 @@ class _EpisodeRow extends StatelessWidget {
     required this.episode,
     required this.onTap,
     this.progress,
+    this.current = false,
   });
 
   final Episode episode;
   final WatchProgress? progress;
+  final bool current;
   final VoidCallback onTap;
 
   @override
@@ -178,7 +185,11 @@ class _EpisodeRow extends StatelessWidget {
                           Flexible(
                             child: Text(
                               episodeLabel(l10n, numbering),
-                              style: text.label,
+                              style: current
+                                  ? text.label.copyWith(
+                                      color: MarqueeColors.bulb,
+                                    )
+                                  : text.label,
                             ),
                           ),
                           if (numbering.isFinale) ...[
@@ -204,6 +215,12 @@ class _EpisodeRow extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (current)
+                  const Icon(
+                    Icons.play_arrow,
+                    size: 22,
+                    color: MarqueeColors.bulb,
+                  ),
               ],
             ),
           ),

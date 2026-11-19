@@ -548,5 +548,21 @@
   "rowContinueWatching": "Continue watching",
   "@rowContinueWatching": {
     "description": "Home row of partly watched titles"
+  },
+  "playerUpNext": "Up next",
+  "@playerUpNext": {
+    "description": "Player: the card near the end of an episode that offers the next one"
+  },
+  "playerPlayNow": "Play now",
+  "@playerPlayNow": {
+    "description": "Up next card: start the next episode at once"
+  },
+  "playerHide": "Hide",
+  "@playerHide": {
+    "description": "Up next card: hide it and don't start the next episode by itself"
+  },
+  "playerStillWatching": "Still watching?",
+  "@playerStillWatching": {
+    "description": "Up next card after 3 automatic episodes: playback paused until someone answers"
   }
 }

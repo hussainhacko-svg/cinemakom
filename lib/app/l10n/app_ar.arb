@@ -116,5 +116,9 @@
   "resume": "استئناف",
   "minutesLeft": "متبقٍ {minutes} د",
   "seasonEpisodeShort": "م{season} ح{episode}",
-  "rowContinueWatching": "تابع المشاهدة"
+  "rowContinueWatching": "تابع المشاهدة",
+  "playerUpNext": "التالي",
+  "playerPlayNow": "شغّل الآن",
+  "playerHide": "إخفاء",
+  "playerStillWatching": "هل ما زلت تشاهد؟"
 }
