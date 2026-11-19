@@ -39,8 +39,8 @@ void main() {
     });
 
     test('the chip says 4K for 2160p', () {
-      expect(qualityLabel(q('2160p')), '4K');
-      expect(qualityLabel(q('1080p')), '1080p');
+      expect(qualityChipLabel(q('2160p')), '4K');
+      expect(qualityChipLabel(q('1080p')), '1080p');
     });
   });
 

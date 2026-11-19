@@ -19,6 +19,8 @@ import 'package:material_ui/material_ui.dart' show Scrollable, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:cinemakom/features/player/widgets/seek_bar.dart';
 
 final _dir = Directory(
   Platform.isAndroid || Platform.isIOS
@@ -81,6 +83,7 @@ Future<void> _push(WidgetTester tester, String location) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   const phone = Size(390, 844);
 
   testWidgets('phone: first launch, tabs, settings, Arabic', (tester) async {
@@ -195,5 +198,27 @@ void main() {
     await _shot(tester, '40-phone-home-ar-live', wait: 6000);
     await _push(tester, '/home/title/4328');
     await _shot(tester, '41-phone-details-ar', wait: 5000);
+  });
+
+  testWidgets('desktop: player with live data', (tester) async {
+    await _pump(
+      tester,
+      MemoryPreferenceStore({PreferenceKeys.language: 'en'}),
+      const Size(1280, 720),
+    );
+    await _push(tester, '/home/title/191463');
+    await _wait(tester, 4000);
+    await tester.tap(find.text('Play').first);
+    await _shot(tester, '50-desktop-player', wait: 2000);
+    // Jump about 10 minutes in (dialogue), then pause so the controls stay.
+    final bar = tester.getRect(find.byType(SeekBar));
+    await tester.tapAt(Offset(bar.left + bar.width * 0.07, bar.center.dy));
+    await _wait(tester, 4000);
+    await tester.tapAt(const Offset(640, 200));
+    await _wait(tester, 300);
+    if (find.byTooltip('Pause').evaluate().isNotEmpty) {
+      await tester.tap(find.byTooltip('Pause'));
+    }
+    await _shot(tester, '51-desktop-player-paused', wait: 1500);
   });
 }

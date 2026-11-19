@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../data/models/catalog_models.dart';
 import '../data/models/media_item.dart';
+import '../data/models/playback_request.dart';
 import '../data/paging/media_sources.dart';
 
 /// What the "See all" screen shows.
@@ -38,3 +39,8 @@ void openGenre(BuildContext context, Category genre) =>
 
 void openList(BuildContext context, MediaListArgs args) =>
     context.push('${_tabRoot(context)}/list', extra: args);
+
+/// Opens the full-screen player (outside the tabs, so the navigation bar is
+/// hidden). Back returns to the page it was opened from.
+void openPlayer(BuildContext context, PlaybackRequest request) =>
+    context.push('/watch/${request.videoId}', extra: request);

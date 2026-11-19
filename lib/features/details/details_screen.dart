@@ -16,6 +16,7 @@ import '../../app/widgets/sub_page.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/models/media_details.dart';
 import '../../data/models/media_item.dart';
+import '../../data/models/playback_request.dart';
 import 'details_providers.dart';
 import 'widgets/credits_row.dart';
 import 'widgets/episode_list.dart';
@@ -110,6 +111,10 @@ class DetailsScreen extends ConsumerWidget {
             EpisodeList(
               seriesId: item.seriesId,
               gutter: gutter,
+              onPlay: (episode) => openPlayer(
+                context,
+                PlaybackRequest(item: item, episode: episode),
+              ),
               initialSeason: args?.item.rootSeriesId != null
                   ? args?.item.season
                   : null,
@@ -187,9 +192,8 @@ class _Header extends ConsumerWidget {
       spacing: MarqueeSpace.m,
       runSpacing: MarqueeSpace.m,
       children: [
-        // Playback arrives in Phase 4.
         FilledButton.icon(
-          onPressed: null,
+          onPressed: () => openPlayer(context, PlaybackRequest(item: item)),
           icon: const Icon(Icons.play_arrow_rounded, size: 20),
           label: Text(l10n.play),
         ),

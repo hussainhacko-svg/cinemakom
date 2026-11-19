@@ -373,5 +373,77 @@
   "loading": "Loading",
   "@loading": {
     "description": "Screen-reader label of the loader"
+  },
+  "playerPause": "Pause",
+  "@playerPause": {
+    "description": "Player button"
+  },
+  "playerSeekBack": "Back 10 seconds",
+  "@playerSeekBack": {
+    "description": "Player button"
+  },
+  "playerSeekForward": "Forward 10 seconds",
+  "@playerSeekForward": {
+    "description": "Player button"
+  },
+  "playerSeekBar": "Playback position",
+  "@playerSeekBar": {
+    "description": "Accessibility label of the seek bar"
+  },
+  "playerReconnecting": "Reconnecting…",
+  "@playerReconnecting": {
+    "description": "Shown while the player gets a stream back"
+  },
+  "playerFailed": "This video couldn't be played. Check your connection and try again.",
+  "@playerFailed": {
+    "description": "The stream kept failing"
+  },
+  "playerUnavailable": "This video isn't available right now.",
+  "@playerUnavailable": {
+    "description": "The title has no streams"
+  },
+  "playerSubtitlesFailed": "Subtitles couldn't be loaded.",
+  "@playerSubtitlesFailed": {
+    "description": "The subtitle file failed; the video goes on"
+  },
+  "nextEpisode": "Next episode",
+  "@nextEpisode": {
+    "description": "Player button"
+  },
+  "subtitleStyledArabic": "Arabic (styled)",
+  "@subtitleStyledArabic": {
+    "description": "The styled (ASS) Arabic subtitle track"
+  },
+  "playerSubtitles": "Subtitles",
+  "@playerSubtitles": {
+    "description": "Player menu title"
+  },
+  "playerQuality": "Quality",
+  "@playerQuality": {
+    "description": "Player menu title"
+  },
+  "playerSpeed": "Speed",
+  "@playerSpeed": {
+    "description": "Player menu title"
+  },
+  "playerScreenFit": "Screen fit",
+  "@playerScreenFit": {
+    "description": "Player menu title"
+  },
+  "playerFit": "Fit",
+  "@playerFit": {
+    "description": "Whole frame, letterboxed"
+  },
+  "playerFill": "Fill",
+  "@playerFill": {
+    "description": "Crop to fill the screen"
+  },
+  "playerStretch": "Stretch",
+  "@playerStretch": {
+    "description": "Stretch to the screen"
+  },
+  "quality4kCaption": "4K · about 10 GB per hour",
+  "@quality4kCaption": {
+    "description": "The 2160p choice in the quality menu"
   }
 }

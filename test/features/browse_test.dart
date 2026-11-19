@@ -1,5 +1,6 @@
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
 import 'package:cinemakom/features/genre/genre_screen.dart';
@@ -62,10 +63,8 @@ void main() {
 
     testWidgets('a poster opens details inside the tab', (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.text('TENET'));
-      await tester.pumpAndSettle();
-      // Play in the hero opens the details until Phase 4.
-      await tester.tap(find.text('Play'));
+      // The hero's artwork opens the details (its Play opens the player).
+      await tester.tap(find.byType(MediaImage).first);
       await tester.pumpAndSettle();
       expect(find.byType(DetailsScreen), findsOneWidget);
       // The bottom bar stays, and back returns to Home.

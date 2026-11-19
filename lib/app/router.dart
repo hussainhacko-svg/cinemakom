@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart' show Widget;
 
 import '../core/storage/preferences.dart';
 import '../data/models/catalog_models.dart';
+import '../data/models/media_item.dart';
+import '../data/models/playback_request.dart';
 import '../features/browse/media_list_screen.dart';
 import '../features/debug/debug_screen.dart';
 import '../features/details/details_screen.dart';
@@ -13,6 +15,7 @@ import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/onboarding/language_screen.dart';
+import '../features/player/player_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import 'navigation.dart';
@@ -27,6 +30,7 @@ abstract final class AppRoutes {
   static const downloads = '/downloads';
   static const settings = '/settings';
   static const debug = '/settings/debug';
+  static const watch = '/watch';
 }
 
 /// The router. Created once; it re-runs its redirect when the first-launch
@@ -52,6 +56,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.welcome,
         builder: (_, _) => const LanguageScreen(),
+      ),
+      // Full screen, above the tabs (openPlayer). Without its request (a
+      // restored location) it plays the ID alone.
+      GoRoute(
+        path: '${AppRoutes.watch}/:id',
+        builder: (_, state) => PlayerScreen(
+          request: state.extra is PlaybackRequest
+              ? state.extra! as PlaybackRequest
+              : PlaybackRequest(
+                  item: MediaItem(id: state.pathParameters['id']!),
+                ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(navigationShell: shell),

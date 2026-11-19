@@ -11,6 +11,7 @@ import '../../../app/widgets/error_view.dart';
 import '../../../app/widgets/media_image.dart';
 import '../../../app/widgets/media_text.dart';
 import '../../../data/models/media_item.dart';
+import '../../../data/models/playback_request.dart';
 import '../home_providers.dart';
 
 /// Wide covers are about 2.7:1 (docs/API.md §Images).
@@ -274,9 +275,12 @@ class _HeroInfo extends StatelessWidget {
           Text(meta, style: text.caption),
         ],
         const SizedBox(height: MarqueeSpace.l),
-        // Playback arrives in Phase 4; until then Play opens the details.
+        // A series banner plays the episode it links to (usually the newest).
         FilledButton.icon(
-          onPressed: () => openTitle(context, item),
+          onPressed: () => openPlayer(
+            context,
+            PlaybackRequest(item: item, episodeId: item.linkedEpisodeId),
+          ),
           icon: const Icon(Icons.play_arrow_rounded, size: 20),
           label: Text(l10n.play),
           style: FilledButton.styleFrom(minimumSize: const Size(160, 48)),

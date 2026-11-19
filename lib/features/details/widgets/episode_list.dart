@@ -20,11 +20,15 @@ class EpisodeList extends ConsumerStatefulWidget {
     super.key,
     required this.seriesId,
     required this.gutter,
+    required this.onPlay,
     this.initialSeason,
   });
 
   final String seriesId;
   final double gutter;
+
+  /// Plays an episode (opens the player).
+  final ValueChanged<Episode> onPlay;
 
   /// The season to open on (the one of the episode the list showed).
   final int? initialSeason;
@@ -84,7 +88,8 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
             ),
           const SizedBox(height: MarqueeSpace.m),
           for (final e in all)
-            if (e.season == season) _EpisodeRow(episode: e),
+            if (e.season == season)
+              _EpisodeRow(episode: e, onTap: () => widget.onPlay(e)),
         ],
       );
     }
@@ -108,9 +113,10 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
 }
 
 class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode});
+  const _EpisodeRow({required this.episode, required this.onTap});
 
   final Episode episode;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -118,50 +124,56 @@ class _EpisodeRow extends StatelessWidget {
     final text = MarqueeText.of(context);
     final numbering = episode.numbering;
     final duration = episode.duration;
-    // Playback arrives in Phase 4; the rows are not tappable yet.
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(vertical: 2),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 64),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: 14,
-            vertical: 10,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 52,
-                child: Text(
-                  '${numbering.first}'.padLeft(2, '0'),
-                  style: text.numeral.copyWith(color: MarqueeColors.dustDim),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(MarqueeRadius.card),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 64),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    '${numbering.first}'.padLeft(2, '0'),
+                    style: text.numeral.copyWith(color: MarqueeColors.dustDim),
+                  ),
                 ),
-              ),
-              const SizedBox(width: MarqueeSpace.s),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            episodeLabel(l10n, numbering),
-                            style: text.label,
+                const SizedBox(width: MarqueeSpace.s),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              episodeLabel(l10n, numbering),
+                              style: text.label,
+                            ),
                           ),
-                        ),
-                        if (numbering.isFinale) ...[
-                          const SizedBox(width: MarqueeSpace.s),
-                          _Badge(l10n.finalEpisode),
+                          if (numbering.isFinale) ...[
+                            const SizedBox(width: MarqueeSpace.s),
+                            _Badge(l10n.finalEpisode),
+                          ],
                         ],
-                      ],
-                    ),
-                    if (duration != null)
-                      Text(formatDuration(l10n, duration), style: text.caption),
-                  ],
+                      ),
+                      if (duration != null)
+                        Text(
+                          formatDuration(l10n, duration),
+                          style: text.caption,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

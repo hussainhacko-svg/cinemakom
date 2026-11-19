@@ -3,7 +3,12 @@ import 'playback_models.dart';
 
 /// What the player was asked to play: a movie, or an episode of a series.
 class PlaybackRequest {
-  const PlaybackRequest({required this.item, this.episode, this.start});
+  const PlaybackRequest({
+    required this.item,
+    this.episode,
+    this.episodeId,
+    this.start,
+  });
 
   /// The movie, or any item of the series (usually its S1E1 record).
   final MediaItem item;
@@ -11,13 +16,17 @@ class PlaybackRequest {
   /// The episode to play. `null` for a movie, or to play [item] itself.
   final Episode? episode;
 
+  /// An episode known only by its ID (a banner's linked episode). The
+  /// player finds it in the series' episode list.
+  final String? episodeId;
+
   /// Where to start. `null` lets the player decide (resume, from Phase 4 M4).
   final Duration? start;
 
   /// The ID streams are loaded with: the episode's for a series.
-  String get videoId => episode?.id ?? item.id;
+  String get videoId => episode?.id ?? episodeId ?? item.id;
 
-  bool get isSeries => episode != null || item.isSeries;
+  bool get isSeries => episode != null || episodeId != null || item.isSeries;
 
   @override
   bool operator ==(Object other) =>

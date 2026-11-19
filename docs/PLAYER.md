@@ -279,7 +279,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 |---|---|---|
 | **M0** ✅ | **Spike** (`integration_test/player_spike_test.dart`, removed at M9; results in §13): play a 1080p non-fast-start movie, a 4K movie and an anime episode with headers; measure start time; hybrid subtitles (Flutter-drawn SRT plus libass ASS with the bundled font, on Android and Linux); `sub-fonts-dir` at runtime on desktop; how a 403 and a network drop look on the error/log streams; quality switch at a position; 4K on the emulator and on a real phone | The numbers and findings are written into §5 and §13 of this file, and any choice they overturn is changed here first |
 | **M1** ✅ | `PlayerEngine`, `MediaKitEngine`, `PlayerController` and `PlayerState`, no UI. `pickQuality`, subtitle choice, recovery (403 → `streams(fresh: true)`), `streams(fresh:)` in `MediaRepository` | Unit tests with `FakeEngine` cover open, quality pick, subtitle pick, 403 recovery, network-drop recovery and errors |
-| **M2** | `/watch/:id` route, `openPlayer`, the player screen with the basic controls (back, play/pause, ±10 s, seek bar, times, buffering loader, auto-hide). Play wired from Details, the hero and episode rows | A movie and an episode play from the app, on Android and Linux |
+| **M2** ✅ | `/watch/:id` route, `openPlayer`, the player screen with the basic controls (back, play/pause, ±10 s, seek bar, times, buffering loader, auto-hide). Play wired from Details, the hero and episode rows | A movie and an episode play from the app, on Android and Linux |
 | **M3** | Chip menus: subtitles (with size and delay), quality, speed, fit. Settings → Subtitle size | Every switch keeps the position and the other choices |
 | **M4** | drift `database.dart`, `watch_history`, `LibraryRepository`, saving and resume, Details' Resume button, episode progress in the rows, Home's Continue watching row | Force-stop mid-episode, relaunch, and resume within 10 s of where it stopped |
 | **M5** | Series: Next episode, the Up next card and countdown, "Still watching?", the Episodes panel | A full season plays through by itself, and switching episodes keeps the choices |
@@ -339,7 +339,10 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 2. Does a second `open()` on the same `Player` keep the picture? If not, `MediaKitEngine` creates a new `Player` per file (it's built so the controller doesn't notice).
 3. Styled ASS renders with the bundled font. 4K plays smoothly with hardware decoding.
 
-`fvm flutter test integration_test/player_spike_test.dart -d <phone>` runs these checks; the failure tests are skipped without the proxy.
+How to check (from M2 on, the app plays from Details, the hero and the episode rows):
+- `fvm flutter run -d <phone>`, then play a movie, switch quality, open an episode, and play Attack on Titan S4E3 (279230) with "Arabic (styled)".
+- `fvm flutter test integration_test/player_spike_test.dart -d <phone>` repeats the M0 measurements; the failure tests are skipped without the proxy.
+- If the picture survives a quality switch with `recreatePerFile: false`, Android can reuse one player (`MediaKitEngine`).
 
 ## 14. Risks and open questions
 

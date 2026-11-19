@@ -3,12 +3,14 @@ import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/network/api_providers.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/features/player/player_controller.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../fixture.dart';
+import '../features/player/fake_engine.dart';
 import '../repositories/fake_api_client.dart';
 
 typedef Route = (bool Function(ApiRequest), Object? Function(ApiRequest));
@@ -66,17 +68,22 @@ FakeApiClient fixtureApi([List<Route> overrides = const []]) => FakeApiClient([
         : fixture('video_info_movie'),
   ),
   FakeApiClient.fixtureAt('videoSeason/', 'series_episodes'),
+  FakeApiClient.fixtureAt('transcoddedFiles/', 'streams_movie'),
+  FakeApiClient.fixtureAt('translationFiles/', 'subtitles_movie'),
+  FakeApiClient.fixtureAt('video_thumbnails/', 'thumbnails_none'),
   FakeApiClient.fixtureAt('https://recommend', 'recommendations'),
   FakeApiClient.fixtureAt('relatedVideos/', 'related_movie'),
   FakeApiClient.fixtureAt('https://6b1m6vnfz2jk', 'service_status'),
 ]);
 
 /// Pumps the whole app at [width]×[height] dp on [store] (English chosen by
-/// default) with [api] behind every repository and no network images.
+/// default) with [api] behind every repository, no network images, and
+/// [engine] (a [FakeEngine]) instead of media_kit.
 Future<void> pumpApp(
   WidgetTester tester, {
   MemoryPreferenceStore? store,
   FakeApiClient? api,
+  FakeEngine? engine,
   double width = 390,
   double height = 844,
 }) async {
@@ -94,6 +101,9 @@ Future<void> pumpApp(
         ),
         apiClientProvider.overrideWithValue(api ?? fixtureApi()),
         networkImagesProvider.overrideWithValue(false),
+        playerEngineFactoryProvider.overrideWithValue(
+          () => engine ?? FakeEngine(),
+        ),
       ],
       child: const CinemakomApp(),
     ),

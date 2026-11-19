@@ -21,5 +21,5 @@ VideoSource? pickQuality(List<VideoSource> sources, int preferredHeight) {
 }
 
 /// What the quality chip shows: "4K" for 2160p, else "1080p".
-String qualityLabel(VideoSource source) =>
+String qualityChipLabel(VideoSource source) =>
     source.height == 2160 ? '4K' : source.label;
