@@ -31,7 +31,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.basePen import BasePen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
@@ -74,9 +74,138 @@ def kaf_path(center_x, center_y, height):
     # Font units are y-up; flip and centre the bounding box on (center_x, center_y).
     dx = center_x - (xmin + xmax) / 2 * scale
     dy = center_y + (ymin + ymax) / 2 * scale
-    pen = SVGPathPen(glyphs, ntos=lambda v: f'{v:.2f}'.rstrip('0').rstrip('.'))
+    pen = _SegmentPen(glyphs)
     glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, dx, dy)))
-    return pen.getCommands(), (xmax - xmin) * scale
+    return _to_svg(_union(pen.contours)), (xmax - xmin) * scale
+
+
+# ---- outline union -------------------------------------------------------------
+# The font draws ك as overlapping contours (fine under the font's non-zero fill).
+# The mark knocks ك out with an even-odd fill, where an overlap would flip back to
+# solid, so the contours are merged into one outline first.
+
+class _SegmentPen(BasePen):
+    """Collects each contour as segments: ('L', p0, p1) or ('Q', p0, c, p1)."""
+
+    def __init__(self, glyphs):
+        super().__init__(glyphs)
+        self.contours = []
+
+    def _moveTo(self, p):
+        self.contours.append([])
+        self._start = self._cur = p
+
+    def _lineTo(self, p):
+        if p != self._cur:
+            self.contours[-1].append(('L', self._cur, p))
+        self._cur = p
+
+    def _qCurveToOne(self, c, p):
+        self.contours[-1].append(('Q', self._cur, c, p))
+        self._cur = p
+
+    def _curveToOne(self, c1, c2, p):
+        raise ValueError('cubic outlines are not supported')
+
+    def _closePath(self):
+        self._lineTo(self._start)
+
+    _endPath = _closePath
+
+
+def _flatten(seg, n=16):
+    if seg[0] == 'L':
+        (x0, y0), (x1, y1) = seg[1], seg[2]
+        return [(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n) for i in range(n + 1)]
+    _, p0, c, p1 = seg
+    return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * c[0] + t * t * p1[0],
+             (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * c[1] + t * t * p1[1])
+            for t in (i / n for i in range(n + 1))]
+
+
+def _cross(a0, a1, b0, b1):
+    """Parameters (t, u) where segment a0–a1 meets b0–b1, or None."""
+    rx, ry = a1[0] - a0[0], a1[1] - a0[1]
+    sx, sy = b1[0] - b0[0], b1[1] - b0[1]
+    den = rx * sy - ry * sx
+    if abs(den) < 1e-12:
+        return None
+    qx, qy = b0[0] - a0[0], b0[1] - a0[1]
+    t, u = (qx * sy - qy * sx) / den, (qx * ry - qy * rx) / den
+    return (t, u) if 1e-9 < t < 1 - 1e-9 and 1e-9 < u < 1 - 1e-9 else None
+
+
+def _inside(p, contour):
+    poly = [q for seg in contour for q in _flatten(seg, 1 if seg[0] == 'L' else 16)[:-1]]
+    hit = False
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        if (y0 > p[1]) != (y1 > p[1]) and p[0] < x0 + (p[1] - y0) * (x1 - x0) / (y1 - y0):
+            hit = not hit
+    return hit
+
+
+def _union(contours):
+    """Merges outer contours (no holes) whose crossings are all on straight edges."""
+    cuts = [[[] for _ in c] for c in contours]  # (t, point) splits per segment
+    for i, ci in enumerate(contours):
+        for j in range(i + 1, len(contours)):
+            for a, sa in enumerate(ci):
+                for b, sb in enumerate(contours[j]):
+                    pa, pb = _flatten(sa, 1 if sa[0] == 'L' else 16), _flatten(sb, 1 if sb[0] == 'L' else 16)
+                    for k in range(len(pa) - 1):
+                        for m in range(len(pb) - 1):
+                            hit = _cross(pa[k], pa[k + 1], pb[m], pb[m + 1])
+                            if not hit:
+                                continue
+                            if sa[0] != 'L' or sb[0] != 'L':
+                                raise ValueError('ك contours cross on a curve; '
+                                                 'extend _union to split curves')
+                            t, u = hit
+                            p = (sa[1][0] + t * (sa[2][0] - sa[1][0]),
+                                 sa[1][1] + t * (sa[2][1] - sa[1][1]))
+                            cuts[i][a].append((t, p))
+                            cuts[j][b].append((u, p))
+    # Split at the crossings, keep the pieces outside every other contour.
+    kept = []
+    for i, contour in enumerate(contours):
+        for seg, seg_cuts in zip(contour, cuts[i]):
+            if seg[0] == 'Q':
+                pieces = [seg]
+            else:
+                pts = [seg[1], *(p for _, p in sorted(seg_cuts)), seg[2]]
+                pieces = [('L', a, b) for a, b in zip(pts, pts[1:])]
+            for piece in pieces:
+                mid = _flatten(piece, 2)[1]
+                if not any(_inside(mid, other)
+                           for j, other in enumerate(contours) if j != i):
+                    kept.append(piece)
+    # Chain the pieces back into closed loops.
+    key = lambda p: (round(p[0], 6), round(p[1], 6))
+    starts = {key(seg[1]): seg for seg in kept}
+    loops = []
+    while starts:
+        first = next(iter(starts))
+        loop, at = [], first
+        while True:
+            seg = starts.pop(at)
+            loop.append(seg)
+            at = key(seg[-1])
+            if at == first:
+                break
+        loops.append(loop)
+    return loops
+
+
+def _to_svg(contours):
+    n = lambda v: f'{v:.2f}'.rstrip('0').rstrip('.')
+    pt = lambda p: f'{n(p[0])} {n(p[1])}'
+    out = []
+    for contour in contours:
+        out.append(f'M{pt(contour[0][1])}')
+        for seg in contour[:-1] if contour[-1][0] == 'L' else contour:
+            out.append(f'L{pt(seg[2])}' if seg[0] == 'L' else f'Q{pt(seg[2])} {pt(seg[3])}')
+        out.append('Z')
+    return ''.join(out)
 
 
 KAF_FULL, KAF_FULL_W = kaf_path(39.5, 50, 28)
