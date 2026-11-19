@@ -7,6 +7,10 @@ abstract final class MarqueeColors {
   /// App background.
   static const night = Color(0xFF15100C);
 
+  /// The player's backdrop behind the video (letterbox bars): true black,
+  /// so the bars vanish on OLED screens.
+  static const screen = Color(0xFF000000);
+
   /// Surfaces: panels, sheets, cards, search field.
   static const booth = Color(0xFF221A14);
 

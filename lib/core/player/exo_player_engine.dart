@@ -12,7 +12,11 @@ import 'player_engine.dart';
 /// Why Android doesn't use mpv: media_kit copies every decoded frame back
 /// to memory and draws it into a Flutter texture, and 4K stuttered on a
 /// real phone even with frame dropping off (PLAYER.md §13). ExoPlayer
-/// decodes onto a SurfaceView, the way native Android players do.
+/// decodes in hardware into a texture with no copy back to memory.
+///
+/// Texture, not the SurfaceView platform view: with Flutter's platform
+/// views the SurfaceView is drawn above every Flutter widget, so the
+/// controls only showed on the letterbox bars.
 ///
 /// Subtitles: plain SRT/VTT files are downloaded with [loadText] (the
 /// shared headers), parsed here and sent as text for the Flutter layer.
@@ -94,7 +98,7 @@ class ExoPlayerEngine implements PlayerEngine {
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(source.uri),
       httpHeaders: source.headers,
-      viewType: VideoViewType.platformView,
+      viewType: VideoViewType.textureView,
     );
     try {
       await controller.initialize();

@@ -13,6 +13,7 @@ Visual reference: the [design canvas](https://claude.ai/artifact/XEb3j3VhiknZVEp
 | Token | Hex | Use |
 |---|---|---|
 | `night` | `#15100C` | App background |
+| `screen` | `#000000` | The player's backdrop behind the video (true black for OLED letterbox bars) |
 | `booth` | `#221A14` | Surfaces: panels, sheets, cards, search field |
 | `boothRaised` | `#2C221A` | Selected or hovered rows, pressed surfaces |
 | `navBar` | `#1B1510` | Bottom bar and rail |

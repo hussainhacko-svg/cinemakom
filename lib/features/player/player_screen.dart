@@ -322,7 +322,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final failed = phase == PlayerPhase.failed;
 
     return Scaffold(
-      backgroundColor: MarqueeColors.night,
+      backgroundColor: MarqueeColors.screen,
       body: CallbackShortcuts(
         bindings: _shortcuts,
         child: Focus(
