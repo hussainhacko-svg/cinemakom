@@ -1,5 +1,6 @@
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/app/shell/app_shell.dart';
 import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/app/widgets/media_row.dart';
 import 'package:cinemakom/app/widgets/poster_card.dart';
@@ -111,8 +112,8 @@ void main() {
       useAndroidTv();
       await pumpApp(tester, width: 960, height: 540);
 
-      // Compact NavigationRail with Downloads tab still visible.
-      expect(find.byType(NavigationRail), findsOneWidget);
+      // TV side rail with Downloads tab still visible.
+      expect(find.byType(TvNavRail), findsOneWidget);
       expect(find.text('Downloads'), findsOneWidget);
 
       await tester.tap(find.text('Settings'));
@@ -232,6 +233,145 @@ void main() {
       await tester.pump();
       expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
     });
+
+    testWidgets(
+      'TV nav rail: D-pad Left enters rail, Select on Home moves focus into Home, tab switching enters content',
+      (tester) async {
+        useAndroidTv();
+        await pumpApp(tester, width: 960, height: 540);
+
+        bool focusInRail() =>
+            FocusManager.instance.primaryFocus?.debugLabel?.startsWith(
+              'tvNavDest_',
+            ) ??
+            false;
+
+        // Initial TV launch focuses Home Hero's Play button, not the nav rail.
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          tvPrimaryFocusLabel,
+        );
+        expect(focusInRail(), isFalse);
+
+        // From Home Hero Play: Left -> HeroCover, Left -> TV nav rail (Home).
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(focusInRail(), isFalse);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_0');
+
+        // Pressing Select on the Home nav button moves focus back onto Home
+        // instead of staying stuck on the nav Home button.
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pumpAndSettle();
+        expect(focusInRail(), isFalse);
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          tvPrimaryFocusLabel,
+        );
+
+        // Move focus to the first poster card, press Left to enter rail, then
+        // Right to restore focus right back to that exact poster card.
+        final firstPosterNode = FocusManager.instance.rootScope.descendants
+            .firstWhere(
+              (n) =>
+                  n.canRequestFocus &&
+                  n.context?.findAncestorWidgetOfExactType<PosterCard>() !=
+                      null,
+            );
+        firstPosterNode.requestFocus();
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus, firstPosterNode);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_0');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus, firstPosterNode);
+
+        // Enter rail via Left, step Down to Search, press Select -> switches
+        // to Search and focuses the Search box.
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_1');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'searchBox');
+
+        // Left from Search box returns to rail on Search; Down×2 to Downloads
+        // (empty) keeps focus cleanly on Downloads rail item.
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_1');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_3');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_3');
+
+        // Down to Settings, Right switches to Settings and focuses its first row.
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_4');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+        expect(focusInRail(), isFalse);
+        expect(find.text('Language'), findsOneWidget);
+
+        // Back from Settings content focuses Settings in rail; Back again
+        // returns to Home in the rail.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_4');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_0');
+      },
+    );
+
+    testWidgets(
+      'TV nav rail: Select on Home from a pushed subpage pops to Home and focuses content',
+      (tester) async {
+        useAndroidTv();
+        await pumpApp(tester, width: 960, height: 540);
+
+        ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+            .read(routerProvider)
+            .push('/home/title/3119279');
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeHero), findsNothing);
+
+        // Move focus to the rail Home item and press Select -> pops Details
+        // back to Home root and moves focus into Home.
+        final railHome = FocusManager.instance.rootScope.descendants.firstWhere(
+          (n) => n.debugLabel == 'tvNavDest_0',
+        );
+        railHome.requestFocus();
+        await tester.pump();
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeHero), findsOneWidget);
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          tvPrimaryFocusLabel,
+        );
+      },
+    );
   });
 
   group('Android TV player remote controls', () {
@@ -390,7 +530,27 @@ void main() {
         height: 540,
       );
 
-      expect(directionAt(tester, find.byType(NavigationRail)), TextDirection.rtl);
+      expect(directionAt(tester, find.byType(TvNavRail)), TextDirection.rtl);
+
+      // In Arabic RTL the rail is on the right edge: Right from Home start
+      // edge enters the rail, and Left returns focus into Home.
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        tvPrimaryFocusLabel,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvNavDest_0');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot('tvNavDest_0'),
+      );
+
 
       await openTvEpisode(tester);
       engine.emitReady();

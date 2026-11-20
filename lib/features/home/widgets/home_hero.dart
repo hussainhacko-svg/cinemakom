@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/navigation.dart';
+import '../../../app/shell/app_shell.dart' show tvPrimaryFocusLabel;
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../app/widgets/error_view.dart';
@@ -74,6 +75,28 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
   bool _held = false;
   bool _shown = true;
   bool _still = false;
+  bool _initialTvFocusRequested = false;
+  final Map<int, FocusNode> _playNodes = {};
+
+  FocusNode _playNodeFor(int i) => _playNodes.putIfAbsent(
+    i,
+    () => FocusNode(debugLabel: tvPrimaryFocusLabel),
+  );
+
+  void _maybeRequestInitialTvFocus(int count) {
+    if (!isTv || _initialTvFocusRequested || count == 0 || !_shown) return;
+    _initialTvFocusRequested = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_shown) return;
+      final primary = FocusManager.instance.primaryFocus;
+      // Only claim initial focus if nothing concrete is focused yet (never
+      // steal focus from the TV nav rail or another widget).
+      if (primary == null || primary is FocusScopeNode) {
+        final safe = _index.clamp(0, count - 1);
+        _playNodeFor(safe).requestFocus();
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -98,6 +121,9 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
   void dispose() {
     _timer?.cancel();
     _pages.dispose();
+    for (final node in _playNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -173,6 +199,7 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
         if (items.isEmpty && !banners.isLoading) {
           return const SizedBox.shrink();
         }
+        _maybeRequestInitialTvFocus(items.length);
         final index = items.isEmpty ? 0 : _index.clamp(0, items.length - 1);
         // On Android TV (960×540 dp logical), keep the hero side-by-side so
         // the first poster row stays visible below the fold (docs/ANDROID_TV.md).
@@ -205,7 +232,10 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
                         ? Duration.zero
                         : const Duration(milliseconds: 300),
                     curve: i == index ? _fadeIn : _fadeOut,
-                    child: _HeroInfo(item: items[i]),
+                    child: _HeroInfo(
+                      item: items[i],
+                      playFocusNode: isTv ? _playNodeFor(i) : null,
+                    ),
                   ),
                 ),
               ),
@@ -529,9 +559,10 @@ class _BulbPager extends StatelessWidget {
 }
 
 class _HeroInfo extends StatelessWidget {
-  const _HeroInfo({required this.item});
+  const _HeroInfo({required this.item, this.playFocusNode});
 
   final MediaItem item;
+  final FocusNode? playFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -567,6 +598,7 @@ class _HeroInfo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             FilledButton.icon(
+              focusNode: playFocusNode,
               onPressed: () => openPlayer(
                 context,
                 PlaybackRequest(item: item, episodeId: item.linkedEpisodeId),
