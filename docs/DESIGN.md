@@ -98,7 +98,7 @@ Use it sparingly. It is never a divider between every section.
 
 ## 6. Performance rules
 - **Image sizes:**
-  - **Lists** use `imgMediumThumbObjUrl` (293 × 439, ~40 KB).
+  - **Lists** use `imgMediumThumbObjUrl` (293 × 439, ~40 KB). *Android TV is the exception: its cards swap in the original once they're on screen, so posters stay sharp on 4K panels (`docs/TV.md` §9.1).*
   - **Details** use `imgObjUrl` (2000 × 3000, ~1.5 MB) **only** with `memCacheWidth` = displayed width × device pixel ratio.
   - **The hero** uses the banner cover, decoded at screen width × device pixel ratio.
 - **No** `BackdropFilter`, shadows, `Opacity` animations over images, or `saveLayer` effects. Round images with `ClipRRect` only where needed, and everything else with `BoxDecoration.borderRadius`.

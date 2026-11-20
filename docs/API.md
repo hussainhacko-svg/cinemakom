@@ -190,7 +190,7 @@ A series has **no separate record**. It is represented by its **first episode (S
 - **Posters** are portrait, from `cnth2…/vascin-poster-images/{uuid}_poster.{jpg|png|webp|jpeg|jfif}`:
   - `imgThumbObjUrl`: 100 px wide (`…_poster_thumb.*`). Use for tiny placeholders.
   - `imgMediumThumbObjUrl`: **293 px wide**, height varies (366–443; usually 439, so not always 2:3). Use for cards and grids.
-  - `imgObjUrl`: the original upload, **anywhere from 253×383 (20 KB) to 2000×3000 (2.5 MB, sometimes PNG)**. Details and hero only, decoded at display size (`cacheWidth`). Never in lists.
+  - `imgObjUrl`: the original upload, **anywhere from 253×383 (20 KB) to 2000×3000 (2.5 MB, sometimes PNG)**. Details and hero only, decoded at display size (`cacheWidth`). Never in lists, except the Android TV UI, which swaps it in for cards on screen (`docs/TV.md` §9.1).
 - **Banner covers:** `banner` items have a **wide** `imgObjUrl` (`vascin-cover-images/…_cover.jpg`, 1350×500, 3544×1313, 3881×1437 or 4050×1500, about 2.7:1, 170–420 KB). It is the only landscape artwork the API offers; there are no other backdrops. Their `imgMediumThumbObjUrl` is a **relative path** to the 293-wide portrait poster: resolve it against `https://cnth2.shabakaty.com/` (`resolveImageUrl`). `img`, `imgThumb` and `imgMediumThumb` are bare file names: ignore them.
 - **Staff photos:** `staff_img` / `staff_img_medium_thumb` are 293 wide, `staff_img_thumb` 100 wide. 24% are `null`, and 17% are `defaultImages/not_available.jpg`, which answers 503.
 - **Placeholders** must be rejected wherever an image is read (`isPlaceholderImage`). They are:
