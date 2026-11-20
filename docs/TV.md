@@ -35,8 +35,8 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 
 **Open (decide while building, recommended choice first):**
 - **Search keyboard:** the system keyboard (Gboard for TV, which has Arabic and voice) opened by OK on the search box. If it misbehaves on the TCL (it can hold the D-pad, or cover the results), build an in-app letter grid like YouTube TV. Decide in TV-5 after trying it on the TV.
-- **Back on the Home tab bar:** exit the app straight away (Google TV apps do), or ask "Press Back again to exit". Recommended: exit straight away.
-- **Skip intro while the controls are hidden:** it takes the focus when it appears, so OK skips (Netflix does this). The catch: someone pressing OK to pause skips the intro instead. Recommended: take the focus, because the button says what OK will do.
+- ~~**Back on the Home tab bar**~~ *Decided (TV-2): exit straight away, as Google TV apps do.*
+- **Skip intro while the controls are hidden** (decide in TV-4): it takes the focus when it appears, so OK skips (Netflix does this). The catch: someone pressing OK to pause skips the intro instead. Recommended: take the focus, because the button says what OK will do.
 
 ## 3. What exists today
 
@@ -47,7 +47,7 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 - `lib/core/platform/platform_info.dart`: `initPlatformInfo()` (awaited in `main`), `isTv`, `isTouchMobile`, `debugIsTvOverride`.
 - `setBrowseOrientation` / `setPlayerOrientation` do nothing on TV. Settings hides Screen rotation, and downloads don't ask for the notification permission.
 
-Until TV-2 ships, a TV shows the normal tablet layout (navigation rail), which is usable only in parts.
+*Status (2026-11-20):* TV-0 to TV-3 are done and checked on the TCL: the tab shell, Home, genre pages and See all, Details with episodes, the person page and downloads. The player (`/watch`) and the Search, Library, Downloads and Settings tabs are still "coming soon" pages (`TvPendingScreen`) until TV-4 and TV-5.
 
 **Problems in the groundwork, fixed in TV-0** *(code done 2026-11-20: `TvActivity`, no display-mode request on TV, the lockup banner)*:
 - The manifest now says `screenOrientation="unspecified"` and `MainActivity` asks for portrait in `onCreate`. The system's starting window comes before `onCreate`, so a phone held sideways shows the splash in landscape and then flips. That's what the manifest's `portrait` was there to prevent (AGENTS.md).
@@ -237,7 +237,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - **The split:** moving onto a season shows its episodes (no OK needed); Right goes to the episodes at the remembered one (else the one playing or watched last); Left from an episode's play cell goes back to the selected season. Down from the last episode or the last season goes to Cast and crew; Up from the first goes to the actions.
 - **Long seasons** (more than 50 episodes): the blocks of 50 are entries in the seasons column, under their season ("Season 1", then "1–50", "51–100", …). A one-season show like One Piece lists only the blocks. The column scrolls on its own.
 - Genres are part of the meta line, not focusable (one less zone). The IMDb link isn't shown: TVs have no browser.
-- Movies: Download in the actions row. Series: Download in the actions row means **Download season**; each episode has its own button.
+- Movies: Download in the actions row. Series: **Download season 3** is the first row of the episodes pane (TV-3, after the TCL check); each episode has its own button.
 - Trailer opens the YouTube app on the TV (`url_launcher` with the YouTube TV intent). If no app can take it, the button isn't shown.
 - Initial focus: Play/Resume. Opening from Continue watching opens on that episode's season and block.
 - *Built (TV-3):* `lib/tv/screens/details`. The episode selection (season, blocks of 50, the anchor episode) is `episode_view.dart` and the Play/Resume target `play_target.dart`, both shared with the phone. The two panes are 360 dp tall and scroll by themselves; their zones align the whole split under the EPISODES heading (`TvZone(pageWhole: true)`). A series downloads a season from its episodes pane: "Download season 3" is the pane's first row, one Up from the first episode (in the actions row it could only be reached by going up through the seasons, which picked Season 1; found on the TCL). The panes leave 8 dp beside their lists for the focus ring, which the lists clip. Cast photos are 96 dp circles that grow on focus; a person opens `lib/tv/screens/person` (photo, name, role · count, a 6-column grid).
