@@ -1,0 +1,255 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label for manual test builds (does not create a GitHub Release)'
+        required: false
+        default: 'v0.0.0-dev'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Extract clean semver for --build-name (Apple CFBundleShortVersionString
+  # requires digits and dots only) and keep the full tag for artifact names.
+  TAG_NAME: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.version || 'v0.0.0-dev' }}
+
+jobs:
+  verify:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux native-asset build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev libx11-dev libxi-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Build Android (APKs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          raw="${TAG_NAME#v}"
+          echo "name=${raw%%-*}" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - run: flutter pub get
+      - run: >-
+          flutter build apk --release --split-per-abi
+          --build-name="${{ steps.ver.outputs.name }}"
+          --build-number="${{ steps.ver.outputs.number }}"
+      - name: Stage APKs
+        shell: bash
+        run: |
+          mkdir -p dist
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            cp "build/app/outputs/flutter-apk/app-${abi}-release.apk" \
+              "dist/cinemakom-${TAG_NAME}-android-${abi}.apk"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Build Linux (x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev \
+            libmpv-dev mpv \
+            libasound2-dev libpulse-dev \
+            libx11-dev libxrandr-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          raw="${TAG_NAME#v}"
+          echo "name=${raw%%-*}" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - run: flutter pub get
+      - run: >-
+          flutter build linux --release
+          --build-name="${{ steps.ver.outputs.name }}"
+          --build-number="${{ steps.ver.outputs.number }}"
+      - name: Package tarball
+        shell: bash
+        run: |
+          mkdir -p dist staging/cinemakom
+          cp -a build/linux/x64/release/bundle/. staging/cinemakom/
+          cp -a linux/packaging staging/cinemakom/packaging
+          tar -czf "dist/cinemakom-${TAG_NAME}-linux-x64.tar.gz" -C staging cinemakom
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - name: Compute build version
+        id: ver
+        shell: pwsh
+        run: |
+          $raw = $env:TAG_NAME -replace '^v', ''
+          $name = ($raw -split '-')[0]
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "number=$env:GITHUB_RUN_NUMBER" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      - run: flutter pub get
+      - run: >-
+          flutter build windows --release
+          --build-name="${{ steps.ver.outputs.name }}"
+          --build-number="${{ steps.ver.outputs.number }}"
+      - name: Package zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive `
+            -Path "build/windows/x64/runner/Release/*" `
+            -DestinationPath "dist/cinemakom-$($env:TAG_NAME)-windows-x64.zip" `
+            -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS (DMG)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          raw="${TAG_NAME#v}"
+          echo "name=${raw%%-*}" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - run: flutter pub get
+      - run: >-
+          flutter build macos --release
+          --build-name="${{ steps.ver.outputs.name }}"
+          --build-number="${{ steps.ver.outputs.number }}"
+      - name: Package DMG
+        shell: bash
+        run: |
+          mkdir -p dist dmg-staging
+          cp -R build/macos/Build/Products/Release/Cinemakom.app dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          hdiutil create \
+            -volname "Cinemakom" \
+            -srcfolder dmg-staging \
+            -ov -format UDZO \
+            "dist/cinemakom-${TAG_NAME}-macos.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/*
+          if-no-files-found: error
+
+  ios:
+    name: Build iOS (unsigned IPA)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          raw="${TAG_NAME#v}"
+          echo "name=${raw%%-*}" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - run: flutter pub get
+      - run: >-
+          flutter build ios --release --no-codesign
+          --build-name="${{ steps.ver.outputs.name }}"
+          --build-number="${{ steps.ver.outputs.number }}"
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          mkdir -p dist Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qr "dist/cinemakom-${TAG_NAME}-ios-unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-ios
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [verify, android, linux, windows, macos, ios]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
