@@ -49,6 +49,19 @@ ThemeData buildMarqueeTheme({required bool arabic}) {
     borderRadius: BorderRadius.all(MarqueeRadius.panel),
   );
 
+  // Crisp 2 px focus ring on every button across desktop and Android TV
+  // (DESIGN.md §5, docs/ANDROID_TV.md).
+  ButtonStyle focusRing(ButtonStyle style, {Color color = MarqueeColors.bulb}) {
+    final rest = style.side;
+    return style.copyWith(
+      side: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.focused)
+            ? BorderSide(color: color, width: 2)
+            : rest?.resolve(states),
+      ),
+    );
+  }
+
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
@@ -106,39 +119,49 @@ ThemeData buildMarqueeTheme({required bool arabic}) {
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: MarqueeColors.bulb,
-        foregroundColor: MarqueeColors.onBulb,
-        disabledBackgroundColor: MarqueeColors.velvet,
-        disabledForegroundColor: MarqueeColors.dustDim,
-        minimumSize: const Size(64, 48),
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: 20),
-        shape: pill,
-        textStyle: text.label,
+      style: focusRing(
+        FilledButton.styleFrom(
+          backgroundColor: MarqueeColors.bulb,
+          foregroundColor: MarqueeColors.onBulb,
+          disabledBackgroundColor: MarqueeColors.velvet,
+          disabledForegroundColor: MarqueeColors.dustDim,
+          minimumSize: const Size(64, 48),
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: 20),
+          shape: pill,
+          textStyle: text.label,
+        ),
+        // Bulb fill needs a contrasting cream ring so focus stands out from 10 ft.
+        color: MarqueeColors.cream,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: MarqueeColors.cream,
-        side: const BorderSide(color: MarqueeColors.velvetStrong),
-        minimumSize: const Size(64, 44),
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
-        shape: pill,
-        textStyle: text.label.withWeight(FontWeight.w500),
+      style: focusRing(
+        OutlinedButton.styleFrom(
+          foregroundColor: MarqueeColors.cream,
+          side: const BorderSide(color: MarqueeColors.velvetStrong),
+          minimumSize: const Size(64, 44),
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
+          shape: pill,
+          textStyle: text.label.withWeight(FontWeight.w500),
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: MarqueeColors.bulb,
-        minimumSize: const Size(44, 44),
-        textStyle: text.label.withWeight(FontWeight.w500),
+      style: focusRing(
+        TextButton.styleFrom(
+          foregroundColor: MarqueeColors.bulb,
+          minimumSize: const Size(44, 44),
+          textStyle: text.label.withWeight(FontWeight.w500),
+        ),
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(
-        foregroundColor: MarqueeColors.cream,
-        minimumSize: const Size(44, 44),
-        iconSize: 18,
+      style: focusRing(
+        IconButton.styleFrom(
+          foregroundColor: MarqueeColors.cream,
+          minimumSize: const Size(44, 44),
+          iconSize: 18,
+        ),
       ),
     ),
     iconTheme: const IconThemeData(color: MarqueeColors.cream, size: 22),

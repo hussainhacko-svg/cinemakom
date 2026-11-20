@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -14,6 +15,7 @@ import '../../app/widgets/media_text.dart';
 import '../../app/widgets/paged_grid.dart';
 import '../../app/widgets/section_header.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/platform/platform_info.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/paging/media_sources.dart';
 import 'search_history.dart';
@@ -33,15 +35,48 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _field = TextEditingController();
+  final _boxFocus = FocusNode(debugLabel: 'searchBox');
+  final _inputFocus = FocusNode(debugLabel: 'searchInput');
   Timer? _debounce;
   String _query = '';
   VideoKind? _kind;
+
+  /// On Android TV, D-pad focuses the search box without immediately opening
+  /// the virtual keyboard; pressing OK/Select enters editing mode.
+  bool _tvEditing = false;
+  bool _boxFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _inputFocus.addListener(() {
+      if (!_inputFocus.hasFocus && _tvEditing && mounted) {
+        setState(() => _tvEditing = false);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _field.dispose();
+    _boxFocus.dispose();
+    _inputFocus.dispose();
     super.dispose();
+  }
+
+  void _enterTvEdit() {
+    if (_tvEditing) return;
+    setState(() => _tvEditing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _tvEditing) _inputFocus.requestFocus();
+    });
+  }
+
+  void _exitTvEdit() {
+    if (!_tvEditing) return;
+    setState(() => _tvEditing = false);
+    _boxFocus.requestFocus();
   }
 
   void _onChanged(String value) {
@@ -112,31 +147,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                     ),
                     const SizedBox(height: MarqueeSpace.m),
-                    TextField(
-                      controller: _field,
-                      onChanged: _onChanged,
-                      onSubmitted: _remember,
-                      textInputAction: TextInputAction.search,
-                      style: text.body.copyWith(color: MarqueeColors.cream),
-                      decoration: InputDecoration(
-                        hintText: l10n.searchHint,
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: MarqueeColors.dust,
-                          size: 20,
-                        ),
-                        suffixIcon: _field.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: l10n.clearSearch,
-                                onPressed: _clear,
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: MarqueeColors.dust,
-                                ),
-                              ),
-                      ),
-                    ),
+                    _buildSearchField(l10n, text),
                     const SizedBox(height: MarqueeSpace.m),
                     Wrap(
                       spacing: MarqueeSpace.s,
@@ -187,11 +198,80 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
+  Widget _buildSearchField(AppLocalizations l10n, MarqueeText text) {
+    final field = TextField(
+      controller: _field,
+      focusNode: isTv ? _inputFocus : null,
+      readOnly: isTv && !_tvEditing,
+      onChanged: _onChanged,
+      onSubmitted: (value) {
+        _remember(value);
+        if (isTv) _exitTvEdit();
+      },
+      textInputAction: TextInputAction.search,
+      style: text.body.copyWith(color: MarqueeColors.cream),
+      decoration: InputDecoration(
+        hintText: l10n.searchHint,
+        prefixIcon: const Icon(
+          Icons.search,
+          color: MarqueeColors.dust,
+          size: 20,
+        ),
+        suffixIcon: _field.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: l10n.clearSearch,
+                onPressed: _clear,
+                icon: const Icon(Icons.close, color: MarqueeColors.dust),
+              ),
+      ),
+    );
+    if (!isTv) return field;
+    // On TV, wrap the field so D-pad can pass across it without popping the
+    // on-screen keyboard or trapping arrow keys in the cursor.
+    return Focus(
+      focusNode: _boxFocus,
+      onFocusChange: (f) => setState(() => _boxFocused = f),
+      onKeyEvent: (_, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        if (!_tvEditing &&
+            (key == LogicalKeyboardKey.select ||
+                key == LogicalKeyboardKey.enter)) {
+          _enterTvEdit();
+          return KeyEventResult.handled;
+        }
+        if (_tvEditing &&
+            (key == LogicalKeyboardKey.goBack ||
+                key == LogicalKeyboardKey.escape)) {
+          _exitTvEdit();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.all(Radius.circular(22)),
+          border: _boxFocused && !_tvEditing
+              ? Border.all(color: MarqueeColors.bulb, width: 2)
+              : null,
+        ),
+        child: ExcludeFocus(
+          excluding: !_tvEditing,
+          child: GestureDetector(
+            onTap: _enterTvEdit,
+            child: field,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Recent searches, newest first: a tap searches again, ✕ removes one,
   /// and "Clear all" removes every one. Nothing shows when there are none.
   List<Widget> _recentSearches(BuildContext context, double gutter) {
     final l10n = AppLocalizations.of(context);
-    final text = MarqueeText.of(context);
     final history = ref.watch(searchHistoryProvider);
     final notifier = ref.read(searchHistoryProvider.notifier);
     if (history.isEmpty) return const [];
@@ -215,39 +295,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
             for (final query in history)
-              InkWell(
+              _RecentSearchRow(
+                query: query,
                 onTap: () => _searchAgain(query),
-                borderRadius: const BorderRadius.all(MarqueeRadius.card),
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 4),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.history,
-                        size: 20,
-                        color: MarqueeColors.dust,
-                      ),
-                      const SizedBox(width: MarqueeSpace.m),
-                      Expanded(
-                        child: Text(
-                          query,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.body.copyWith(color: MarqueeColors.cream),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: l10n.removeSearch(query),
-                        onPressed: () => notifier.remove(query),
-                        icon: const Icon(
-                          Icons.close,
-                          size: 18,
-                          color: MarqueeColors.dust,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                onRemove: () => notifier.remove(query),
               ),
           ],
         ),
@@ -257,7 +308,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   List<Widget> _genreGrid(BuildContext context, double gutter) {
     final l10n = AppLocalizations.of(context);
-    final text = MarqueeText.of(context);
     final arabic = context.isArabicUi;
     final genres = ref.watch(genresProvider);
     final list = genres.value ?? const <Category>[];
@@ -296,43 +346,137 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               mainAxisSpacing: 10,
             ),
             itemCount: list.length,
-            itemBuilder: (context, i) => Material(
-              color: MarqueeColors.booth,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(MarqueeRadius.card),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => openGenre(context, list[i]),
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.symmetric(
-                    horizontal: 14,
-                  ),
-                  child: Row(
-                    children: [
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: MarqueeColors.velvetStrong,
-                          shape: BoxShape.circle,
-                        ),
-                        child: SizedBox.square(dimension: 6),
-                      ),
-                      const SizedBox(width: MarqueeSpace.m),
-                      Expanded(
-                        child: Text(
-                          list[i].name.resolve(arabic: arabic) ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.label.copyWith(fontSize: 15),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            itemBuilder: (context, i) => _GenreTile(
+              label: list[i].name.resolve(arabic: arabic) ?? '',
+              onTap: () => openGenre(context, list[i]),
             ),
           ),
         ),
     ];
+  }
+}
+
+class _RecentSearchRow extends StatefulWidget {
+  const _RecentSearchRow({
+    required this.query,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final String query;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  State<_RecentSearchRow> createState() => _RecentSearchRowState();
+}
+
+class _RecentSearchRowState extends State<_RecentSearchRow> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = MarqueeText.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _focused ? MarqueeColors.boothRaised : null,
+        borderRadius: const BorderRadius.all(MarqueeRadius.card),
+        border: _focused
+            ? Border.all(color: MarqueeColors.bulb, width: 2)
+            : null,
+      ),
+      child: InkWell(
+        onTap: widget.onTap,
+        onFocusChange: (f) => setState(() => _focused = f),
+        focusColor: Colors.transparent,
+        borderRadius: const BorderRadius.all(MarqueeRadius.card),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.history, size: 20, color: MarqueeColors.dust),
+              const SizedBox(width: MarqueeSpace.m),
+              Expanded(
+                child: Text(
+                  widget.query,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.body.copyWith(color: MarqueeColors.cream),
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.removeSearch(widget.query),
+                onPressed: widget.onRemove,
+                icon: const Icon(
+                  Icons.close,
+                  size: 18,
+                  color: MarqueeColors.dust,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GenreTile extends StatefulWidget {
+  const _GenreTile({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_GenreTile> createState() => _GenreTileState();
+}
+
+class _GenreTileState extends State<_GenreTile> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = MarqueeText.of(context);
+    return Material(
+      color: _focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.all(MarqueeRadius.card),
+        side: _focused
+            ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+            : BorderSide.none,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        onFocusChange: (f) => setState(() => _focused = f),
+        focusColor: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _focused
+                      ? MarqueeColors.bulb
+                      : MarqueeColors.velvetStrong,
+                  shape: BoxShape.circle,
+                ),
+                child: const SizedBox.square(dimension: 6),
+              ),
+              const SizedBox(width: MarqueeSpace.m),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.label.copyWith(fontSize: 15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

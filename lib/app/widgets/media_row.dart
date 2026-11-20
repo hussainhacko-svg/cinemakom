@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/platform/platform_info.dart';
 import '../../data/models/media_item.dart';
 import '../../data/paging/media_sources.dart';
 import '../../data/paging/paged_media.dart';
+import '../l10n/app_localizations.dart';
 import '../navigation.dart';
 import '../shell/app_shell.dart';
 import '../theme/marquee_colors.dart';
+import '../theme/marquee_text.dart';
 import 'error_view.dart';
 import 'poster_card.dart';
 import 'section_header.dart';
@@ -61,17 +64,23 @@ class MediaRow extends StatelessWidget {
       );
     } else {
       final placeholders = items.isEmpty;
+      // On TV, put "See all" at the end of the row so D-pad Down moves
+      // straight from poster row to poster row instead of snagging on the
+      // header link (docs/ANDROID_TV.md).
+      final tvSeeAll = isTv && !placeholders && onSeeAll != null;
       body = SizedBox(
         height: height,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
-          itemCount: placeholders ? 6 : items.length,
+          itemCount: placeholders ? 6 : items.length + (tvSeeAll ? 1 : 0),
           separatorBuilder: (_, _) => const SizedBox(width: MarqueeSpace.m),
           itemBuilder: (context, i) => SizedBox(
             width: width,
             child: placeholders
                 ? const _PosterPlaceholder()
+                : tvSeeAll && i == items.length
+                ? _SeeAllCard(onTap: onSeeAll!)
                 : PosterCard(
                     item: items[i],
                     onTap: () => openTitle(context, items[i]),
@@ -91,9 +100,86 @@ class MediaRow extends StatelessWidget {
               end: gutter - MarqueeSpace.s,
               bottom: MarqueeSpace.s,
             ),
-            child: SectionHeader(title: title, onSeeAll: onSeeAll),
+            child: SectionHeader(
+              title: title,
+              onSeeAll: onSeeAll,
+              focusSeeAll: !isTv,
+            ),
           ),
           body,
+        ],
+      ),
+    );
+  }
+}
+
+class _SeeAllCard extends StatefulWidget {
+  const _SeeAllCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_SeeAllCard> createState() => _SeeAllCardState();
+}
+
+class _SeeAllCardState extends State<_SeeAllCard> {
+  bool _focused = false;
+  static const _radius = BorderRadius.all(MarqueeRadius.poster);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = MarqueeText.of(context);
+    return Semantics(
+      button: true,
+      label: l10n.seeAll,
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 2 / 3,
+            child: Material(
+              color: _focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+              shape: RoundedRectangleBorder(
+                borderRadius: _radius,
+                side: _focused
+                    ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+                    : const BorderSide(color: MarqueeColors.velvet),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: widget.onTap,
+                onFocusChange: (f) {
+                  setState(() => _focused = f);
+                  if (f && isTv) {
+                    Scrollable.ensureVisible(
+                      context,
+                      alignment: 0.5,
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                },
+                focusColor: Colors.transparent,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: MarqueeColors.bulb,
+                      size: 28,
+                    ),
+                    const SizedBox(height: MarqueeSpace.s),
+                    Text(
+                      l10n.seeAll,
+                      style: text.label.copyWith(color: MarqueeColors.bulb),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
