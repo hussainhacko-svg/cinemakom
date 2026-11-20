@@ -290,19 +290,34 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 ## 9. Performance
 
 - TV UIs run at **60 Hz**, so the frame budget is 16.7 ms, but TV chips are much slower than phones. Budget for a low-end quad-core with 2 GB of RAM.
-- Images: posters use the medium thumbnail (293 × 439). A focused card is about 130 × 195 dp = 260 × 390 px, so that's enough. **Don't** load the full poster or decode at 2× (the first attempt did, which only costs memory). Set the image cache smaller on TV (`imageCache.maximumSizeBytes` about 100 MB) and measure.
+- Images: see §9.1. Artwork has to look sharp on a 4K panel, and that's a goal, not a nice-to-have.
 - Rows: `ListView.builder` with a fixed `itemExtent` (DESIGN.md §6). A held arrow jumps without animation (R10).
 - Grow animation: `Transform.scale` inside a `RepaintBoundary`, never a layout change.
 - The player overlay doesn't repaint the video: it's above the texture, behind its own `RepaintBoundary`.
 - Measure on the TV: `integration_test/tv_scroll_perf_test.dart` (holding Right along a row, Down through Home) with `flutter drive --profile` over network adb, like `scroll_perf_test.dart` on the phone.
 
+### 9.1 Sharp artwork on a 4K TV
+The first TV test showed soft, blurry posters. There are three causes, and each has a fix:
+
+1. **The source is too small.** Cards on phones use `imgMediumThumbObjUrl`, which is **293 px wide** (API.md, Images). A focused TV poster is about 130 dp wide. That's 260 px if the TV draws its UI at 1080p and 520 px if it draws at 4K. Even a 1080p UI gets stretched 2× by the TV to fill the panel, so a 293 px poster looks soft either way. **On TV, cards use the original upload** (`imgObjUrl`, which is `MediaItem.hdPosterUrl`). Most are 1000–2000 px wide, but some are as small as 253 px, so take whichever of the two is larger. The Details poster and the cast photos follow the same rule.
+2. **The decode size.** Decode at the size the card reaches *when focused*, in real pixels: `memCacheWidth = card width × 1.08 × MediaQuery.devicePixelRatio`, rounded up, never more than the source. Use the TV's measured pixel ratio, not a fixed 2×. The first attempt multiplied the ratio by 2 again ("because the TV upscales"), so a 2× TV decoded at 4× and wasted memory. The upscaling is real, but it works on the finished 1080p frame: an image can't carry more detail than the frame it's drawn into, so decoding past the real pixel ratio adds nothing you can see. If the TV draws apps at 4K, the ratio is already 4 and the formula gives the full size by itself. Hero banners (covers up to 4050 × 1500) decode at the banner width × the pixel ratio.
+3. **The scaling filter.** TV cards use `FilterQuality.medium`, so a large original scaled down to the card, and the 1.08 grow, stay smooth instead of jagged. Phones keep `low`.
+
+**Loading:** show the 293 px thumbnail at once (it's small and loads fast), then swap in the original for the cards on screen once scrolling stops (about 250 ms), with no fade and no layout shift. Originals can be 1.5–2.5 MB each, so fetching them for every card in every row would make Home crawl on TV Wi-Fi. Only cards that are actually on screen get the big image, and the image cache keeps them on disk. The focused card gets its original first.
+
+**Memory:** a focused poster decoded at a 2× ratio is about 280 × 420 px (≈ 0.5 MB). At 4× it's about 560 × 840 px (≈ 1.9 MB). Size `imageCache.maximumSizeBytes` from the measured ratio and the TV's RAM: start at 150 MB at 2× and 250 MB at 4×. Then check memory while scrolling all of Home (TV-6).
+
+**Measure first (TV-0):** on the TCL, record `adb shell wm size`, `adb shell wm density` and the app's `MediaQuery.devicePixelRatio` and `MediaQuery.sizeOf`. That shows whether the app draws at 1080p or at 4K, and settles the numbers above.
+
+**Video too:** if the TV draws apps at 1080p, a 4K stream drawn through a Flutter texture (how `video_player` draws by default) is scaled down to 1080p before the TV stretches it back up, and 4K is lost. In TV-4, check whether `video_player`'s platform-view mode (a `SurfaceView`, which the TV's hardware draws at full resolution) keeps 4K and still behaves with our overlay. If it does, use it on TV.
+
 ## 10. Milestones
 
 | | Scope | Done when |
 |---|---|---|
-| **TV-0** | Groundwork fixes (§3): phone splash upright again (manifest back to `portrait`, plus a `TvActivity` subclass declared `landscape` with only `LEANBACK_LAUNCHER`, and `android.hardware.screen.portrait` not required); no display-mode request on TV; banner with the name (generator); the `CINEMAKOM_TV` define and a placeholder `TvApp`; move `staffProvider` and the download flow out of screen files; the boundaries test; the remote key bindings | The phone starts upright even held sideways. The TV shows the banner and opens the placeholder in landscape. `--dart-define=CINEMAKOM_TV=true` runs on Linux. Analyze and tests clean |
+| **TV-0** | Groundwork fixes (§3): phone splash upright again (manifest back to `portrait`, plus a `TvActivity` subclass declared `landscape` with only `LEANBACK_LAUNCHER`, and `android.hardware.screen.portrait` not required); no display-mode request on TV; banner with the name (generator); the `CINEMAKOM_TV` define and a placeholder `TvApp`; move `staffProvider` and the download flow out of screen files; the boundaries test; the remote key bindings; measure the TCL's UI resolution and pixel ratio (§9.1) | The phone starts upright even held sideways. The TV shows the banner and opens the placeholder in landscape. `--dart-define=CINEMAKOM_TV=true` runs on Linux. Analyze and tests clean |
 | **TV-1** | The focus system (§5.2), `TvDriver`, the reachability test helper, the watchdog, `MarqueeTvText`, `TvSpace`, the focus look, `TvSidePanel` / `TvChoicePanel` | Unit tests for R1–R12 on a demo screen pass, in English and Arabic |
-| **TV-2** | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes |
+| **TV-2** | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists, sharp artwork (§9.1: original images, decode size, filter, the thumbnail-then-original swap) | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes; posters and the hero look sharp on the 4K panel from close up |
 | **TV-3** | Details: actions, seasons, ranges, episodes, cast, more like this, person page; the TV download panels (§7.4) | The episode download scenario passes in tests. **On the TV:** download, pause, resume and delete an episode, and Download season |
 | **TV-4** | The TV player (§8): controls, seek bar with previews and speed-up, panels, episodes panel, skip intro, up next, errors | Player scenarios pass with `FakeEngine`. **On the TV:** a movie and a series in 1080p and 4K, every control by remote, frame times and memory |
 | **TV-5** | Search (decide the keyboard), Library, Downloads, Settings | Reachability tests for every screen. **On the TV:** the §11 checklist, in English and Arabic |
@@ -322,6 +337,7 @@ Each milestone is committed on its own, and only ticked in PLAN.md after its TV 
 - Settings: switch to Arabic and check every screen in RTL.
 - Offline: unplug the network, play a download, see the error screens' Try again.
 - Holding an arrow along a long row and down Home stays smooth.
+- Artwork is sharp on the 4K panel: posters (focused and not), the hero banner, the Details poster and cast photos. Look from up close and compare with the Google TV home screen. A 4K stream looks 4K, not soft (§9.1, video).
 
 ## 12. Risks
 
@@ -333,4 +349,6 @@ Each milestone is committed on its own, and only ticked in PLAN.md after its TV 
 | Slow TV chips | §9, and measure in TV-4 and TV-6 instead of guessing |
 | 32-bit TVs | Ship and test `armeabi-v7a` (the release already builds it) |
 | HDMI mode switches | No display-mode request on TV (TV-0) |
+| Soft artwork on 4K (seen in the first test) | §9.1: originals on TV, decode at the focused size × the real pixel ratio, `FilterQuality.medium`, measured on the TCL in TV-0 |
+| 4K video scaled down to a 1080p UI | Try `video_player`'s platform-view mode in TV-4 (§9.1) |
 | Two UIs drifting apart in behaviour | They share the providers and repositories; only widgets are separate. The boundaries test keeps them apart |
