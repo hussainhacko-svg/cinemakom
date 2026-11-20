@@ -929,5 +929,25 @@
   "tvFilterAudio": "Audio",
   "@tvFilterAudio": {
     "description": "TV genre page: the chip that picks the audio language"
-  }
+  },
+  "tvOk": "OK",
+  "@tvOk": {"description": "TV: closes a message panel"},
+  "tvFreeSpace": "{size} free on this TV",
+  "@tvFreeSpace": {"description": "TV download panel: free storage", "placeholders": {"size": {"type": "String"}}},
+  "tvTooBig": "Too big · {size}",
+  "@tvTooBig": {"description": "TV download panel: a quality that doesn't fit in the free space", "placeholders": {"size": {"type": "String"}}},
+  "tvAboutEach": "about {size} each",
+  "@tvAboutEach": {"description": "TV season download panel: the size of one episode", "placeholders": {"size": {"type": "String"}}},
+  "tvGoToDownloads": "Go to Downloads",
+  "@tvGoToDownloads": {"description": "TV download panel: opens the Downloads tab"},
+  "tvKeepDownloading": "Keep downloading",
+  "@tvKeepDownloading": {"description": "TV: the safe answer when asked to cancel a download"},
+  "tvKeepIt": "Keep it",
+  "@tvKeepIt": {"description": "TV: the safe answer when asked to delete a download"},
+  "tvDeleteQuestion": "Delete this download from the TV?",
+  "@tvDeleteQuestion": {"description": "TV: asked before deleting a finished download"},
+  "tvDownloadingPercent": "Downloading · {percent}%",
+  "@tvDownloadingPercent": {"description": "TV: a running download", "placeholders": {"percent": {"type": "int"}}},
+  "tvWatched": "watched",
+  "@tvWatched": {"description": "TV episode row: an episode watched to the end"}
 }

@@ -16,7 +16,7 @@ class BackgroundFileDownloader implements Downloader {
   bool _started = false;
 
   /// Fail a download when less than this would be left free (MB).
-  static const spaceReserveMb = 500;
+  static const spaceReserveMb = downloadSpaceReserveMb;
 
   /// How often a dropped connection is retried before the task fails.
   static const retries = 3;

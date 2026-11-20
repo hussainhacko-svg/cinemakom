@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../core/downloads/downloader.dart';
+import '../../core/platform/storage_space.dart';
 import '../../core/storage/preferences.dart';
 import '../../data/models/download.dart';
 import '../../data/models/media_item.dart';
@@ -26,6 +28,23 @@ final progressOfProvider = Provider.autoDispose
     .family<DownloadProgress?, String>(
       (ref, videoId) => ref.watch(downloadProgressProvider).value?[videoId],
     );
+
+/// Reads the free bytes where downloads go, or `null` where that can't be
+/// read (only Android can; docs/TV.md §7.4). Tests override it.
+final downloadFreeSpaceProvider = Provider<Future<int?> Function()>(
+  (ref) => () async {
+    final root = await ref.read(downloadRootProvider)();
+    return freeBytes(root.directory);
+  },
+);
+
+/// Whether a download of [bytes] fits in [free] and still leaves the
+/// engine's reserve. Unknown sizes and unknown free space count as fitting:
+/// the engine still stops at its reserve.
+bool downloadFits(int? bytes, int? free) =>
+    bytes == null ||
+    free == null ||
+    bytes + downloadSpaceReserveMb * 1024 * 1024 <= free;
 
 /// "2.9 GB", "640 MB".
 String formatBytes(AppLocalizations l10n, int bytes) {

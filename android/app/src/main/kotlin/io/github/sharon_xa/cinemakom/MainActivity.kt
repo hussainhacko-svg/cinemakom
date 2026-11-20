@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.StatFs
 import android.view.Display
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -38,6 +39,14 @@ open class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isTv" -> result.success(isTv)
+                // Free bytes where downloads go (docs/TV.md §7.4).
+                "freeBytes" -> result.success(
+                    try {
+                        StatFs(call.argument<String>("path")!!).availableBytes
+                    } catch (e: Exception) {
+                        null
+                    },
+                )
                 else -> result.notImplemented()
             }
         }

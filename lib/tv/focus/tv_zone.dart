@@ -22,6 +22,7 @@ class TvZone extends StatefulWidget {
     this.keyline = TvSpace.safeH,
     this.onEdge,
     this.remember = true,
+    this.pageWhole,
   }) : columns = null;
 
   /// A single column: Up and Down move, Left and Right leave the zone.
@@ -34,6 +35,7 @@ class TvZone extends StatefulWidget {
     this.keyline = TvSpace.safeH,
     this.onEdge,
     this.remember = true,
+    this.pageWhole,
   }) : columns = 1;
 
   /// A grid of [columns] (also a list of rows of cells: an episode's play
@@ -48,6 +50,7 @@ class TvZone extends StatefulWidget {
     this.keyline = TvSpace.safeH,
     this.onEdge,
     this.remember = true,
+    this.pageWhole,
   });
 
   final int order;
@@ -71,6 +74,10 @@ class TvZone extends StatefulWidget {
   /// False: entering always lands on [initialIndex] (the tab bar's current
   /// tab), not where focus was.
   final bool remember;
+
+  /// True: the page aligns the whole zone for any of its items (a split's
+  /// column, which scrolls by itself under one heading).
+  final bool? pageWhole;
 
   final Widget child;
 
@@ -118,6 +125,7 @@ class _TvZoneState extends State<TvZone> {
       ..keyline = widget.keyline
       ..onEdge = widget.onEdge
       ..remember = widget.remember
+      ..pageWhole = widget.pageWhole
       ..context = context;
   }
 

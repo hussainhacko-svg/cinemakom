@@ -240,6 +240,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - Movies: Download in the actions row. Series: Download in the actions row means **Download season**; each episode has its own button.
 - Trailer opens the YouTube app on the TV (`url_launcher` with the YouTube TV intent). If no app can take it, the button isn't shown.
 - Initial focus: Play/Resume. Opening from Continue watching opens on that episode's season and block.
+- *Built (TV-3):* `lib/tv/screens/details`. The episode selection (season, blocks of 50, the anchor episode) is `episode_view.dart` and the Play/Resume target `play_target.dart`, both shared with the phone. The two panes are 360 dp tall and scroll by themselves; their zones align the whole split under the EPISODES heading (`TvZone(pageWhole: true)`). A series' Download in the actions is Download season for the season shown. Cast photos are 96 dp circles that grow on focus; a person opens `lib/tv/screens/person` (photo, name, role · count, a 6-column grid).
 
 ### 7.4 Episodes and downloads (the trap that broke before)
 - **Each episode row is a row of two cells** (inside the episodes column of the split): the episode itself (OK plays it) and its download button. Up and Down keep the cell: on the download button of episode 3, Down goes to the download button of episode 4 (R2's column memory). So a whole season can be downloaded one by one going down a single column.
@@ -248,6 +249,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - OK on a download in progress opens a panel: Pause or Resume, Cancel (asks first), Go to Downloads. OK on ✓: Play, Delete (asks first).
 - Download season opens the same quality panel, then queues the season's episodes (at most 2 run at once, like the phone).
 - Low storage: before starting, compare the size with the free space (TVs often have about 4 GB free). If it doesn't fit, say so in the panel instead of starting.
+- *Built (TV-3, owner's choice 2026-11-20: check on TV):* `lib/tv/widgets/tv_downloads.dart`. Free space comes from `StatFs` (`freeBytes` on the platform channel, `downloadFreeSpaceProvider`); a quality fits when it leaves the engine's 500 MB reserve (`downloadSpaceReserveMb`). The panel shows "x GB free on this TV", a quality that doesn't fit stays visible as "Too big · size" and is skipped, and when none fits the TV says "Not enough space on this device" instead of an empty panel. Cancel and Delete ask first and open on the safe answer. While the qualities load, the button shows the bulbs. The download engine starts in `TvApp`, as in the phone app.
 
 ### 7.5 Library
 - Zones: the segment ⟵⟶ (Continue watching · Favorites) · the list ↕.

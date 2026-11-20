@@ -69,6 +69,8 @@ const _sharedFiles = {
   'lib/app/widgets/media_text.dart', // context.joinMeta / context.isolate
   'lib/features/home/widgets/hero_title.dart', // the fitting, at TV size
   'lib/features/search/search_history.dart',
+  'lib/features/details/episode_view.dart', // seasons, blocks of 50, anchor
+  'lib/features/details/play_target.dart', // Play or Resume
   'lib/features/player/player_controller.dart',
   'lib/features/player/player_state.dart',
   'lib/features/player/quality.dart',

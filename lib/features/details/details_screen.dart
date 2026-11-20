@@ -18,11 +18,11 @@ import '../../data/models/media_details.dart';
 import '../../data/models/media_item.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
-import '../../data/models/watch_progress.dart';
 import '../../data/repositories/library_repository.dart';
 import '../downloads/download_actions.dart';
 import '../library/widgets/favorite_button.dart';
 import 'details_providers.dart';
+import 'play_target.dart';
 import 'widgets/credits_row.dart';
 import 'widgets/episode_list.dart';
 
@@ -435,43 +435,28 @@ class _PlayButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    var label = l10n.play;
-    var request = PlaybackRequest(item: item);
-
-    if (item.isSeries) {
-      final watched =
-          ref.watch(seriesProgressProvider(item.seriesId)).value ?? const {};
-      final episodes =
-          ref.watch(episodesProvider(item.seriesId)).value ?? const <Episode>[];
-      final latest = watched.values.fold<WatchProgress?>(
-        null,
-        (a, b) => a == null || b.updatedAt.isAfter(a.updatedAt) ? b : a,
-      );
-      if (latest != null) {
-        final i = episodes.indexWhere((e) => e.id == latest.videoId);
-        final current = i < 0 ? null : episodes[i];
-        String short(Episode e) => l10n.seasonEpisodeShort(e.season, e.episode);
-        if (!latest.isFinished && current != null) {
-          label = latest.resumeAt == null
-              ? '${l10n.play} · ${short(current)}'
-              : [
-                  l10n.resume,
-                  short(current),
-                  minutesLeft(l10n, latest.remaining),
-                ].join(' · ');
-          request = PlaybackRequest(item: item, episode: current);
-        } else if (latest.isFinished && i >= 0 && i + 1 < episodes.length) {
-          final next = episodes[i + 1];
-          label = '${l10n.play} · ${short(next)}';
-          request = PlaybackRequest(item: item, episode: next);
-        }
-      }
-    } else {
-      final saved = ref.watch(watchProgressProvider(item.id)).value;
-      if (saved?.resumeAt != null) {
-        label = '${l10n.resume} · ${minutesLeft(l10n, saved!.remaining)}';
-      }
-    }
+    final target = item.isSeries
+        ? playTarget(
+            item,
+            watched:
+                ref.watch(seriesProgressProvider(item.seriesId)).value ??
+                const {},
+            episodes:
+                ref.watch(episodesProvider(item.seriesId)).value ??
+                const <Episode>[],
+          )
+        : playTarget(
+            item,
+            saved: ref.watch(watchProgressProvider(item.id)).value,
+          );
+    final request = target.request;
+    final episode = target.episode;
+    final label = [
+      if (target.resume) l10n.resume else l10n.play,
+      if (episode != null)
+        l10n.seasonEpisodeShort(episode.season, episode.episode),
+      if (target.left case final left?) minutesLeft(l10n, left),
+    ].join(' · ');
 
     return FilledButton.icon(
       onPressed: () => openPlayer(context, request),

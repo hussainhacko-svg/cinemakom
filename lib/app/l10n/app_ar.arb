@@ -190,5 +190,15 @@
   "tvNotYet": "هذا الجزء من تطبيق التلفاز قادم قريبًا.",
   "tvBack": "رجوع",
   "tvFilterKind": "النوع",
-  "tvFilterAudio": "الصوت"
+  "tvFilterAudio": "الصوت",
+  "tvOk": "حسنًا",
+  "tvFreeSpace": "{size} متاحة على التلفاز",
+  "tvTooBig": "كبير جدًا · {size}",
+  "tvAboutEach": "حوالي {size} لكل حلقة",
+  "tvGoToDownloads": "الانتقال إلى التنزيلات",
+  "tvKeepDownloading": "متابعة التنزيل",
+  "tvKeepIt": "إبقاؤه",
+  "tvDeleteQuestion": "حذف هذا التنزيل من التلفاز؟",
+  "tvDownloadingPercent": "جارٍ التنزيل · {percent}٪",
+  "tvWatched": "تمت مشاهدتها"
 }

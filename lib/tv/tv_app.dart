@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cupertino_ui/cupertino_ui.dart'
     show GlobalCupertinoLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart'
@@ -11,7 +13,9 @@ import '../app/theme/marquee_colors.dart';
 import '../app/widgets/bulb_loader.dart';
 import '../app/widgets/error_view.dart';
 import '../app/widgets/media_image.dart';
+import '../core/downloads/downloader.dart';
 import '../core/storage/preferences.dart';
+import '../data/repositories/downloads_repository.dart';
 import 'focus/tv_back.dart';
 import 'focus/tv_focus_watchdog.dart';
 import 'focus/tv_screen.dart';
@@ -116,7 +120,7 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
         TvArtwork.sizeCache(MediaQuery.devicePixelRatioOf(context));
         return NotificationListener<ScrollNotification>(
           onNotification: images ? TvArtwork.onScroll : null,
-          child: TvFocusWatchdog(child: child!),
+          child: _Downloads(child: TvFocusWatchdog(child: child!)),
         );
       },
     );
@@ -170,4 +174,41 @@ class _Splash extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Starts the downloads engine once (it catches up with downloads that ran
+/// while the app was closed) and keeps its notification texts in the UI
+/// language, as the phone app does.
+class _Downloads extends ConsumerStatefulWidget {
+  const _Downloads({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_Downloads> createState() => _DownloadsState();
+}
+
+class _DownloadsState extends ConsumerState<_Downloads> {
+  Locale? _locale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _locale) return;
+    final first = _locale == null;
+    _locale = locale;
+    final l10n = AppLocalizations.of(context);
+    final notices = DownloadNotices(
+      running: l10n.noticeDownloading,
+      complete: l10n.noticeDownloaded,
+      failed: l10n.noticeFailed,
+      paused: l10n.noticePaused,
+    );
+    final downloads = ref.read(downloadsRepositoryProvider);
+    unawaited(first ? downloads.start(notices) : downloads.setNotices(notices));
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

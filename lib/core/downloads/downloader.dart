@@ -78,7 +78,8 @@ class DownloaderStatus extends DownloaderEvent {
   final bool canResume;
 
   @override
-  String toString() => 'DownloaderStatus($taskId, ${state.name}'
+  String toString() =>
+      'DownloaderStatus($taskId, ${state.name}'
       '${httpCode == null ? '' : ', HTTP $httpCode'})';
 }
 
@@ -111,6 +112,10 @@ class DownloadNotices {
   final String failed;
   final String paused;
 }
+
+/// The free space a download never takes, in MB: the engine refuses to go
+/// below it, and the TV's download panel offers only qualities that leave it.
+const downloadSpaceReserveMb = 500;
 
 abstract interface class Downloader {
   /// Status and progress of every task, also those started before a

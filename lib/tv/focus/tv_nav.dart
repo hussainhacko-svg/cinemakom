@@ -253,7 +253,12 @@ class TvNavZone extends TvNavNode {
 
   /// Whether the page scrolls the whole zone into view for [index] (a row,
   /// or a grid's first row: its header stays visible), or only that item.
-  bool revealsWhole(int index) => columns == null || index < columns!;
+  bool revealsWhole(int index) =>
+      pageWhole ?? (columns == null || index < columns!);
+
+  /// True: the page always aligns the whole zone (the split's columns,
+  /// which scroll by themselves under one heading).
+  bool? pageWhole;
 
   void register(int index, TvItem item) {
     _items[index] = item;

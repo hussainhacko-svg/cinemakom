@@ -99,5 +99,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Whether a trailer link can open (the YouTube app on a TV): the TV
+             hides Trailer when nothing can (docs/TV.md §7.3). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

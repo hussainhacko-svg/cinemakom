@@ -13,15 +13,12 @@ import '../../../app/widgets/media_text.dart';
 import '../../../app/widgets/section_header.dart';
 import '../../../data/models/playback_models.dart';
 import '../details_providers.dart';
+import '../episode_view.dart';
+
+export '../episode_view.dart' show episodeBlockSize;
 import '../../../app/widgets/progress_line.dart';
 import '../../../data/models/watch_progress.dart';
 import '../../../data/repositories/library_repository.dart';
-
-/// A season longer than this is split into blocks of this many episodes,
-/// picked with range chips ("1–50", "51–100"), so the page below the list
-/// (cast, "More like this") stays in reach: One Piece is one season of
-/// 1,179 episodes.
-const episodeBlockSize = 50;
 
 /// A series' seasons and episodes (DESIGN.md §5): season chips, range chips
 /// for a long season, then one row per episode labelled from its numbering
@@ -94,40 +91,19 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
             )
           : const SizedBox.shrink();
     } else {
-      // The episode to open on: the one playing, else the one watched last.
-      final anchorId =
-          widget.currentId ??
-          watched.values
-              .fold<WatchProgress?>(
-                null,
-                (a, b) => a == null || b.updatedAt.isAfter(a.updatedAt) ? b : a,
-              )
-              ?.videoId;
-      final anchor = [
-        for (final e in all)
-          if (e.id == anchorId) e,
-      ].firstOrNull;
-      final seasons = {for (final e in all) e.season}.toList()..sort();
-      final season = seasons.contains(_season)
-          ? _season!
-          : seasons.contains(widget.initialSeason)
-          ? widget.initialSeason!
-          : anchor?.season ?? seasons.first;
-      final inSeason = [
-        for (final e in all)
-          if (e.season == season) e,
-      ];
-      final blocks = (inSeason.length / episodeBlockSize).ceil();
-      final anchorAt = anchor == null ? -1 : inSeason.indexOf(anchor);
-      final block =
-          (_block ?? (anchorAt < 0 ? 0 : anchorAt ~/ episodeBlockSize)).clamp(
-            0,
-            blocks - 1,
-          );
-      final shown = inSeason
-          .skip(block * episodeBlockSize)
-          .take(episodeBlockSize)
-          .toList();
+      final view = EpisodeView(
+        all,
+        watched,
+        currentId: widget.currentId,
+        initialSeason: widget.initialSeason,
+        season: _season,
+        block: _block,
+      );
+      final seasons = view.seasons;
+      final season = view.season;
+      final blocks = view.blocks;
+      final block = view.block;
+      final shown = view.shown;
       // The number column fits the widest number in the block, so 3- and
       // 4-digit numbers (One Piece) stay on one line and rows line up.
       // Merged like the row's Text merges it, or the measure comes up short.
@@ -147,11 +123,7 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
         return math.max(widest, width);
       });
       String range(int b) {
-        final first = inSeason[b * episodeBlockSize].numbering.first;
-        final last =
-            inSeason[math.min((b + 1) * episodeBlockSize, inSeason.length) - 1]
-                .numbering
-                .last;
+        final (first, last) = view.range(b);
         return first == last ? '$first' : l10n.episodeRange(first, last);
       }
 
@@ -194,7 +166,7 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
             const SizedBox(height: MarqueeSpace.m),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: action(inSeason),
+              child: action(view.inSeason),
             ),
           ],
           const SizedBox(height: MarqueeSpace.m),

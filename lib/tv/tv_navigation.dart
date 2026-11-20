@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../app/navigation_args.dart';
 import '../data/models/catalog_models.dart';
+import '../data/models/media_details.dart';
 import '../data/models/media_item.dart';
 import '../data/models/playback_request.dart';
 
@@ -29,3 +30,9 @@ void tvOpenList(BuildContext context, MediaListArgs args) =>
 
 void tvOpenPlayer(BuildContext context, PlaybackRequest request) =>
     context.push('/watch/${request.videoId}', extra: request);
+
+/// An actor's, director's or writer's page: their titles.
+void tvOpenPerson(BuildContext context, StaffCredit credit) => context.push(
+  '${_tabRoot(context)}/person/${credit.id}',
+  extra: PersonArgs(credit),
+);

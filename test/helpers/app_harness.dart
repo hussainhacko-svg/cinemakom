@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cinemakom/data/repositories/download_store.dart';
 import 'package:cinemakom/data/repositories/downloads_repository.dart';
+import 'package:cinemakom/features/downloads/download_flow.dart';
 import 'package:cinemakom/tv/tv_app.dart';
 import 'package:cinemakom/core/platform/full_screen.dart';
 import 'package:cinemakom/app/app.dart';
@@ -101,6 +102,7 @@ Future<void> pumpApp(
   double width = 390,
   double height = 844,
   bool tv = false,
+  int? freeSpace,
 }) async {
   // The TV UI draws at 960 × 540 dp, ratio 2 (docs/TV.md §6.1, the TCL).
   if (tv) {
@@ -133,6 +135,7 @@ Future<void> pumpApp(
           downloads ?? MemoryDownloadStore(),
         ),
         downloaderProvider.overrideWithValue(downloader ?? FakeDownloader()),
+        downloadFreeSpaceProvider.overrideWithValue(() async => freeSpace),
         downloadRootProvider.overrideWithValue(
           () async => (
             baseDirectory: 'root',

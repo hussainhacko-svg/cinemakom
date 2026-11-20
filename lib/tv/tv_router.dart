@@ -7,6 +7,8 @@ import '../app/theme/marquee_colors.dart';
 import '../core/storage/preferences.dart';
 import '../data/models/catalog_models.dart';
 import 'screens/browse/tv_genre_screen.dart';
+import 'screens/details/tv_details_screen.dart';
+import 'screens/person/tv_person_screen.dart';
 import 'screens/browse/tv_list_screen.dart';
 import 'screens/home/tv_home_screen.dart';
 import 'screens/tv_pending_screen.dart';
@@ -83,8 +85,13 @@ StatefulShellBranch _branch(String path, Widget screen) =>
 
 /// Pages any tab opens from its lists (tv_navigation.dart), inside that tab.
 final _browse = <RouteBase>[
-  // Details come in TV-3.
-  _route('title/:id', (_) => const TvPendingScreen()),
+  _route(
+    'title/:id',
+    (state) => TvDetailsScreen(
+      id: state.pathParameters['id']!,
+      args: state.extra is TitleArgs ? state.extra! as TitleArgs : null,
+    ),
+  ),
   _route(
     'genre/:id',
     (state) => TvGenreScreen(
@@ -92,7 +99,13 @@ final _browse = <RouteBase>[
       genre: state.extra is Category ? state.extra! as Category : null,
     ),
   ),
-  _route('person/:id', (_) => const TvPendingScreen()),
+  _route(
+    'person/:id',
+    (state) => TvPersonScreen(
+      id: state.pathParameters['id']!,
+      args: state.extra is PersonArgs ? state.extra! as PersonArgs : null,
+    ),
+  ),
   _route(
     'list',
     // "See all" needs the list it was opened from; without it (a restored

@@ -71,11 +71,15 @@ class TvListRow extends StatelessWidget {
               ),
               if (value != null) ...[
                 const SizedBox(width: 12),
-                Text(
-                  value!,
-                  style: text.caption
-                      .copyWith(fontSize: 15)
-                      .withWeight(FontWeight.w500),
+                Flexible(
+                  child: Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.caption
+                        .copyWith(fontSize: 15)
+                        .withWeight(FontWeight.w500),
+                  ),
                 ),
               ],
               if (selected) ...[
