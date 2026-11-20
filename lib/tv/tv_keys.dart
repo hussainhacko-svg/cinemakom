@@ -1,8 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Back on the remote (Back, Esc on a keyboard). `TvApp` runs the Back
-/// ladder for it (`tvHandleBack`, docs/TV.md §5.1 R4).
+/// Back from a keyboard (Esc, Backspace, gamepad B). `TvApp` runs the Back
+/// ladder for it (`tvHandleBack`, docs/TV.md §5.1 R4), as it does for the
+/// remote's Back.
 class TvBackIntent extends Intent {
   const TvBackIntent();
 }
@@ -33,8 +34,9 @@ const tvShortcuts = <ShortcutActivator, Intent>{
   SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
   SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
   SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
-  // Back
-  SingleActivator(LogicalKeyboardKey.goBack): TvBackIntent(),
+  // Back from a keyboard. The remote's Back isn't here: Android sends it to
+  // the app twice (as a key and as the system Back), so it comes in once,
+  // as the system Back (`TvApp.didPopRoute`).
   SingleActivator(LogicalKeyboardKey.escape): TvBackIntent(),
   SingleActivator(LogicalKeyboardKey.backspace): TvBackIntent(),
   SingleActivator(LogicalKeyboardKey.gameButtonB): TvBackIntent(),

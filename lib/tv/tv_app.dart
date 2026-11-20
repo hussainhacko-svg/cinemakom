@@ -2,6 +2,7 @@ import 'package:cupertino_ui/cupertino_ui.dart'
     show GlobalCupertinoLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalWidgetsLocalizations;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -39,11 +40,45 @@ final _actions = <Type, Action<Intent>>{
 /// as the phone app (so switching UIs on one device keeps everything), the
 /// TV type sizes, the remote's keys (`tvShortcuts`), the Back ladder and, in
 /// debug builds, the focus watchdog.
-class TvApp extends ConsumerWidget {
+class TvApp extends ConsumerStatefulWidget {
   const TvApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TvApp> createState() => _TvAppState();
+}
+
+/// The remote's Back comes as Android's system Back (`didPopRoute`), and the
+/// app always says it handles Back itself, so Android never closes it on its
+/// own: the ladder decides, and its last rung leaves the app. (It used to
+/// come in twice, also as a key: from See all, the second one left the
+/// app.) This observer is added before the router's, so it goes first.
+class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    SystemNavigator.setFrameworkHandlesBack(true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    tvHandleBack();
+    return true;
+  }
+
+  bool _handlesBack(NavigationNotification _) {
+    SystemNavigator.setFrameworkHandlesBack(true);
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final startup = ref.watch(appStartupProvider);
     if (!startup.hasValue) {
       return MaterialApp(
@@ -53,6 +88,7 @@ class TvApp extends ConsumerWidget {
         theme: buildMarqueeTvTheme(arabic: false),
         shortcuts: tvShortcuts,
         actions: _actions,
+        onNavigationNotification: _handlesBack,
         home: _Splash(
           error: startup.error,
           onRetry: () => ref
@@ -74,6 +110,7 @@ class TvApp extends ConsumerWidget {
       theme: buildMarqueeTvTheme(arabic: language == AppLanguage.arabic),
       shortcuts: tvShortcuts,
       actions: _actions,
+      onNavigationNotification: _handlesBack,
       routerConfig: ref.watch(tvRouterProvider),
       builder: (context, child) {
         TvArtwork.sizeCache(MediaQuery.devicePixelRatioOf(context));

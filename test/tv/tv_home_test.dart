@@ -94,6 +94,28 @@ void main() {
     expect(tv.focusPath, row);
   });
 
+  testWidgets("The remote's Back (Android's system Back) climbs one rung at "
+      'a time: See all → Home → its tab → exit', (tester) async {
+    final tv = await _pumpTv(tester);
+    await tv.down();
+    await tv.press(LogicalKeyboardKey.arrowRight, times: 40);
+    await tv.ok();
+    expect(tv.focused, isNot('See all'));
+    Future<void> systemBack() async {
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+
+    await systemBack();
+    expect(tv.focused, 'See all');
+    expect(_exits, isEmpty);
+    await systemBack();
+    expect(tv.focused, 'Home');
+    expect(_exits, isEmpty);
+    await systemBack();
+    expect(_exits, ['exit']);
+  });
+
   testWidgets('See all: a lower row scrolls into view with its titles', (
     tester,
   ) async {
