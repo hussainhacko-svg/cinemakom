@@ -4,8 +4,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cinemakom/tv/focus/tv_focusable.dart';
-
 import 'tv_driver.dart';
 
 /// The labels of every enabled button on screen, from the semantics tree.
@@ -51,53 +49,68 @@ Future<Set<String>> expectNoTraps(
   required Future<void> Function() pumpScreen,
   required bool Function() leftScreen,
   int maxBack = 10,
+  int? backChecks,
 }) async {
   final semantics = tester.ensureSemantics();
   final tv = TvDriver(tester);
   await pumpScreen();
   final buttons = enabledButtons(tester);
 
-  final start = tv.focused;
+  final start = tv.focusPath;
   expect(start, isNot(startsWith('not a TV item')), reason: 'No initial focus');
-  final reached = <String>{start};
+  // Explored by place in the zone tree; labels only say what was reached.
+  final reached = <String, String>{start: tv.focused};
   final queue = [start];
   while (queue.isNotEmpty) {
     final from = queue.removeAt(0);
     for (final arrow in _arrows) {
-      // Content changes as focus moves (a season shows its episodes): an
-      // item that's gone was reached, and the new ones get explored.
-      if (!_exists(from)) break;
-      await tv.focusLabel(from);
+      // Moving onto a tab shows another tab; start the screen again to come
+      // back. Content that changes as focus moves (a season shows its
+      // episodes) can be gone for good: it was reached, and the new items
+      // get explored.
+      if (!await tv.focusAt(from)) {
+        await pumpScreen();
+        if (!await tv.focusAt(from)) break;
+      }
       await tv.press(arrow);
-      final to = tv.focused;
+      final to = tv.focusPath;
       expect(
         to,
         isNot(startsWith('not a TV item')),
-        reason: '$arrow from "$from"',
+        reason: '$arrow from $from',
       );
-      if (reached.add(to)) queue.add(to);
+      if (!reached.containsKey(to)) {
+        reached[to] = tv.focused;
+        queue.add(to);
+      }
     }
   }
-  expect(buttons.difference(reached), isEmpty, reason: 'Unreachable controls');
+  final labels = reached.values.toSet();
+  expect(buttons.difference(labels), isEmpty, reason: 'Unreachable controls');
 
-  for (final label in reached) {
+  // Back from every reached item, or from [backChecks] of them spread over
+  // the screen (a fresh screen per check is slow on a long Home).
+  final all = reached.keys.toList();
+  final step = backChecks == null || backChecks >= all.length
+      ? 1
+      : all.length ~/ backChecks;
+  for (var k = 0; k < all.length; k += step) {
+    final path = all[k];
     await pumpScreen();
     // An item far along a lazy row isn't built on a fresh screen; Back
     // doesn't depend on where in a row focus is.
-    if (!_exists(label)) continue;
-    await tv.focusLabel(label);
+    if (!await tv.focusAt(path)) continue;
     var presses = 0;
     while (!leftScreen() && presses < maxBack) {
       await tv.back();
       presses++;
     }
-    expect(leftScreen(), isTrue, reason: 'Back from "$label" never left');
+    expect(
+      leftScreen(),
+      isTrue,
+      reason: 'Back from ${reached[path]} ($path) never left',
+    );
   }
   semantics.dispose();
-  return reached;
+  return labels;
 }
-
-bool _exists(String label) => find
-    .byWidgetPredicate((w) => w is TvFocusable && w.label == label)
-    .evaluate()
-    .isNotEmpty;

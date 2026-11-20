@@ -10,24 +10,13 @@ import '../../../app/widgets/choice_picker.dart';
 import '../../../app/widgets/media_image.dart';
 import '../../../app/widgets/media_text.dart';
 import '../../../app/widgets/progress_line.dart';
-import '../../../data/models/playback_request.dart';
 import '../../../data/repositories/library_repository.dart';
 import '../library_providers.dart';
 
 /// Plays [entry]: the next episode when it offers one, otherwise the movie
 /// or episode where it was left (the player resumes by itself).
-void playContinue(BuildContext context, ContinueEntry entry) {
-  final p = entry.progress;
-  openPlayer(
-    context,
-    entry.upNext != null
-        ? PlaybackRequest(item: p.item, episode: entry.upNext)
-        : PlaybackRequest(
-            item: p.item,
-            episodeId: p.isSeries ? p.videoId : null,
-          ),
-  );
-}
+void playContinue(BuildContext context, ContinueEntry entry) =>
+    openPlayer(context, continueRequest(entry));
 
 /// A continue card (DESIGN.md §5): `booth` row (radius 12, padding 8), a
 /// 56 × 84 poster, the title, "Season 2 · Episode 5", a progress bar and

@@ -62,6 +62,7 @@ bool _isPhoneUi(String path) =>
 const _sharedDirs = ['lib/app/l10n/', 'lib/app/theme/', 'lib/app/brand/'];
 const _sharedFiles = {
   'lib/app/catalog_providers.dart',
+  'lib/app/navigation_args.dart', // the routes' arguments (TV.md §4.4)
   'lib/app/widgets/media_image.dart',
   'lib/app/widgets/bulb_loader.dart',
   'lib/app/widgets/error_view.dart', // errorMessage

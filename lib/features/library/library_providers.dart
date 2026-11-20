@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/playback_models.dart';
+import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
 import '../../data/repositories/library_repository.dart';
 import '../../data/repositories/media_repository.dart';
@@ -15,6 +16,15 @@ class ContinueEntry {
 
   /// Set when [progress] is a finished episode.
   final Episode? upNext;
+}
+
+/// What a Continue watching entry plays: where it was left (the player
+/// resumes by itself), or the next episode.
+PlaybackRequest continueRequest(ContinueEntry entry) {
+  final p = entry.progress;
+  return entry.upNext != null
+      ? PlaybackRequest(item: p.item, episode: entry.upNext)
+      : PlaybackRequest(item: p.item, episodeId: p.isSeries ? p.videoId : null);
 }
 
 /// The episode after [videoId] in a sorted episode list (across seasons),

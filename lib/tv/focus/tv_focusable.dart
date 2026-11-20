@@ -24,6 +24,7 @@ class TvFocusable extends StatefulWidget {
     required this.builder,
     this.onSelect,
     this.onLongSelect,
+    this.onFocus,
     this.enabled = true,
   });
 
@@ -32,6 +33,10 @@ class TvFocusable extends StatefulWidget {
   final Widget Function(BuildContext context, bool focused) builder;
   final VoidCallback? onSelect;
   final VoidCallback? onLongSelect;
+
+  /// When it gains focus (moving onto a tab switches to it; a season shows
+  /// its episodes).
+  final VoidCallback? onFocus;
 
   /// Disabled items stay visible but their zone skips them (R5).
   final bool enabled;
@@ -122,6 +127,7 @@ class _TvFocusableState extends State<TvFocusable> implements TvItem {
     if (zone == null) return;
     zone.noteFocus(widget.index);
     tvReveal(context, zone, widget.index);
+    widget.onFocus?.call();
   }
 
   static TraversalDirection? _direction(LogicalKeyboardKey key) =>

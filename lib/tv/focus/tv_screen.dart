@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -44,10 +46,16 @@ class _TvScreenState extends State<TvScreen> implements TvPage {
   final scroll = ScrollController();
   late final _root = TvNavGroup()
     ..activeCheck = (() => _active)
-    ..onContentAdded = _scheduleFocus;
+    ..onContentAdded = _scheduleFocus
+    ..scrollToTop = _scrollToTop;
   TvNavGroup? _parent;
   bool _active = true;
   bool _focusScheduled = false;
+
+  /// Where focus was put while the initial zone hadn't loaded (Home's tab
+  /// bar before the hero arrives). If it's still there when the initial zone
+  /// arrives, focus moves on to it (R11).
+  FocusNode? _stopgap;
 
   @override
   double get keylineTop => widget.keylineTop;
@@ -91,13 +99,41 @@ class _TvScreenState extends State<TvScreen> implements TvPage {
     _focusScheduled = true;
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _focusScheduled = false;
-      if (!mounted || !_active || !tvFocusIsLost()) return;
-      if (_root.remembered == null && (_root.initialZone?.enter() ?? false)) {
+      if (!mounted || !_active) return;
+      final focus = FocusManager.instance.primaryFocus;
+      if (_stopgap != null && focus == _stopgap) {
+        if (_root.initialZone?.enter() ?? false) _stopgap = null;
+        return;
+      }
+      _stopgap = null;
+      if (!tvFocusIsLost()) return;
+      if (_root.remembered == null) {
+        if (_root.initialZone?.enter() ?? false) return;
+        if (_root.enter()) {
+          _stopgap = FocusManager.instance.primaryFocus;
+          // The new focus applies in a microtask; read it then.
+          scheduleMicrotask(
+            () => _stopgap = FocusManager.instance.primaryFocus,
+          );
+        }
         return;
       }
       _root.enter();
     });
     SchedulerBinding.instance.ensureVisualUpdate();
+  }
+
+  void _scrollToTop() {
+    if (!scroll.hasClients) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      scroll.jumpTo(0);
+    } else {
+      scroll.animateTo(
+        0,
+        duration: TvFocusStyle.duration,
+        curve: TvFocusStyle.curve,
+      );
+    }
   }
 
   bool _back() {

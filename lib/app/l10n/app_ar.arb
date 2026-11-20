@@ -185,8 +185,10 @@
   "playerExitFullScreen": "إنهاء ملء الشاشة",
   "playerMuted": "الصوت مكتوم",
   "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}.",
-  "tvPlaceholder": "تطبيق التلفاز قيد البناء. اضغط OK والأسهم والرجوع لتجربة جهاز التحكم.",
-  "tvLastKey": "آخر زر: {key}",
   "tvPressOkToType": "اضغط OK للكتابة",
-  "tvBackCloses": "زر الرجوع يغلق"
+  "tvBackCloses": "زر الرجوع يغلق",
+  "tvNotYet": "هذا الجزء من تطبيق التلفاز قادم قريبًا.",
+  "tvBack": "رجوع",
+  "tvFilterKind": "النوع",
+  "tvFilterAudio": "الصوت"
 }

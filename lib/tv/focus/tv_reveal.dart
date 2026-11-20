@@ -41,14 +41,14 @@ void tvReveal(BuildContext item, TvNavZone zone, int index) {
           pageScroll.positions.contains(position);
       double? target;
       if (isPage) {
-        if (zone == page!.firstZone) {
+        // The top of the page: its first zone, but only its first row (a
+        // See all grid is the first zone, and its rows go on down).
+        if (zone == page!.firstZone && zone.revealsWhole(index)) {
           target = position.minScrollExtent;
-        } else if (zone.revealsWhole(index)) {
-          final zoneBox = zone.context?.findRenderObject();
-          if (zoneBox is RenderBox && zoneBox.attached) {
-            target = _aligned(position, viewport, zoneBox, page.keylineTop);
-          }
+        } else if (_zoneBox(zone, index) case final zoneBox?) {
+          target = _aligned(position, viewport, zoneBox, page.keylineTop);
         } else {
+          // A grid further down, or a zone that is a sliver (no box).
           target = _minimal(position, viewport, itemBox, TvSpace.revealMargin);
         }
       } else if (position.axis == Axis.horizontal) {
@@ -60,6 +60,15 @@ void tvReveal(BuildContext item, TvNavZone zone, int index) {
     }
     scrollable = Scrollable.maybeOf(scrollable.context);
   }
+}
+
+/// The zone's box when the page aligns the whole zone for [index] (a row, a
+/// grid's first row); null for a grid further down, or a zone that is a
+/// sliver.
+RenderBox? _zoneBox(TvNavZone zone, int index) {
+  if (!zone.revealsWhole(index)) return null;
+  final box = zone.context?.findRenderObject();
+  return box is RenderBox && box.attached ? box : null;
 }
 
 /// Where [box] starts and how long it is along [position]'s axis, in the

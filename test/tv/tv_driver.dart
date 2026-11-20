@@ -52,27 +52,59 @@ class TvDriver {
   }
 
   /// Where focus is in the zone tree: each group's order, then the zone's
-  /// order and the item's index ("1/0:3").
+  /// order and the item's index ("1/0:3"). Unique on a screen, unlike
+  /// labels (Home repeats titles across rows).
   String get focusPath {
     final node = FocusManager.instance.primaryFocus;
     if (node is! TvItemNode || node.zone == null) return focused;
     final zone = node.zone!;
     final index = zone.indexes.firstWhere((i) => zone.itemAt(i)?.node == node);
+    return '${_zonePath(zone)}:$index';
+  }
+
+  static String _zonePath(TvNavZone zone) {
     final orders = <int>[zone.order];
     for (var g = zone.parent; g != null && g.parent != null; g = g.parent) {
       orders.insert(0, g.order);
     }
-    return '${orders.join('/')}:$index';
+    return orders.join('/');
+  }
+
+  /// Focuses the item at [path] (a [focusPath]) of a shown screen. False when
+  /// it isn't built.
+  Future<bool> focusAt(String path) async {
+    final split = path.lastIndexOf(':');
+    final zonePath = path.substring(0, split);
+    final index = int.parse(path.substring(split + 1));
+    for (final zone in TvNavZone.live) {
+      if (!zone.attached || !zone.isActive || _zonePath(zone) != zonePath) {
+        continue;
+      }
+      final item = zone.itemAt(index);
+      if (item == null) continue;
+      item.node.requestFocus();
+      await tester.pumpAndSettle();
+      return true;
+    }
+    return false;
   }
 
   /// Focuses the item labelled [label] directly (to start a check there).
   Future<void> focusLabel(String label) async {
+    // Built but scrolled out of view counts: focus can go there.
     final item = find.byWidgetPredicate(
       (w) => w is TvFocusable && w.label == label,
+      skipOffstage: false,
     );
     expect(item, findsOneWidget, reason: 'No TV item "$label"');
     final focus = tester.widget<Focus>(
-      find.descendant(of: item, matching: find.byType(Focus)).first,
+      find
+          .descendant(
+            of: item,
+            matching: find.byType(Focus, skipOffstage: false),
+            skipOffstage: false,
+          )
+          .first,
     );
     focus.focusNode!.requestFocus();
     await tester.pumpAndSettle();

@@ -80,9 +80,13 @@ class TvButton extends StatelessWidget {
                   Icon(icon, size: 18, color: color),
                   const SizedBox(width: 10),
                 ],
-                Text(
-                  label,
-                  style: text.label.withWeight(weight).copyWith(color: color),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.label.withWeight(weight).copyWith(color: color),
+                  ),
                 ),
               ],
             ),

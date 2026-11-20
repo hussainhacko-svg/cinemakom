@@ -21,6 +21,7 @@ class TvZone extends StatefulWidget {
     this.initial = false,
     this.keyline = TvSpace.safeH,
     this.onEdge,
+    this.remember = true,
   }) : columns = null;
 
   /// A single column: Up and Down move, Left and Right leave the zone.
@@ -32,6 +33,7 @@ class TvZone extends StatefulWidget {
     this.initial = false,
     this.keyline = TvSpace.safeH,
     this.onEdge,
+    this.remember = true,
   }) : columns = 1;
 
   /// A grid of [columns] (also a list of rows of cells: an episode's play
@@ -45,6 +47,7 @@ class TvZone extends StatefulWidget {
     this.initial = false,
     this.keyline = TvSpace.safeH,
     this.onEdge,
+    this.remember = true,
   });
 
   final int order;
@@ -64,6 +67,10 @@ class TvZone extends StatefulWidget {
 
   /// A named exception to R3: called on an edge press, true when used.
   final bool Function(TraversalDirection dir)? onEdge;
+
+  /// False: entering always lands on [initialIndex] (the tab bar's current
+  /// tab), not where focus was.
+  final bool remember;
 
   final Widget child;
 
@@ -110,6 +117,7 @@ class _TvZoneState extends State<TvZone> {
       ..initial = widget.initial
       ..keyline = widget.keyline
       ..onEdge = widget.onEdge
+      ..remember = widget.remember
       ..context = context;
   }
 

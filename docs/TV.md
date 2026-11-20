@@ -188,7 +188,7 @@ The fonts and the Arabic rules (no tracking, no uppercase, taller line heights) 
 - `disableAnimations`: no grow animation (the ring and fill still show).
 
 ### 6.4 Tab bar
-At the top, inside the safe area: the mark at the start, then Home · Search · Library · Downloads · Settings. The current tab has a `boothRaised` pill and a `bulb` label; the focused tab adds the ring. Moving onto a tab switches to it (like Google TV); Down enters that tab's content where it was left. The tab bar scrolls away with the page and comes back with Up from the top zone or with Back.
+At the top, inside the safe area: the mark at the start, then Home · Search · Library · Downloads · Settings. The current tab has a `boothRaised` pill and a `bulb` label; the focused tab adds the ring. Moving onto a tab switches to it (like Google TV); Down enters that tab's content where it was left. The tab bar scrolls away with the page and comes back with Up from the top zone or with Back. *Built (TV-2):* `TvShell` and `TvTabBar`. The bar shows on a tab's own screen while focus is on it or on the page's first zone; further down it slides up (150 ms) and the page gets the screen. Pushed pages (a genre, See all) have no bar, as in the Genre design. Pages change without a transition (cheap on slow chips, easy to follow), and go_router's `requestFocus` is off, so a route change never takes focus to its scope.
 
 ## 7. Screens
 
@@ -210,11 +210,13 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - **The hero:** text at the start, the banner beside it (always side by side on TV). Left from Play shows the previous banner and Right from Favorite the next one (R3's exception), with the bulb pager showing where you are. Auto-advance (10 s) pauses while the hero has focus.
 - **Rows:** the header isn't focusable; **See all** is the last card of the row. Continue cards are wide (16:9 artwork if the title has it, else the poster with the text beside it), with the progress bar. Removing one is in the Library (§7.5).
 - Initial focus: Play.
+- *Built (TV-2):* `lib/tv/screens/home`. While the hero loads, focus waits on the Home tab and moves to Play when it arrives, unless a key was pressed meanwhile. The next and previous banners load hidden, so a change shows at once; banners loop, like the phone's. Continue cards are the poster beside the text (300 × 117), because history keeps no 16:9 artwork. Rows build lazily, with a 600 px cache, so the next row is always built before focus can move to it.
 
 ### 7.2 Genre page and full lists
 - Zones: the filter chips ⟵⟶ (Sort · Kind · Language; each opens a `TvChoicePanel`) · the grid ▦ (6 posters per row at 960 dp).
 - Infinite paging through `pagedMediaProvider` (R10 loads ahead). The grid shows a placeholder row while a page loads; placeholders aren't focusable (R5).
 - A failed page shows a focusable "Try again" in place of the next row.
+- *Built (TV-2):* `lib/tv/screens/browse`, with `TvPagedGrid`. The title and the chips share the first line (the Genre design); focus starts on the first poster. Kind is Movies or Series only: the genre API needs one. The audio languages and sort labels come from `genre_providers.dart`, shared with the phone.
 
 ### 7.3 Details
 ```
@@ -329,7 +331,7 @@ The first TV test showed soft, blurry posters. There are three causes, and each 
 |---|---|---|
 | **TV-0** ✅ | Groundwork fixes (§3): phone splash upright again (manifest back to `portrait`, plus a `TvActivity` subclass declared `landscape` with only `LEANBACK_LAUNCHER`, and `android.hardware.screen.portrait` not required); no display-mode request on TV; banner with the name (generator); the `CINEMAKOM_TV` define and a placeholder `TvApp`; move `staffProvider` and the download flow out of screen files; the boundaries test; the remote key bindings; measure the TCL's UI resolution and pixel ratio (§9.1) | The phone starts upright even held sideways. The TV shows the banner and opens the placeholder in landscape. `--dart-define=CINEMAKOM_TV=true` runs on Linux. Analyze and tests clean. *Checked 2026-11-20 on the TCL (banner, landscape start, arrows, OK, Back exits) and the phone (upright when started sideways)* |
 | **TV-1** ✅ | The focus system (§5.2), `TvDriver`, the reachability test helper, the watchdog, `MarqueeTvText`, `TvSpace`, the focus look, `TvSidePanel` / `TvChoicePanel` | Unit tests for R1–R12 on a demo screen pass, in English and Arabic. *Done 2026-11-20: 16 tests in `focus_rules_test.dart`, with the no-trap check in both languages and a test that the watchdog fires* |
-| **TV-2** | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists, sharp artwork (§9.1: original images, decode size, filter, the thumbnail-then-original swap) | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes; posters and the hero look sharp on the 4K panel from close up |
+| **TV-2** ✅ | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists, sharp artwork (§9.1: original images, decode size, filter, the thumbnail-then-original swap) | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes; posters and the hero look sharp on the 4K panel from close up. *Checked 2026-11-20 on the TCL by the owner: Home, tabs, Back, See all and genre pages; a See all grid that never scrolled was fixed (the first-zone scroll rule now applies to its first row only)* |
 | **TV-3** | Details: actions, seasons, ranges, episodes, cast, more like this, person page; the TV download panels (§7.4) | The episode download scenario passes in tests. **On the TV:** download, pause, resume and delete an episode, and Download season |
 | **TV-4** | The TV player (§8): controls, seek bar with previews and speed-up, panels, episodes panel, skip intro, up next, errors | Player scenarios pass with `FakeEngine`. **On the TV:** a movie and a series in 1080p and 4K, every control by remote, frame times and memory |
 | **TV-5** | Search (decide the keyboard), Library, Downloads, Settings | Reachability tests for every screen. **On the TV:** the §11 checklist, in English and Arabic |

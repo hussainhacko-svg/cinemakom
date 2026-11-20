@@ -5,32 +5,9 @@ import '../data/models/catalog_models.dart';
 import '../data/models/media_details.dart';
 import '../data/models/media_item.dart';
 import '../data/models/playback_request.dart';
-import '../data/paging/media_sources.dart';
+import 'navigation_args.dart';
 
-/// What the "See all" screen shows.
-class MediaListArgs {
-  const MediaListArgs({required this.title, required this.source});
-
-  final String title;
-  final MediaSource source;
-}
-
-/// What the details screen opens on. [item] is what the list showed, so the
-/// header can draw before the full record arrives; a later episode of a
-/// series preselects its season.
-class TitleArgs {
-  const TitleArgs(this.item);
-
-  final MediaItem item;
-}
-
-/// What a person's page opens on: the credit that was tapped, so the name,
-/// photo and role show before the page loads.
-class PersonArgs {
-  const PersonArgs(this.credit);
-
-  final StaffCredit credit;
-}
+export 'navigation_args.dart';
 
 /// Pages opened from a list stay inside the tab they were opened from, so
 /// the navigation stays visible and back returns to the list (DESIGN.md §8).

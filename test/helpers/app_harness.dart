@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cinemakom/data/repositories/download_store.dart';
 import 'package:cinemakom/data/repositories/downloads_repository.dart';
+import 'package:cinemakom/tv/tv_app.dart';
 import 'package:cinemakom/core/platform/full_screen.dart';
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/widgets/media_image.dart';
@@ -99,10 +100,17 @@ Future<void> pumpApp(
   FakeFullScreen? fullScreen,
   double width = 390,
   double height = 844,
+  bool tv = false,
 }) async {
+  // The TV UI draws at 960 × 540 dp, ratio 2 (docs/TV.md §6.1, the TCL).
+  if (tv) {
+    width = 960;
+    height = 540;
+  }
+  final ratio = tv ? 2.0 : 3.0;
   tester.view
-    ..physicalSize = Size(width, height) * 3
-    ..devicePixelRatio = 3;
+    ..physicalSize = Size(width, height) * ratio
+    ..devicePixelRatio = ratio;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
@@ -132,7 +140,7 @@ Future<void> pumpApp(
           ),
         ),
       ],
-      child: const CinemakomApp(),
+      child: tv ? const TvApp() : const CinemakomApp(),
     ),
   );
   await tester.pumpAndSettle();

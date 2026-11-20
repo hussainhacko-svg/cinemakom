@@ -79,6 +79,10 @@ class TvNavGroup extends TvNavNode {
   /// nothing has it, R11).
   VoidCallback? onContentAdded;
 
+  /// A screen's group: scrolls its page back to the top (Back to the tab
+  /// bar, R4).
+  VoidCallback? scrollToTop;
+
   final _children = <TvNavNode>[];
   TvNavNode? _last;
 
@@ -212,6 +216,10 @@ class TvNavZone extends TvNavNode {
   /// Where the screen's focus starts (R11).
   bool initial = false;
 
+  /// False: entering always lands on [initialIndex] (the tab bar lands on
+  /// the current tab, wherever focus left it).
+  bool remember = true;
+
   /// A named exception to R3 (the Home hero changes banners at its ends):
   /// return true when it used the edge press.
   bool Function(TraversalDirection dir)? onEdge;
@@ -259,7 +267,9 @@ class TvNavZone extends TvNavNode {
   @override
   bool enter() {
     if (!isActive) return false;
-    final target = _nearestEnabled(_last ?? initialIndex);
+    final target = _nearestEnabled(
+      remember ? (_last ?? initialIndex) : initialIndex,
+    );
     if (target == null) return false;
     _items[target]!.focus();
     return true;

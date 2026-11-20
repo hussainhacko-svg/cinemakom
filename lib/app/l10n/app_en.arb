@@ -906,19 +906,6 @@
       }
     }
   },
-  "tvPlaceholder": "The TV app is being built. Press OK, the arrows and Back to check the remote.",
-  "@tvPlaceholder": {
-    "description": "TV placeholder screen (docs/TV.md TV-0), shown until the TV screens exist"
-  },
-  "tvLastKey": "Last key: {key}",
-  "@tvLastKey": {
-    "description": "TV placeholder: the name of the last remote key pressed",
-    "placeholders": {
-      "key": {
-        "type": "String"
-      }
-    }
-  },
   "tvPressOkToType": "OK to type",
   "@tvPressOkToType": {
     "description": "TV: shown on a focused text box; typing starts only after OK (docs/TV.md R8)"
@@ -926,5 +913,21 @@
   "tvBackCloses": "Back closes",
   "@tvBackCloses": {
     "description": "TV: at the bottom of a side panel, says the remote's Back button closes it"
+  },
+  "tvNotYet": "This part of the TV app is coming soon.",
+  "@tvNotYet": {
+    "description": "TV: shown on a screen the TV app doesn't have yet (while it's being built)"
+  },
+  "tvBack": "Back",
+  "@tvBack": {
+    "description": "TV: a button that goes back to the previous page"
+  },
+  "tvFilterKind": "Kind",
+  "@tvFilterKind": {
+    "description": "TV genre page: the chip that picks movies or series"
+  },
+  "tvFilterAudio": "Audio",
+  "@tvFilterAudio": {
+    "description": "TV genre page: the chip that picks the audio language"
   }
 }
