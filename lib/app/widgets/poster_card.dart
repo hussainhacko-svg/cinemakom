@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/platform/platform_info.dart';
 import '../../data/models/media_item.dart';
 import '../theme/marquee_colors.dart';
 import '../theme/marquee_text.dart';
@@ -43,17 +42,7 @@ class _PosterCardState extends State<PosterCard> {
       excludeSemantics: true,
       child: InkWell(
         onTap: widget.onTap,
-        onFocusChange: (f) {
-          setState(() => _focused = f);
-          if (f && isTv) {
-            Scrollable.ensureVisible(
-              context,
-              alignment: 0.35,
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-            );
-          }
-        },
+        onFocusChange: (f) => setState(() => _focused = f),
         borderRadius: _radius,
         focusColor: Colors.transparent,
         child: Column(
@@ -69,12 +58,7 @@ class _PosterCardState extends State<PosterCard> {
                       ? Border.all(color: MarqueeColors.bulb, width: 2)
                       : null,
                 ),
-                child: MediaImage(
-                  url: isTv
-                      ? (item.hdPosterUrl ?? item.posterUrl)
-                      : item.posterUrl,
-                  borderRadius: _radius,
-                ),
+                child: MediaImage(url: item.posterUrl, borderRadius: _radius),
               ),
             ),
             const SizedBox(height: 6),

@@ -15,7 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Upright from the first frame on phones and tablets; TVs stay landscape
-        // (docs/ANDROID_TV.md).
+        // (docs/TV.md).
         if (!isTvDevice()) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }

@@ -10,7 +10,7 @@ bool _isTv = false;
 bool? debugIsTvOverride;
 
 /// Queries native platform flags once at startup (currently Android TV
-/// Leanback / television UI mode, docs/ANDROID_TV.md).
+/// Leanback / television UI mode, docs/TV.md).
 Future<void> initPlatformInfo() async {
   if (!isAndroid) {
     _isTv = false;

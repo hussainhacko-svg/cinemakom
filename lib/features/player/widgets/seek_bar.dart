@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/marquee_colors.dart';
@@ -49,7 +46,7 @@ class SeekBar extends StatefulWidget {
 }
 
 class _SeekBarState extends State<SeekBar> {
-  /// The thumb's place while dragging or D-pad scrubbing, 0–1.
+  /// The thumb's place while dragging, 0–1.
   double? _drag;
 
   /// The mouse's place over the bar, 0–1.
@@ -58,35 +55,15 @@ class _SeekBarState extends State<SeekBar> {
   /// The drag is a finger: the bubble goes higher, clear of it.
   bool _touch = false;
 
-  /// Whether the seek bar holds keyboard / D-pad focus.
-  bool _focused = false;
-
-  /// Consecutive D-pad presses in one direction, for accelerated scrubbing.
-  int _keyDirection = 0;
-  int _keySteps = 0;
-  Timer? _commitTimer;
-
   /// How far a finger hides what's above it.
   static const _fingerLift = 28.0;
 
   static const _height = 44.0;
-  static const _commitDelay = Duration(milliseconds: 700);
-
-  @override
-  void dispose() {
-    _commitTimer?.cancel();
-    super.dispose();
-  }
 
   Duration _at(double fraction) => widget.duration * fraction.clamp(0.0, 1.0);
 
   double _fraction(Offset local, double width) =>
       width <= 0 ? 0 : (local.dx / width).clamp(0.0, 1.0);
-
-  double _currentFraction() => widget.duration <= Duration.zero
-      ? 0
-      : (widget.position.value.inMilliseconds / widget.duration.inMilliseconds)
-            .clamp(0.0, 1.0);
 
   void _scrub(double fraction) {
     setState(() => _drag = fraction);
@@ -94,10 +71,6 @@ class _SeekBarState extends State<SeekBar> {
   }
 
   void _end() {
-    _commitTimer?.cancel();
-    _commitTimer = null;
-    _keyDirection = 0;
-    _keySteps = 0;
     final drag = _drag;
     if (drag == null) return;
     setState(() => _drag = null);
@@ -105,105 +78,43 @@ class _SeekBarState extends State<SeekBar> {
     widget.onSeek(_at(drag));
   }
 
-  /// Steps the thumb with D-pad Left/Right while focused, accelerating on
-  /// sustained holds (10 s → 30 s → 60 s) so long movies scrub quickly.
-  void _stepByKey(int direction) {
-    if (widget.duration <= Duration.zero) return;
-    _touch = false;
-    if (_keyDirection == direction) {
-      _keySteps++;
-    } else {
-      _keyDirection = direction;
-      _keySteps = 1;
-    }
-    final seconds = _keySteps >= 9
-        ? 60
-        : _keySteps >= 4
-        ? 30
-        : 10;
-    final base = _drag ?? _currentFraction();
-    final delta = (seconds * 1000 * direction) / widget.duration.inMilliseconds;
-    _scrub((base + delta).clamp(0.0, 1.0));
-    _commitTimer?.cancel();
-    _commitTimer = Timer(_commitDelay, () {
-      if (mounted) _end();
-    });
-  }
-
-  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    final key = event.logicalKey;
-    final isLeft = key == LogicalKeyboardKey.arrowLeft;
-    final isRight = key == LogicalKeyboardKey.arrowRight;
-    if (isLeft || isRight) {
-      if (widget.duration <= Duration.zero) return KeyEventResult.handled;
-      if (event is KeyDownEvent || event is KeyRepeatEvent) {
-        _stepByKey(isLeft ? -1 : 1);
-      }
-      return KeyEventResult.handled;
-    }
-    if ((key == LogicalKeyboardKey.select ||
-            key == LogicalKeyboardKey.enter ||
-            key == LogicalKeyboardKey.space) &&
-        event is KeyDownEvent &&
-        _drag != null) {
-      _end();
-      return KeyEventResult.handled;
-    }
-    if ((key == LogicalKeyboardKey.arrowUp ||
-            key == LogicalKeyboardKey.arrowDown) &&
-        event is KeyDownEvent &&
-        _drag != null) {
-      _end();
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   Widget build(BuildContext context) {
     final enabled = widget.duration > Duration.zero;
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Focus(
-        canRequestFocus: enabled,
-        onFocusChange: (focused) {
-          if (_focused != focused) setState(() => _focused = focused);
-          if (!focused && _drag != null) _end();
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final at = _drag ?? _hover;
+          final bar = MouseRegion(
+            onHover: enabled
+                ? (e) =>
+                      setState(() => _hover = _fraction(e.localPosition, width))
+                : null,
+            onExit: (_) {
+              if (_hover != null) setState(() => _hover = null);
+            },
+            child: _bar(enabled, width),
+          );
+          // Always a Stack: wrapping the bar only while dragging would
+          // rebuild its gesture detector and drop the drag.
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              bar,
+              if (at != null && enabled)
+                _Bubble(
+                  at: _at(at),
+                  x: _SeekBarPainter.thumbX(at, width),
+                  barWidth: width,
+                  lift: _drag != null && _touch ? _fingerLift : 0,
+                  frame: widget.preview?.frameAt(_at(at)),
+                  aspectRatio: widget.aspectRatio,
+                ),
+            ],
+          );
         },
-        onKeyEvent: _onKey,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final at = _drag ?? _hover;
-            final bar = MouseRegion(
-              onHover: enabled
-                  ? (e) => setState(
-                      () => _hover = _fraction(e.localPosition, width),
-                    )
-                  : null,
-              onExit: (_) {
-                if (_hover != null) setState(() => _hover = null);
-              },
-              child: _bar(enabled, width),
-            );
-            // Always a Stack: wrapping the bar only while dragging would
-            // rebuild its gesture detector and drop the drag.
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                bar,
-                if (at != null && enabled)
-                  _Bubble(
-                    at: _at(at),
-                    x: _SeekBarPainter.thumbX(at, width),
-                    barWidth: width,
-                    lift: _drag != null && _touch ? _fingerLift : 0,
-                    frame: widget.preview?.frameAt(_at(at)),
-                    aspectRatio: widget.aspectRatio,
-                  ),
-              ],
-            );
-          },
-        ),
       ),
     );
   }
@@ -211,42 +122,32 @@ class _SeekBarState extends State<SeekBar> {
   Widget _bar(bool enabled, double width) => Semantics(
     label: widget.semanticLabel,
     slider: true,
-    child: DecoratedBox(
-      position: DecorationPosition.foreground,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        border: _focused
-            ? Border.all(color: MarqueeColors.bulb, width: 2)
-            : null,
-      ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapUp: enabled
-            ? (d) => widget.onSeek(_at(_fraction(d.localPosition, width)))
-            : null,
-        onHorizontalDragStart: enabled
-            ? (d) {
-                _touch = d.kind == PointerDeviceKind.touch;
-                _scrub(_fraction(d.localPosition, width));
-              }
-            : null,
-        onHorizontalDragUpdate: enabled
-            ? (d) => _scrub(_fraction(d.localPosition, width))
-            : null,
-        onHorizontalDragEnd: enabled ? (_) => _end() : null,
-        onHorizontalDragCancel: enabled ? _end : null,
-        child: SizedBox(
-          height: _height,
-          width: double.infinity,
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: _SeekBarPainter(
-                position: widget.position,
-                buffered: widget.buffered,
-                duration: widget.duration,
-                drag: _drag,
-                focused: _focused,
-              ),
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: enabled
+          ? (d) => widget.onSeek(_at(_fraction(d.localPosition, width)))
+          : null,
+      onHorizontalDragStart: enabled
+          ? (d) {
+              _touch = d.kind == PointerDeviceKind.touch;
+              _scrub(_fraction(d.localPosition, width));
+            }
+          : null,
+      onHorizontalDragUpdate: enabled
+          ? (d) => _scrub(_fraction(d.localPosition, width))
+          : null,
+      onHorizontalDragEnd: enabled ? (_) => _end() : null,
+      onHorizontalDragCancel: enabled ? _end : null,
+      child: SizedBox(
+        height: _height,
+        width: double.infinity,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _SeekBarPainter(
+              position: widget.position,
+              buffered: widget.buffered,
+              duration: widget.duration,
+              drag: _drag,
             ),
           ),
         ),
@@ -346,14 +247,12 @@ class _SeekBarPainter extends CustomPainter {
     required this.buffered,
     required this.duration,
     required this.drag,
-    this.focused = false,
   }) : super(repaint: Listenable.merge([position, buffered]));
 
   final ValueListenable<Duration> position;
   final ValueListenable<Duration> buffered;
   final Duration duration;
   final double? drag;
-  final bool focused;
 
   static const _track = 4.0;
   static const _thumb = 7.0;
@@ -374,7 +273,7 @@ class _SeekBarPainter extends CustomPainter {
     final played = drag ?? _of(position.value);
     final loaded = _of(buffered.value);
     final paint = Paint()
-      ..strokeWidth = focused ? _track + 2 : _track
+      ..strokeWidth = _track
       ..strokeCap = StrokeCap.round;
 
     void line(double from, double to, Color color) {
@@ -391,7 +290,7 @@ class _SeekBarPainter extends CustomPainter {
     line(0, played, MarqueeColors.bulb);
     canvas.drawCircle(
       Offset(left + width * played, y),
-      drag != null || focused ? _thumb + 2 : _thumb,
+      drag == null ? _thumb : _thumb + 2,
       Paint()..color = MarqueeColors.bulb,
     );
   }
@@ -399,7 +298,6 @@ class _SeekBarPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SeekBarPainter old) =>
       old.drag != drag ||
-      old.focused != focused ||
       old.duration != duration ||
       old.position != position ||
       old.buffered != buffered;

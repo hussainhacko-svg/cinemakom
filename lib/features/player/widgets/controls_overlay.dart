@@ -37,7 +37,6 @@ class ControlsOverlay extends StatelessWidget {
     required this.onMore,
     required this.onScrub,
     this.onEpisodes,
-    this.playPauseFocusNode,
     this.trailing = const [],
   });
 
@@ -60,9 +59,6 @@ class ControlsOverlay extends StatelessWidget {
 
   /// Opens the Episodes panel (series only).
   final VoidCallback? onEpisodes;
-
-  /// Focus node on the centre Play/Pause button (TV D-pad reveal).
-  final FocusNode? playPauseFocusNode;
 
   /// Extra top-bar buttons (fullscreen on desktop, the lock on mobile).
   final List<Widget> trailing;
@@ -168,7 +164,6 @@ class ControlsOverlay extends StatelessWidget {
             child: busy
                 ? null
                 : IconButton(
-                    focusNode: playPauseFocusNode,
                     tooltip: state.playing ? l10n.playerPause : l10n.play,
                     onPressed: controller.togglePlay,
                     style: withFocusRing(
@@ -178,7 +173,6 @@ class ControlsOverlay extends StatelessWidget {
                         hoverColor: MarqueeColors.bulbBright,
                         fixedSize: const Size.square(76),
                       ),
-                      color: MarqueeColors.cream,
                     ),
                     icon: Icon(
                       ended
@@ -379,17 +373,14 @@ class _SeekButton extends StatelessWidget {
   );
 }
 
-/// A 2 px ring (default `bulb`) while the button has keyboard/D-pad focus
-/// (DESIGN.md §5), over the button's own border otherwise.
-ButtonStyle withFocusRing(
-  ButtonStyle style, {
-  Color color = MarqueeColors.bulb,
-}) {
+/// A 2 px `bulb` ring while the button has keyboard focus (DESIGN.md §5),
+/// over the button's own border otherwise.
+ButtonStyle withFocusRing(ButtonStyle style) {
   final rest = style.side;
   return style.copyWith(
     side: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.focused)
-          ? BorderSide(color: color, width: 2)
+          ? const BorderSide(color: MarqueeColors.bulb, width: 2)
           : rest?.resolve(states),
     ),
   );

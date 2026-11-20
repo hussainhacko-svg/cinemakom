@@ -23,7 +23,6 @@ Future<Episode?> showEpisodesPanel(
       gutter: MarqueeSpace.l,
       initialSeason: current?.season,
       currentId: current?.id,
-      autofocusCurrent: true,
       onPlay: (e) => Navigator.of(context).pop(e),
     ),
   );

@@ -10,7 +10,6 @@ import '../../../app/widgets/choice_picker.dart';
 import '../../../app/widgets/media_image.dart';
 import '../../../app/widgets/media_text.dart';
 import '../../../app/widgets/progress_line.dart';
-import '../../../core/platform/platform_info.dart';
 import '../../../data/models/playback_request.dart';
 import '../../../data/repositories/library_repository.dart';
 import '../library_providers.dart';
@@ -38,7 +37,7 @@ void playContinue(BuildContext context, ContinueEntry entry) {
 /// A tap runs [onTap] (default: [playContinue]). A long press, or a right
 /// click, offers "Remove from Continue watching", which hides the title
 /// until it is watched again.
-class ContinueCard extends ConsumerStatefulWidget {
+class ContinueCard extends ConsumerWidget {
   const ContinueCard({
     super.key,
     required this.entry,
@@ -53,17 +52,9 @@ class ContinueCard extends ConsumerStatefulWidget {
   final Widget? trailing;
 
   @override
-  ConsumerState<ContinueCard> createState() => _ContinueCardState();
-}
-
-class _ContinueCardState extends ConsumerState<ContinueCard> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeText.of(context);
-    final entry = widget.entry;
     final p = entry.progress;
     final next = entry.upNext;
     final item = p.item;
@@ -129,101 +120,54 @@ class _ContinueCardState extends ConsumerState<ContinueCard> {
       child: Material(
         color: MarqueeColors.booth,
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: [
-            Expanded(
-              child: Material(
-                color: _focused ? MarqueeColors.boothRaised : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: const BorderRadius.all(MarqueeRadius.card),
-                  side: _focused
-                      ? const BorderSide(color: MarqueeColors.bulb, width: 2)
-                      : BorderSide.none,
+        child: InkWell(
+          borderRadius: const BorderRadius.all(MarqueeRadius.card),
+          onTap: onTap ?? () => playContinue(context, entry),
+          onLongPress: offerRemove,
+          onSecondaryTap: offerRemove,
+          child: Padding(
+            padding: const EdgeInsets.all(MarqueeSpace.s),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 56,
+                  height: 84,
+                  child: MediaImage(
+                    url: item.posterUrl,
+                    borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
+                  ),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  borderRadius: const BorderRadius.all(MarqueeRadius.card),
-                  onTap: widget.onTap ?? () => playContinue(context, entry),
-                  onLongPress: offerRemove,
-                  onSecondaryTap: offerRemove,
-                  onFocusChange: (f) {
-                    setState(() => _focused = f);
-                    if (f && isTv) {
-                      Scrollable.ensureVisible(
-                        context,
-                        alignment: 0.35,
-                        duration: const Duration(milliseconds: 150),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                  },
-                  focusColor: Colors.transparent,
-                  child: Padding(
-                    padding: const EdgeInsets.all(MarqueeSpace.s),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 56,
-                          height: 84,
-                          child: MediaImage(
-                            url: isTv
-                                ? (item.hdPosterUrl ?? item.posterUrl)
-                                : item.posterUrl,
-                            borderRadius: const BorderRadius.all(
-                              MarqueeRadius.thumb,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: MarqueeSpace.m),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: text.label,
-                              ),
-                              where,
-                              if (progress != null) ...[
-                                const SizedBox(height: MarqueeSpace.s),
-                                ProgressLine(value: progress),
-                              ],
-                              if (left != null) ...[
-                                const SizedBox(height: MarqueeSpace.xs),
-                                Text(left, style: text.caption),
-                              ],
-                            ],
-                          ),
-                        ),
+                const SizedBox(width: MarqueeSpace.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.label,
+                      ),
+                      where,
+                      if (progress != null) ...[
+                        const SizedBox(height: MarqueeSpace.s),
+                        ProgressLine(value: progress),
                       ],
-                    ),
+                      if (left != null) ...[
+                        const SizedBox(height: MarqueeSpace.xs),
+                        Text(left, style: text.caption),
+                      ],
+                    ],
                   ),
                 ),
-              ),
+                if (trailing case final trailing?) ...[
+                  const SizedBox(width: MarqueeSpace.m),
+                  trailing,
+                ],
+              ],
             ),
-            if (widget.trailing case final trailing?)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: MarqueeSpace.s),
-                child: trailing,
-              ),
-            if (isTv)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: MarqueeSpace.xs),
-                child: IconButton(
-                  tooltip: l10n.removeFromContinue,
-                  onPressed: offerRemove,
-                  icon: const Icon(
-                    Icons.more_vert,
-                    size: 20,
-                    color: MarqueeColors.dust,
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );

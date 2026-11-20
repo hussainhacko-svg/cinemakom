@@ -50,7 +50,6 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   static const _hideAfter = Duration(seconds: 3);
-  static const _tvHideAfter = Duration(seconds: 5);
   static const _bufferingDelay = Duration(milliseconds: 300);
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
   static const _toastFor = Duration(milliseconds: 1200);
@@ -60,13 +59,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _menuOpen = false;
   bool _scrubbing = false;
   bool _showBuffering = false;
-
-  /// Focus nodes for TV remote navigation (docs/ANDROID_TV.md).
-  final _rootFocus = FocusNode(debugLabel: 'playerRoot');
-  final _playPauseFocus = FocusNode(debugLabel: 'playerPlayPause');
-  int _quickSeekDir = 0;
-  int _quickSeekSteps = 0;
-  Timer? _quickSeekReset;
 
   /// The controls lock (phones): touches do nothing but show [_Unlock].
   bool _locked = false;
@@ -140,9 +132,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _toastTimer?.cancel();
     _resumedTimer?.cancel();
     _unlockTimer?.cancel();
-    _quickSeekReset?.cancel();
-    _rootFocus.dispose();
-    _playPauseFocus.dispose();
     unawaited(_audio?.dispose());
     unawaited(_wakelock(on: false));
     if (isMobile) {
@@ -155,28 +144,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ---------------------------------------------------------------------------
   // Controls visibility (PLAYER.md §8)
 
-  void _show({bool focusPlayPause = false}) {
+  void _show() {
     if (!_visible) setState(() => _visible = true);
-    if (focusPlayPause) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            _visible &&
-            !_menuOpen &&
-            _playPauseFocus.canRequestFocus) {
-          _playPauseFocus.requestFocus();
-        }
-      });
-    }
     _scheduleHide();
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
     if (!_state.playing || _menuOpen || _scrubbing) return;
-    _hideTimer = Timer(isTv ? _tvHideAfter : _hideAfter, () {
+    _hideTimer = Timer(_hideAfter, () {
       if (mounted && _state.playing && !_menuOpen && !_scrubbing) {
         setState(() => _visible = false);
-        if (isTv && !_menuOpen) _rootFocus.requestFocus();
       }
     });
   }
@@ -200,7 +178,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void _hide() {
     _hideTimer?.cancel();
     if (_visible) setState(() => _visible = false);
-    if (isTv && !_menuOpen) _rootFocus.requestFocus();
   }
 
   /// Opens a menu; the controls stay up while it's open. Closing it without
@@ -544,10 +521,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   /// The keys of PLAYER.md §9.2, the same in both languages.
-  /// On Android TV, D-pad arrows navigate the controls instead, handled by
-  /// [_onTvKey] (docs/ANDROID_TV.md).
   Map<ShortcutActivator, VoidCallback> get _shortcuts {
-    if (isTv) return const {};
     VoidCallback key(void Function() action) => () {
       _input();
       action();
@@ -557,24 +531,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return {
       const SingleActivator(LogicalKeyboardKey.space): key(_togglePlay),
       const SingleActivator(LogicalKeyboardKey.keyK): key(_togglePlay),
-      const SingleActivator(LogicalKeyboardKey.mediaPlayPause): key(
-        _togglePlay,
-      ),
-      const SingleActivator(LogicalKeyboardKey.mediaPlay): key(
-        () => unawaited(_controller.play()),
-      ),
-      const SingleActivator(LogicalKeyboardKey.mediaPause): key(
-        () => unawaited(_controller.pause()),
-      ),
-      const SingleActivator(LogicalKeyboardKey.mediaRewind): key(
-        () => seekBy(-10),
-      ),
-      const SingleActivator(LogicalKeyboardKey.mediaFastForward): key(
-        () => seekBy(10),
-      ),
-      const SingleActivator(LogicalKeyboardKey.mediaTrackNext): key(
-        () => unawaited(_controller.playNext()),
-      ),
       const SingleActivator(LogicalKeyboardKey.arrowLeft): key(
         () => seekBy(-10),
       ),
@@ -622,140 +578,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     };
   }
 
-  /// Accelerated quick-seek on TV when controls are hidden or media rewind/FF
-  /// is pressed (10 s → 30 s → 60 s).
-  void _quickSeek(int direction) {
-    if (_quickSeekDir == direction) {
-      _quickSeekSteps++;
-    } else {
-      _quickSeekDir = direction;
-      _quickSeekSteps = 1;
-    }
-    _quickSeekReset?.cancel();
-    _quickSeekReset = Timer(_toastFor, () {
-      _quickSeekDir = 0;
-      _quickSeekSteps = 0;
-    });
-    final seconds = _quickSeekSteps >= 9
-        ? 60
-        : _quickSeekSteps >= 4
-        ? 30
-        : 10;
-    unawaited(_controller.seekBy(Duration(seconds: seconds * direction)));
-    final l10n = AppLocalizations.of(context);
-    _showToast(
-      direction > 0 ? Icons.fast_forward_rounded : Icons.fast_rewind_rounded,
-      l10n.playerSeekAmount('${direction > 0 ? '+' : '−'}$seconds'),
-    );
-  }
-
-  /// TV remote key handling (docs/ANDROID_TV.md Milestone TV-2):
-  /// - Media keys always work.
-  /// - With controls hidden: Left/Right quick-seek, Up/Down reveal controls,
-  ///   Select activates Skip Intro / Up Next or toggles Play/Pause, Back exits.
-  /// - With controls visible: D-pad navigates controls normally, Back hides
-  ///   controls first.
-  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
-    if (!isTv || _menuOpen) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    _controller.noteActivity();
-
-    // Dedicated TV media keys work whether controls are visible or hidden.
-    if (key == LogicalKeyboardKey.mediaPlayPause) {
-      _togglePlay();
-      _show(focusPlayPause: !_visible);
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.mediaPlay) {
-      unawaited(_controller.play());
-      _show();
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.mediaPause) {
-      unawaited(_controller.pause());
-      _show(focusPlayPause: !_visible);
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.mediaRewind) {
-      _quickSeek(-1);
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.mediaFastForward) {
-      _quickSeek(1);
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.mediaTrackNext) {
-      unawaited(_controller.playNext());
-      _show();
-      return KeyEventResult.handled;
-    }
-
-    final isBack =
-        key == LogicalKeyboardKey.goBack || key == LogicalKeyboardKey.escape;
-    final isSelect =
-        key == LogicalKeyboardKey.select ||
-        key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space ||
-        key == LogicalKeyboardKey.gameButtonA;
-
-    if (!_visible) {
-      if (key == LogicalKeyboardKey.arrowLeft) {
-        _quickSeek(-1);
-        return KeyEventResult.handled;
-      }
-      if (key == LogicalKeyboardKey.arrowRight) {
-        _quickSeek(1);
-        return KeyEventResult.handled;
-      }
-      if (key == LogicalKeyboardKey.arrowUp ||
-          key == LogicalKeyboardKey.arrowDown) {
-        _show(focusPlayPause: true);
-        return KeyEventResult.handled;
-      }
-      if (isSelect) {
-        final s = _state;
-        if (s.nextEpisode != null &&
-            s.upNext != UpNext.none &&
-            s.phase != PlayerPhase.failed) {
-          unawaited(_controller.playNext());
-        } else if (s.intro != null &&
-            s.introPinned &&
-            s.phase == PlayerPhase.ready) {
-          unawaited(_controller.skipIntro());
-        } else {
-          _togglePlay();
-          _show(focusPlayPause: true);
-        }
-        return KeyEventResult.handled;
-      }
-      if (isBack) {
-        _back();
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
-
-    // Controls are visible: keep them up while the user navigates.
-    _scheduleHide();
-    if (isBack) {
-      _hide();
-      return KeyEventResult.handled;
-    }
-    if ((key == LogicalKeyboardKey.arrowUp ||
-            key == LogicalKeyboardKey.arrowDown ||
-            key == LogicalKeyboardKey.arrowLeft ||
-            key == LogicalKeyboardKey.arrowRight) &&
-        _rootFocus.hasPrimaryFocus &&
-        _playPauseFocus.canRequestFocus) {
-      _playPauseFocus.requestFocus();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
   void _togglePlay() => unawaited(_controller.togglePlay());
 
   static const _digits = [
@@ -789,26 +611,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         (_showBuffering && state.buffering);
     final failed = phase == PlayerPhase.failed;
 
-    // Back unlocks first; on TV, Back hides controls before exiting.
+    // Back unlocks first.
     return PopScope(
-      canPop: !_locked && !(isTv && _visible && !failed),
+      canPop: !_locked,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          if (_locked) {
-            _unlock();
-          } else if (isTv && _visible) {
-            _hide();
-          }
-        }
+        if (!didPop) _unlock();
       },
       child: Scaffold(
         backgroundColor: MarqueeColors.screen,
         body: CallbackShortcuts(
           bindings: _shortcuts,
           child: Focus(
-            focusNode: _rootFocus,
             autofocus: true,
-            onKeyEvent: _onTvKey,
             child: MouseRegion(
               cursor: _visible ? MouseCursor.defer : SystemMouseCursors.none,
               onHover: (_) => _input(),
@@ -833,55 +647,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   _gestures(
                     l10n,
                     state,
-                    ExcludeFocus(
-                      excluding: !_visible || _locked,
-                      child: IgnorePointer(
-                        ignoring: !_visible || _locked,
-                        child: AnimatedOpacity(
-                          opacity: _visible && !_locked ? 1 : 0,
-                          duration: const Duration(milliseconds: 150),
-                          curve: Curves.easeOut,
-                          child: ControlsOverlay(
-                            state: state,
-                            controller: controller,
-                            busy: busy || failed,
-                            onBack: _back,
-                            onSubtitles: _subtitleMenu,
-                            onQuality: (anchor) => _qualityMenu(l10n, anchor),
-                            onSpeed: (anchor) => _speedMenu(l10n, anchor),
-                            onFit: () => _cycleFit(l10n),
-                            onMore: (anchor) => _moreMenu(l10n, anchor),
-                            onEpisodes: widget.request.isSeries
-                                ? _episodesPanel
-                                : null,
-                            playPauseFocusNode: _playPauseFocus,
-                            trailing: [
-                              if (isTouchMobile)
-                                _ChipIcon(
-                                  icon: Icons.lock_outline,
-                                  tooltip: l10n.playerLock,
-                                  onPressed: _lock,
-                                ),
-                              if (isDesktop)
-                                _ChipIcon(
-                                  icon: _fullScreen
-                                      ? Icons.fullscreen_exit
-                                      : Icons.fullscreen,
-                                  tooltip: _fullScreen
-                                      ? l10n.playerExitFullScreen
-                                      : l10n.playerFullScreen,
-                                  onPressed: _toggleFullScreen,
-                                ),
-                            ],
-                            onScrub: (at) {
-                              _scrubbing = at != null;
-                              if (_scrubbing) {
-                                _hideTimer?.cancel();
-                              } else {
-                                _scheduleHide();
-                              }
-                            },
-                          ),
+                    IgnorePointer(
+                      ignoring: !_visible || _locked,
+                      child: AnimatedOpacity(
+                        opacity: _visible && !_locked ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOut,
+                        child: ControlsOverlay(
+                          state: state,
+                          controller: controller,
+                          busy: busy || failed,
+                          onBack: _back,
+                          onSubtitles: _subtitleMenu,
+                          onQuality: (anchor) => _qualityMenu(l10n, anchor),
+                          onSpeed: (anchor) => _speedMenu(l10n, anchor),
+                          onFit: () => _cycleFit(l10n),
+                          onMore: (anchor) => _moreMenu(l10n, anchor),
+                          onEpisodes: widget.request.isSeries
+                              ? _episodesPanel
+                              : null,
+                          trailing: [
+                            if (isMobile)
+                              _ChipIcon(
+                                icon: Icons.lock_outline,
+                                tooltip: l10n.playerLock,
+                                onPressed: _lock,
+                              ),
+                            if (isDesktop)
+                              _ChipIcon(
+                                icon: _fullScreen
+                                    ? Icons.fullscreen_exit
+                                    : Icons.fullscreen,
+                                tooltip: _fullScreen
+                                    ? l10n.playerExitFullScreen
+                                    : l10n.playerFullScreen,
+                                onPressed: _toggleFullScreen,
+                              ),
+                          ],
+                          onScrub: (at) {
+                            _scrubbing = at != null;
+                            if (_scrubbing) {
+                              _hideTimer?.cancel();
+                            } else {
+                              _scheduleHide();
+                            }
+                          },
                         ),
                       ),
                     ),
@@ -937,11 +747,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   /// Phones: taps, double taps, swipes and pinches over the controls.
-  /// TV: D-pad drives the controls (air-mouse taps toggle visibility).
-  /// Desktop: click plays/pauses, double click toggles full screen, wheel
-  /// adjusts volume.
+  /// Desktop: a tap shows or hides them (mouse and keys come in M8).
   Widget _gestures(AppLocalizations l10n, PlayerState state, Widget controls) =>
-      isTouchMobile
+      isMobile
       ? GestureLayer(
           controller: _controller,
           state: state,
@@ -949,12 +757,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onTap: _toggle,
           onLockedTap: _showUnlock,
           onPinch: (fit) => _pinchFit(l10n, fit),
-          child: controls,
-        )
-      : isTv
-      ? GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggle,
           child: controls,
         )
       : Listener(

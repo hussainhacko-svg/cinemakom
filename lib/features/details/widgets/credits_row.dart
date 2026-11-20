@@ -5,7 +5,6 @@ import '../../../app/navigation.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../app/widgets/section_header.dart';
-import '../../../core/platform/platform_info.dart';
 import '../../../data/models/media_details.dart';
 import '../../staff/widgets/person_photo.dart';
 
@@ -58,23 +57,15 @@ class CreditsRow extends StatelessWidget {
   }
 }
 
-class _Person extends StatefulWidget {
+class _Person extends StatelessWidget {
   const _Person({required this.credit});
 
   final StaffCredit credit;
 
   @override
-  State<_Person> createState() => _PersonState();
-}
-
-class _PersonState extends State<_Person> {
-  bool _focused = false;
-
-  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeText.of(context);
-    final credit = widget.credit;
     final role = switch (credit.role) {
       StaffRole.actor => l10n.roleActor,
       StaffRole.director => l10n.roleDirector,
@@ -87,46 +78,25 @@ class _PersonState extends State<_Person> {
       excludeSemantics: true,
       child: InkWell(
         onTap: () => openPerson(context, credit),
-        onFocusChange: (f) {
-          setState(() => _focused = f);
-          if (f && isTv) {
-            Scrollable.ensureVisible(
-              context,
-              alignment: 0.35,
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-            );
-          }
-        },
-        focusColor: Colors.transparent,
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _focused ? MarqueeColors.boothRaised : null,
-            borderRadius: const BorderRadius.all(MarqueeRadius.card),
-            border: _focused
-                ? Border.all(color: MarqueeColors.bulb, width: 2)
-                : null,
-          ),
-          child: SizedBox(
-            width: 76,
-            child: Column(
-              children: [
-                PersonPhoto(name: credit.name, imageUrl: credit.imageUrl),
-                const SizedBox(height: 6),
-                Text(
-                  credit.name,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.caption
-                      .copyWith(color: MarqueeColors.cream)
-                      .withWeight(FontWeight.w600),
-                ),
-                if (role.isNotEmpty)
-                  Text(role, style: text.caption.copyWith(fontSize: 11)),
-              ],
-            ),
+        child: SizedBox(
+          width: 76,
+          child: Column(
+            children: [
+              PersonPhoto(name: credit.name, imageUrl: credit.imageUrl),
+              const SizedBox(height: 6),
+              Text(
+                credit.name,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: text.caption
+                    .copyWith(color: MarqueeColors.cream)
+                    .withWeight(FontWeight.w600),
+              ),
+              if (role.isNotEmpty)
+                Text(role, style: text.caption.copyWith(fontSize: 11)),
+            ],
           ),
         ),
       ),

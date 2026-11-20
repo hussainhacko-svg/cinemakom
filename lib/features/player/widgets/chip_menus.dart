@@ -9,7 +9,7 @@ import '../../../core/storage/preferences.dart';
 import '../../../data/models/playback_request.dart';
 import '../../settings/settings_screen.dart' show subtitleSizeLabel;
 import '../player_controller.dart';
-import 'controls_overlay.dart' show subtitleLabel, withFocusRing;
+import 'controls_overlay.dart' show subtitleLabel;
 
 /// The player's menus (PLAYER.md §8): a bottom sheet below 600 dp, and from
 /// 600 dp a popover under the chip that opened it, so the video stays in
@@ -207,89 +207,66 @@ class PlayerMenu extends StatelessWidget {
 
 /// One choice: the current one in `bulb` with a check. [trailing] replaces
 /// the check (the "⋯" menu shows each chip's value there).
-class MenuRow extends StatefulWidget {
+class MenuRow extends StatelessWidget {
   const MenuRow({
     super.key,
     required this.label,
     required this.onTap,
     this.caption,
     this.selected = false,
-    this.autofocus = false,
     this.trailing,
   });
 
   final String label;
   final String? caption;
   final bool selected;
-  final bool autofocus;
   final String? trailing;
   final VoidCallback onTap;
 
   @override
-  State<MenuRow> createState() => _MenuRowState();
-}
-
-class _MenuRowState extends State<MenuRow> {
-  bool _focused = false;
-
-  @override
   Widget build(BuildContext context) {
     final text = MarqueeText.of(context);
-    final caption = widget.caption;
-    final trailing = widget.trailing;
+    final caption = this.caption;
+    final trailing = this.trailing;
     return Semantics(
       inMutuallyExclusiveGroup: trailing == null,
-      checked: trailing == null ? widget.selected : null,
+      checked: trailing == null ? selected : null,
       button: true,
       excludeSemantics: true,
-      label: [widget.label, ?caption, ?trailing].join(', '),
+      label: [label, ?caption, ?trailing].join(', '),
       child: InkWell(
-        autofocus: widget.autofocus,
-        onTap: widget.onTap,
-        onFocusChange: (f) => setState(() => _focused = f),
-        focusColor: Colors.transparent,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _focused ? MarqueeColors.boothRaised : null,
-            border: _focused
-                ? Border.all(color: MarqueeColors.bulb, width: 2)
-                : null,
-            borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: MarqueeSpace.xl,
-                vertical: MarqueeSpace.xs,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.label,
-                          style: text.body
-                              .withWeight(FontWeight.w500)
-                              .copyWith(
-                                color: widget.selected
-                                    ? MarqueeColors.bulb
-                                    : MarqueeColors.cream,
-                              ),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: MarqueeSpace.xl,
+              vertical: MarqueeSpace.xs,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: text.body.withWeight(FontWeight.w500).copyWith(
+                          color: selected
+                              ? MarqueeColors.bulb
+                              : MarqueeColors.cream,
                         ),
-                        if (caption != null) Text(caption, style: text.caption),
-                      ],
-                    ),
+                      ),
+                      if (caption != null) Text(caption, style: text.caption),
+                    ],
                   ),
-                  if (trailing != null)
-                    Text(trailing, style: text.label)
-                  else if (widget.selected)
-                    const Icon(Icons.check, color: MarqueeColors.bulb, size: 20),
-                ],
-              ),
+                ),
+                if (trailing != null)
+                  Text(trailing, style: text.label)
+                else if (selected)
+                  const Icon(Icons.check, color: MarqueeColors.bulb, size: 20),
+              ],
             ),
           ),
         ),
@@ -323,24 +300,19 @@ class ChoiceMenu<T> extends StatelessWidget {
   final T? selected;
 
   @override
-  Widget build(BuildContext context) {
-    final hasSelected =
-        selected != null && choices.any((c) => c.value == selected);
-    return PlayerMenu(
-      title: title,
-      children: [
-        for (var i = 0; i < choices.length; i++)
-          MenuRow(
-            label: choices[i].label,
-            caption: choices[i].caption,
-            trailing: choices[i].trailing,
-            selected: choices[i].value == selected,
-            autofocus: hasSelected ? choices[i].value == selected : i == 0,
-            onTap: () => Navigator.of(context).pop(choices[i].value),
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => PlayerMenu(
+    title: title,
+    children: [
+      for (final c in choices)
+        MenuRow(
+          label: c.label,
+          caption: c.caption,
+          trailing: c.trailing,
+          selected: c.value == selected,
+          onTap: () => Navigator.of(context).pop(c.value),
+        ),
+    ],
+  );
 }
 
 /// The subtitle menu: the tracks, then (with a track on) the size setting
@@ -386,7 +358,6 @@ class SubtitleMenu extends ConsumerWidget {
         MenuRow(
           label: subtitleLabel(l10n, o),
           selected: o == state.subtitle,
-          autofocus: o == state.subtitle,
           onTap: () {
             controller.selectSubtitle(o);
             // A pick, so the player keeps its controls up (null = dismissed).
@@ -534,20 +505,18 @@ class _Pill extends StatelessWidget {
     checked: selected,
     child: TextButton(
       onPressed: onTap,
-      style: withFocusRing(
-        TextButton.styleFrom(
-          backgroundColor: selected ? MarqueeColors.boothRaised : null,
-          foregroundColor: selected ? MarqueeColors.cream : MarqueeColors.dust,
-          side: BorderSide(
-            color: selected ? MarqueeColors.velvetStrong : MarqueeColors.velvet,
-          ),
-          shape: const StadiumBorder(),
-          minimumSize: const Size(44, 36),
-          padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: MarqueeSpace.l,
-          ),
-          textStyle: MarqueeText.of(context).label,
+      style: TextButton.styleFrom(
+        backgroundColor: selected ? MarqueeColors.boothRaised : null,
+        foregroundColor: selected ? MarqueeColors.cream : MarqueeColors.dust,
+        side: BorderSide(
+          color: selected ? MarqueeColors.velvetStrong : MarqueeColors.velvet,
         ),
+        shape: const StadiumBorder(),
+        minimumSize: const Size(44, 36),
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: MarqueeSpace.l,
+        ),
+        textStyle: MarqueeText.of(context).label,
       ),
       child: Text(label),
     ),
@@ -570,13 +539,11 @@ class _StepButton extends StatelessWidget {
     tooltip: tooltip,
     onPressed: onPressed,
     icon: Icon(icon, size: 20),
-    style: withFocusRing(
-      IconButton.styleFrom(
-        backgroundColor: MarqueeColors.boothRaised,
-        foregroundColor: MarqueeColors.cream,
-        side: const BorderSide(color: MarqueeColors.velvet),
-        fixedSize: const Size.square(44),
-      ),
+    style: IconButton.styleFrom(
+      backgroundColor: MarqueeColors.boothRaised,
+      foregroundColor: MarqueeColors.cream,
+      side: const BorderSide(color: MarqueeColors.velvet),
+      fixedSize: const Size.square(44),
     ),
   );
 }
