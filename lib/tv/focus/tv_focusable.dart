@@ -45,7 +45,8 @@ class TvFocusable extends StatefulWidget {
   final KeyEventResult Function(KeyEvent event)? onKey;
 
   /// Takes focus once it's built: the player's Play/Pause when the controls
-  /// show, Skip intro when it appears (docs/TV.md §2). One per screen.
+  /// show, Skip intro when it appears (docs/TV.md §2). One per screen, and
+  /// only while its route is the current one (never from behind a panel).
   final bool autofocus;
 
   /// Disabled items stay visible but their zone skips them (R5).
@@ -83,7 +84,9 @@ class _TvFocusableState extends State<TvFocusable> implements TvItem {
     if (widget.autofocus) {
       tvAutofocusPending++;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _node.canRequestFocus) _node.requestFocus();
+        // Not behind a panel: a page under another route never takes focus.
+        final current = mounted && (ModalRoute.of(context)?.isCurrent ?? true);
+        if (current && _node.canRequestFocus) _node.requestFocus();
         // The request applies in a microtask; until then focus is taken.
         scheduleMicrotask(() => tvAutofocusPending--);
       });

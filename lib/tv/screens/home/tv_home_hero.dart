@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
+import '../../../app/widgets/error_view.dart';
 import '../../../app/widgets/media_text.dart';
 import '../../../data/models/media_item.dart';
 import '../../../data/models/playback_request.dart';
@@ -101,14 +102,44 @@ class _TvHomeHeroState extends ConsumerState<TvHomeHero> {
 
   @override
   Widget build(BuildContext context) {
-    final banners = ref.watch(bannersProvider).value ?? const <MediaItem>[];
+    final async = ref.watch(bannersProvider);
+    final banners = async.value ?? const <MediaItem>[];
     if (banners.isEmpty) {
+      final error = async.hasError ? async.error : null;
       // Loading (or none): a quiet `booth` block where the banner goes.
+      // Failed (offline): why, and Try again where Play would be (R11).
       return SizedBox(
         height: TvHomeHero.height,
         child: Row(
           children: [
-            const SizedBox(width: 340 + 32),
+            SizedBox(
+              width: 340 + 32,
+              child: error == null
+                  ? null
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          errorMessage(AppLocalizations.of(context), error),
+                          style: MarqueeTvText.of(context).body
+                              .copyWith(color: MarqueeColors.creamSoft),
+                        ),
+                        const SizedBox(height: 18),
+                        TvZone.row(
+                          order: widget.order,
+                          initial: true,
+                          keyline: 0,
+                          child: TvButton(
+                            index: 0,
+                            primary: true,
+                            label: AppLocalizations.of(context).retry,
+                            onSelect: () => ref.invalidate(bannersProvider),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
             Expanded(
               child: Align(
                 alignment: Alignment.bottomCenter,

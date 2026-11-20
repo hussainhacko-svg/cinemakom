@@ -141,6 +141,9 @@ class TvEpisodes extends StatelessWidget {
       return first == last ? '$first' : l10n.episodeRange(first, last);
     }
 
+    // The lists' outer padding: the page's safe area, or (in a panel, with
+    // no edge) room for the ring, which the lists clip.
+    final outer = edge > 0 ? edge : _ringRoom;
     final panes = TvGroup.split(
       order: order,
       child: Row(
@@ -155,12 +158,7 @@ class TvEpisodes extends StatelessWidget {
               keyline: 0,
               child: ListView.separated(
                 // Room for the focus ring, which the list clips.
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  edge + _ringRoom,
-                  8,
-                  _ringRoom,
-                  8,
-                ),
+                padding: EdgeInsetsDirectional.fromSTEB(outer, 8, _ringRoom, 8),
                 itemCount: entries.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 6),
                 itemBuilder: (context, i) {
@@ -192,12 +190,7 @@ class TvEpisodes extends StatelessWidget {
               pageWhole: true,
               keyline: 0,
               child: ListView.separated(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  _ringRoom,
-                  8,
-                  edge + _ringRoom,
-                  8,
-                ),
+                padding: EdgeInsetsDirectional.fromSTEB(_ringRoom, 8, outer, 8),
                 itemCount: shown.length + (downloads ? 1 : 0),
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, row) {

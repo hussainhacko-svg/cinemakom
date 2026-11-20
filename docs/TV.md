@@ -213,6 +213,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - **The hero:** text at the start, the banner beside it (always side by side on TV). Left from Play shows the previous banner and Right from Favorite the next one (R3's exception), with the bulb pager showing where you are. Auto-advance (10 s) pauses while the hero has focus.
 - **Rows:** the header isn't focusable; **See all** is the last card of the row. Continue cards are wide (16:9 artwork if the title has it, else the poster with the text beside it), with the progress bar. Removing one is in the Library (§7.5).
 - Initial focus: Play.
+- *Offline (TV-6):* when the banners fail, the hero says why, with Try again where Play would be (focus starts there). When the API's own rows fail, one row says so, with Try again; the other rows already had theirs. Tested with every request failing, no traps.
 - *Built (TV-2):* `lib/tv/screens/home`. While the hero loads, focus waits on the Home tab and moves to Play when it arrives, unless a key was pressed meanwhile. The next and previous banners load hidden, so a change shows at once; banners loop, like the phone's. Continue cards are the poster beside the text (300 × 117), because history keeps no 16:9 artwork. Rows build lazily, with a 600 px cache, so the next row is always built before focus can move to it.
 
 ### 7.2 Genre page and full lists

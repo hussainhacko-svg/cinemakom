@@ -38,6 +38,16 @@ class TvHomeScreen extends ConsumerWidget {
 
     // Each row: its builder, given its zone order.
     final rows = <Widget Function(int order)>[
+      // The API's own rows failed (offline): one row says so, with Try again.
+      if (groups.hasError && !groups.hasValue)
+        (order) => TvPosterRow(
+          order: order,
+          title: '',
+          items: const [],
+          onOpen: (_) {},
+          error: groups.error,
+          onRetry: () => ref.invalidate(videoGroupsProvider),
+        ),
       if (groups.isLoading && !groups.hasValue)
         (order) => TvPosterRow(
           order: order,

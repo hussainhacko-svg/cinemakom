@@ -22,7 +22,7 @@ import 'tv_driver.dart';
 
 final _exits = <String>[];
 
-Future<TvDriver> _pumpTv(WidgetTester tester) async {
+Future<TvDriver> _pumpTv(WidgetTester tester, {FakeApiClient? api}) async {
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
     SystemChannels.platform,
     (call) async {
@@ -33,7 +33,7 @@ Future<TvDriver> _pumpTv(WidgetTester tester) async {
   _exits.clear();
   // A fresh app each time (pumping it again would keep its state).
   await tester.pumpWidget(const SizedBox());
-  await pumpApp(tester, tv: true);
+  await pumpApp(tester, tv: true, api: api);
   return TvDriver(tester);
 }
 
@@ -181,5 +181,21 @@ void main() {
       backChecks: 12,
     );
     expect(reached, containsAll(['Play', 'Home', 'Settings', 'See all']));
+  });
+
+  testWidgets('Offline: Home says so, with Try again focused; no traps', (
+    tester,
+  ) async {
+    FakeApiClient offlineApi() =>
+        FakeApiClient([((_) => true, (_) => offline)]);
+    final tv = await _pumpTv(tester, api: offlineApi());
+    expect(tv.focused, 'Try again');
+    expect(find.text('Try again'), findsWidgets);
+    await expectNoTraps(
+      tester,
+      pumpScreen: () => _pumpTv(tester, api: offlineApi()),
+      leftScreen: () => _exits.isNotEmpty,
+      backChecks: 4,
+    );
   });
 }
