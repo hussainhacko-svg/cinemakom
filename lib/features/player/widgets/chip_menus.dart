@@ -7,7 +7,7 @@ import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../core/storage/preferences.dart';
 import '../../../data/models/playback_request.dart';
-import '../../settings/settings_screen.dart' show subtitleSizeLabel;
+import '../../settings/settings_labels.dart' show subtitleSizeLabel;
 import '../player_controller.dart';
 import '../player_labels.dart';
 

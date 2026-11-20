@@ -266,7 +266,7 @@ Future<void> tvDownloadMenu(
     case _Action.resume || _Action.retry:
       await repo.resume(d.videoId);
     case _Action.cancel:
-      if (await _confirm(
+      if (await tvConfirm(
         context,
         l10n.downloadCancel,
         l10n.downloadCancelTitle,
@@ -275,7 +275,7 @@ Future<void> tvDownloadMenu(
         await repo.cancel(d.videoId);
       }
     case _Action.delete:
-      if (await _confirm(
+      if (await tvConfirm(
         context,
         l10n.downloadDelete,
         l10n.tvDeleteQuestion,
@@ -292,7 +292,7 @@ Future<void> tvDownloadMenu(
 
 /// Asks before something that can't be undone. Opens on [keep], so a
 /// quick OK never deletes.
-Future<bool> _confirm(
+Future<bool> tvConfirm(
   BuildContext context,
   String doIt,
   String question,

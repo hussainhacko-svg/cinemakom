@@ -51,7 +51,9 @@ void main() {
     expect(tv.focused, 'Home');
     await tv.right();
     expect(tv.focused, 'Search');
-    await tv.down(); // the Search tab has nothing to focus yet
+    await tv.down();
+    expect(tv.focused, 'Titles, actors, directors');
+    await tv.up();
     expect(tv.focused, 'Search');
     await tv.left();
     await tv.down();

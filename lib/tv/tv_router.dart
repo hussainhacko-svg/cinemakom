@@ -14,7 +14,10 @@ import 'screens/details/tv_details_screen.dart';
 import 'screens/person/tv_person_screen.dart';
 import 'screens/browse/tv_list_screen.dart';
 import 'screens/home/tv_home_screen.dart';
-import 'screens/tv_pending_screen.dart';
+import 'screens/downloads/tv_downloads_screen.dart';
+import 'screens/library/tv_library_screen.dart';
+import 'screens/search/tv_search_screen.dart';
+import 'screens/settings/tv_settings_screen.dart';
 import 'screens/tv_welcome_screen.dart';
 import 'tv_shell.dart';
 
@@ -65,10 +68,25 @@ final tvRouterProvider = Provider<GoRouter>((ref) {
         ),
         branches: [
           _branch('/home', const TvHomeScreen()),
-          _branch('/search', const TvPendingScreen(tab: true)),
-          _branch('/library', const TvPendingScreen(tab: true)),
-          _branch('/downloads', const TvPendingScreen(tab: true)),
-          _branch('/settings', const TvPendingScreen(tab: true)),
+          _branch('/search', const TvSearchScreen()),
+          _branch('/library', const TvLibraryScreen()),
+          _branch(
+            '/downloads',
+            const TvDownloadsScreen(),
+            routes: [
+              // One series' downloaded episodes.
+              _route(
+                'saved/:id',
+                (state) =>
+                    TvSavedSeriesScreen(titleId: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+          _branch(
+            '/settings',
+            const TvSettingsScreen(),
+            routes: [_route('licenses', (_) => const TvLicensesScreen())],
+          ),
         ],
       ),
     ],
@@ -93,8 +111,15 @@ GoRoute _route(
   ),
 );
 
-StatefulShellBranch _branch(String path, Widget screen) =>
-    StatefulShellBranch(routes: [_route(path, (_) => screen, routes: _browse)]);
+StatefulShellBranch _branch(
+  String path,
+  Widget screen, {
+  List<RouteBase> routes = const [],
+}) => StatefulShellBranch(
+  routes: [
+    _route(path, (_) => screen, routes: [..._browse, ...routes]),
+  ],
+);
 
 /// Pages any tab opens from its lists (tv_navigation.dart), inside that tab.
 final _browse = <RouteBase>[

@@ -187,7 +187,6 @@
   "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}.",
   "tvPressOkToType": "اضغط OK للكتابة",
   "tvBackCloses": "زر الرجوع يغلق",
-  "tvNotYet": "هذا الجزء من تطبيق التلفاز قادم قريبًا.",
   "tvBack": "رجوع",
   "tvFilterKind": "النوع",
   "tvFilterAudio": "الصوت",
@@ -205,5 +204,13 @@
   "tvPlayerVideo": "الفيديو",
   "tvPlayerWas": "كان {time}",
   "tvPlayerChip": "{name}: {value}",
-  "tvPlaying": "قيد التشغيل"
+  "tvPlaying": "قيد التشغيل",
+  "tvDetails": "التفاصيل",
+  "tvRemove": "إزالة",
+  "tvFavoritesEmpty": "اختر «المفضلة» في أي عنوان ليبقى هنا.",
+  "tvBrowseHome": "تصفّح الرئيسية",
+  "tvPercent": "{percent}٪",
+  "tvCancel": "إلغاء",
+  "tvDelete": "حذف",
+  "tvMovie": "فيلم"
 }

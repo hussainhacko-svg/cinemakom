@@ -914,10 +914,6 @@
   "@tvBackCloses": {
     "description": "TV: at the bottom of a side panel, says the remote's Back button closes it"
   },
-  "tvNotYet": "This part of the TV app is coming soon.",
-  "@tvNotYet": {
-    "description": "TV: shown on a screen the TV app doesn't have yet (while it's being built)"
-  },
   "tvBack": "Back",
   "@tvBack": {
     "description": "TV: a button that goes back to the previous page"
@@ -959,5 +955,21 @@
   "tvPlayerChip": "{name}: {value}",
   "@tvPlayerChip": {"description": "TV player: the accessible name of a chip, e.g. 'Subtitles: Arabic'", "placeholders": {"name": {"type": "String"}, "value": {"type": "String"}}},
   "tvPlaying": "Playing",
-  "@tvPlaying": {"description": "TV player's episodes panel: marks the episode playing now"}
+  "@tvPlaying": {"description": "TV player's episodes panel: marks the episode playing now"},
+  "tvDetails": "Details",
+  "@tvDetails": {"description": "TV Library: a button that opens a title's page"},
+  "tvRemove": "Remove",
+  "@tvRemove": {"description": "TV Library: removes a title from Continue watching"},
+  "tvFavoritesEmpty": "Pick Favorite on any title to keep it here.",
+  "@tvFavoritesEmpty": {"description": "TV Library: the empty Favorites shelf (TVs have no taps)"},
+  "tvBrowseHome": "Browse Home",
+  "@tvBrowseHome": {"description": "TV Downloads, when empty: goes to the Home tab"},
+  "tvPercent": "{percent}%",
+  "@tvPercent": {"description": "TV Downloads: how much of a download is done", "placeholders": {"percent": {"type": "int"}}},
+  "tvCancel": "Cancel",
+  "@tvCancel": {"description": "TV Downloads: cancels a download (asks first)"},
+  "tvDelete": "Delete",
+  "@tvDelete": {"description": "TV Downloads: deletes a finished download (asks first)"},
+  "tvMovie": "Movie",
+  "@tvMovie": {"description": "TV Downloads: a downloaded movie's row, e.g. 'Movie · 1080p · 2.9 GB'"}
 }

@@ -28,12 +28,21 @@ class TvPagedGrid extends ConsumerWidget {
     required this.source,
     required this.onOpen,
     this.initial = false,
+    this.filter,
+    this.emptyMessage,
   });
 
   final int order;
   final MediaSource source;
   final void Function(MediaItem item) onOpen;
   final bool initial;
+
+  /// Shows only the items it keeps (Search's kind chips); paging goes on
+  /// underneath.
+  final bool Function(MediaItem item)? filter;
+
+  /// What an empty list says ("Nothing found for …").
+  final String? emptyMessage;
 
   static const double _rowGap = 22;
 
@@ -43,7 +52,20 @@ class TvPagedGrid extends ConsumerWidget {
     final text = MarqueeTvText.of(context);
     final paged = ref.watch(pagedMediaProvider(source));
     final notifier = ref.read(pagedMediaProvider(source).notifier);
-    final items = paged.items;
+    final filter = this.filter;
+    final items = filter == null
+        ? paged.items
+        : paged.items.where(filter).toList();
+    // A filter can leave too few to scroll to the end, where loading more
+    // starts: load on until there are two rows (or no more pages).
+    final starved =
+        filter != null &&
+        items.length < 2 * tvGridColumns &&
+        paged.hasMore &&
+        paged.error == null;
+    if (starved && !paged.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => notifier.loadMore());
+    }
 
     Widget retry() => Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(
@@ -91,14 +113,19 @@ class TvPagedGrid extends ConsumerWidget {
     );
 
     if (paged.failedFirstPage) return SliverToBoxAdapter(child: retry());
-    if (paged.isFirstLoad) return SliverToBoxAdapter(child: placeholders());
-    if (paged.isEmpty) {
+    if (paged.isFirstLoad || (items.isEmpty && starved)) {
+      return SliverToBoxAdapter(child: placeholders());
+    }
+    if (items.isEmpty &&
+        paged.started &&
+        !paged.hasMore &&
+        paged.error == null) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(TvSpace.safeH),
           child: Center(
             child: Text(
-              l10n.listEmpty,
+              emptyMessage ?? l10n.listEmpty,
               style: text.body.copyWith(color: MarqueeColors.dust),
             ),
           ),

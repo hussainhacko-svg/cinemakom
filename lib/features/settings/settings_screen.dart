@@ -13,7 +13,9 @@ import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/tab_page.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/storage/preferences.dart';
-import '../../data/repositories/downloads_repository.dart' show defaultDesktopFolder;
+import '../../data/repositories/downloads_repository.dart'
+    show defaultDesktopFolder;
+import 'settings_labels.dart';
 import 'widgets/settings_group.dart';
 
 /// Settings: language, screen rotation (phones and tablets), default
@@ -227,26 +229,3 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
-
-String qualityLabel(AppLocalizations l10n, PreferredQuality q) =>
-    q == PreferredQuality.p2160
-    ? l10n.quality4k(q.height)
-    : l10n.qualityHeight(q.height);
-
-String subtitleLabel(AppLocalizations l10n, SubtitlePreference s) =>
-    switch (s) {
-      SubtitlePreference.arabic => l10n.subtitleArabic,
-      SubtitlePreference.english => l10n.subtitleEnglish,
-      SubtitlePreference.off => l10n.subtitleOff,
-    };
-
-String subtitleSizeLabel(AppLocalizations l10n, SubtitleSize s) => switch (s) {
-  SubtitleSize.small => l10n.subtitleSizeSmall,
-  SubtitleSize.medium => l10n.subtitleSizeMedium,
-  SubtitleSize.large => l10n.subtitleSizeLarge,
-};
-
-String rotationLabel(AppLocalizations l10n, ScreenRotation r) => switch (r) {
-  ScreenRotation.portrait => l10n.rotationPortrait,
-  ScreenRotation.auto => l10n.rotationAuto,
-};
