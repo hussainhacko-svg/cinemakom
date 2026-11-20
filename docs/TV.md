@@ -243,7 +243,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 - **Favorites** is a grid ▦. OK opens Details; removing is the Favorite button on Details.
 
 ### 7.6 Search
-- Zones: the search box (a `TvButton`, R8) · kind chips ⟵⟶ (All · Movies · Series) · results ▦ (or recent searches ↕, then the genre grid ▦, before anything is typed) · People ⟵⟶.
+- Zones: the search box (a `TvButton`, R8) · kind chips ⟵⟶ (All · Movies · Series) · results ▦ (or recent searches ↕, then the genre grid ▦, before anything is typed). There is no People row: the API has no people search (DESIGN.md §8).
 - OK on the box opens the system keyboard (§2 open decision). Results update as you type (the same 400 ms debounce and search as the phone). Done or Back closes the keyboard; then Down enters the results.
 - Recent searches: each row is a row of cells: the search (OK runs it) · ✕. "Clear all" is at the end of the list.
 - Coming back from a result focuses the same result.
@@ -309,7 +309,7 @@ The first TV test showed soft, blurry posters. There are three causes, and each 
 
 **Measure first (TV-0):** on the TCL, record `adb shell wm size`, `adb shell wm density` and the app's `MediaQuery.devicePixelRatio` and `MediaQuery.sizeOf`. That shows whether the app draws at 1080p or at 4K, and settles the numbers above.
 
-**Video too:** if the TV draws apps at 1080p, a 4K stream drawn through a Flutter texture (how `video_player` draws by default) is scaled down to 1080p before the TV stretches it back up, and 4K is lost. In TV-4, check whether `video_player`'s platform-view mode (a `SurfaceView`, which the TV's hardware draws at full resolution) keeps 4K and still behaves with our overlay. If it does, use it on TV.
+**Video too:** if the TV draws apps at 1080p, a 4K stream drawn through a Flutter texture (how `ExoPlayerEngine` draws) is scaled down to 1080p before the TV stretches it back up, so it looks like 1080p. The platform-view mode (a `SurfaceView`) that would keep 4K was rejected in PLAYER.md decision 7: Flutter draws it above every widget, so the controls only showed on the letterbox bars. TV-0's measurement says whether this applies. If it does, v1 accepts it (4K still plays, at 1080p sharpness).
 
 ## 10. Milestones
 
@@ -337,7 +337,7 @@ Each milestone is committed on its own, and only ticked in PLAN.md after its TV 
 - Settings: switch to Arabic and check every screen in RTL.
 - Offline: unplug the network, play a download, see the error screens' Try again.
 - Holding an arrow along a long row and down Home stays smooth.
-- Artwork is sharp on the 4K panel: posters (focused and not), the hero banner, the Details poster and cast photos. Look from up close and compare with the Google TV home screen. A 4K stream looks 4K, not soft (§9.1, video).
+- Artwork is sharp on the 4K panel: posters (focused and not), the hero banner, the Details poster and cast photos. Look from up close and compare with the Google TV home screen. A 4K stream plays smoothly (if the TV draws apps at 1080p it looks like 1080p, §9.1, video).
 
 ## 12. Risks
 
@@ -350,5 +350,5 @@ Each milestone is committed on its own, and only ticked in PLAN.md after its TV 
 | 32-bit TVs | Ship and test `armeabi-v7a` (the release already builds it) |
 | HDMI mode switches | No display-mode request on TV (TV-0) |
 | Soft artwork on 4K (seen in the first test) | §9.1: originals on TV, decode at the focused size × the real pixel ratio, `FilterQuality.medium`, measured on the TCL in TV-0 |
-| 4K video scaled down to a 1080p UI | Try `video_player`'s platform-view mode in TV-4 (§9.1) |
+| 4K video scaled down to a 1080p UI | Measured in TV-0; accepted in v1. The `SurfaceView` fix failed with our overlay (PLAYER.md decision 7, §9.1) |
 | Two UIs drifting apart in behaviour | They share the providers and repositories; only widgets are separate. The boundaries test keeps them apart |
