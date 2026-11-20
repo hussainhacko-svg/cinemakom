@@ -31,6 +31,7 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 6. **Same Marquee theme:** the same colours and fonts, with TV sizes (§6.2). Still one theme.
 7. **No touch gestures, no screen lock, no brightness, no app volume on TV.** The TV's own volume keys stay with the system.
 8. **No wrap-around:** pressing an arrow at the end of a row does nothing. Focus never jumps somewhere unexpected.
+9. **The screens are designed** on the TV page of the "Cinemakom Design Directions" canvas (claude.ai artifact `XEb3j3VhiknZVEpX4FuLnU`, page TV): the system sheet, every screen at 960 × 540, English and Arabic. Chosen from its alternatives (*2026-11-20*): the Home hero **side by side** (not banner first), episodes in **two panes** (seasons beside episodes), and the player with **chips at the top and buttons at the bottom** (not everything at the bottom).
 
 **Open (decide while building, recommended choice first):**
 - **Search keyboard:** the system keyboard (Gboard for TV, which has Arabic and voice) opened by OK on the search box. If it misbehaves on the TCL (it can hold the D-pad, or cover the results), build an in-app letter grid like YouTube TV. Decide in TV-5 after trying it on the TV.
@@ -102,7 +103,7 @@ The same paths and argument classes as the phone (`TitleArgs`, `MediaListArgs`, 
 This is what makes or breaks the TV app. It's built first (TV-1) and every screen uses it. No screen handles arrow keys by itself.
 
 ### 5.1 Rules
-- **R1 Declared moves, no guessing.** A screen is a vertical list of **zones**. A zone is a row, a column or a grid of focusable items. Inside a zone, arrows move by index. Between zones, Up and Down go to the previous or next zone. Flutter's directional traversal is switched off in the TV app (a `TvScreen` handles the arrows, with a traversal policy that never guesses), so where focus goes depends only on the order of the zones, never on pixel positions.
+- **R1 Declared moves, no guessing.** A screen is a vertical list of **zones**. A zone is a row, a column or a grid of focusable items. Inside a zone, arrows move by index. Between zones, Up and Down go to the previous or next zone. Flutter's directional traversal is switched off in the TV app (a `TvScreen` handles the arrows, with a traversal policy that never guesses), so where focus goes depends only on the order of the zones, never on pixel positions. One kind of zone sits side by side: a **split** (two columns, used for the episodes panes), where Left and Right move between the columns and each column keeps its own memory.
 - **R2 Focus memory.** Each zone remembers its last index, so Down then Up comes back to the same card. Moving between zones keeps the column where the layout lines up (an episode's play part and download button, see §7.4). Each page remembers its focus while another page is on top, and gets it back on pop.
 - **R3 Edges.** An arrow at the edge of a zone does nothing (no wrap, no jump). Up from the top zone of a tab's root screen goes to the tab bar. There are two named exceptions: Left/Right at the ends of the Home hero's buttons change the banner (§7.1), and the player while its controls are hidden (§8).
 - **R4 The Back ladder.** Back always does something, in this order:
@@ -124,7 +125,7 @@ This is what makes or breaks the TV app. It's built first (TV-1) and every scree
 | Widget | Job |
 |---|---|
 | `TvFocusable` | One focusable item: a builder gets `focused`, plus `onSelect` and an optional `onLongSelect`. It draws the focus look (§6.3), runs `onSelect` on OK, Enter and gamepad A, and reports to its zone |
-| `TvZone.row` / `.column` / `.grid(columns:)` | Owns the moves inside it (R1), remembers its index (R2), restores it, and passes edge arrows up to the screen |
+| `TvZone.row` / `.column` / `.grid(columns:)` / `.split` | Owns the moves inside it (R1), remembers its index (R2), restores it, and passes edge arrows up to the screen |
 | `TvScreen` | The ordered zones of a page, its initial focus (R11), Back (R4) and the scroll keylines (R10) |
 | `TvSidePanel` | A panel that slides in from the end edge with a focus scope. It autofocuses and gives focus back to its opener (R4, R9). Every picker uses it (quality, subtitles, sort, language, settings choices, download actions) |
 | `TvFocusWatchdog` | The debug check for R7 |
@@ -189,14 +190,14 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
  NOW SHOWING                                ┌────────────────────────┐
  THE TITLE, FITTED                          │   banner cover 2.7:1   │
  2023 · Drama · 2h                          └────────────────────────┘
- [ ▶ Play ] [ ⊡ My list ]                       • • ● • • • • • • •
+ [ ▶ Play ] [ ⊡ Favorite ]                       • • ● • • • • • • •
  Continue watching
  [▣ wide][▣ wide][▣ wide][▣ wide] →
  Latest movies
  [▯][▯][▯][▯][▯][▯][▯][See all]
 ```
 - Zones: hero buttons ⟵⟶ · Continue watching ⟵⟶ · one zone per row ⟵⟶.
-- **The hero:** text at the start, the banner beside it (always side by side on TV). Left from Play shows the previous banner and Right from My list the next one (R3's exception), with the bulb pager showing where you are. Auto-advance (10 s) pauses while the hero has focus.
+- **The hero:** text at the start, the banner beside it (always side by side on TV). Left from Play shows the previous banner and Right from Favorite the next one (R3's exception), with the bulb pager showing where you are. Auto-advance (10 s) pauses while the hero has focus.
 - **Rows:** the header isn't focusable; **See all** is the last card of the row. Continue cards are wide (16:9 artwork if the title has it, else the poster with the text beside it), with the progress bar. Removing one is in the Library (§7.5).
 - Initial focus: Play.
 
@@ -210,21 +211,26 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
  ┌──────┐  THE TITLE
  │poster│  2021 · Action · 2h 10m · Arabic, English
  │      │  Synopsis, 3 lines…
- └──────┘  [ ▶ Resume S2 E3 ] [ ⇩ Download ] [ ⊡ My list ] [ ▷ Trailer ]
- Season  ( 1 ) ( 2 ) ( 3 )
- Episodes ( 1–50 ) ( 51–100 ) …                 ← long seasons only
- 03  Episode 3 · 42 min  ▬▬▬───        [ ⇩ ]   ← focused row
- 04  Episode 4 · 41 min                [ ⇩ ]
+ └──────┘  [ ▶ Resume S2 E5 ] [ ⇩ Download season ] [ ⊡ Favorite ] [ ▷ Trailer ]
+ EPISODES
+  Season 1        03  Episode 3 · watched           [ ✓ ]
+ ▸Season 2        04  Episode 4 · watched           [ ⇩ ]
+  Season 3        05  Episode 5 · 14 min left ▬▬──  [42%]
+  Season 4        06  Episode 6                     [ ⇩ ]  ← focused
+  Season 5        07  Episode 7                     [ ⇩ ]
  Cast and crew   [◯][◯][◯][◯] →
  More like this  [▯][▯][▯][▯][▯] →
 ```
-- Zones: actions ⟵⟶ · seasons ⟵⟶ · ranges ⟵⟶ · episodes ↕ · cast ⟵⟶ · more like this ⟵⟶.
+- Zones: actions ⟵⟶ · the episodes **split** (seasons ↕ | episodes ↕) · cast ⟵⟶ · more like this ⟵⟶.
+- **The split:** moving onto a season shows its episodes (no OK needed); Right goes to the episodes at the remembered one (else the one playing or watched last); Left from an episode's play cell goes back to the selected season. Down from the last episode or the last season goes to Cast and crew; Up from the first goes to the actions.
+- **Long seasons** (more than 50 episodes): the blocks of 50 are entries in the seasons column, under their season ("Season 1", then "1–50", "51–100", …). A one-season show like One Piece lists only the blocks. The column scrolls on its own.
+- Genres are part of the meta line, not focusable (one less zone). The IMDb link isn't shown: TVs have no browser.
 - Movies: Download in the actions row. Series: Download in the actions row means **Download season**; each episode has its own button.
 - Trailer opens the YouTube app on the TV (`url_launcher` with the YouTube TV intent). If no app can take it, the button isn't shown.
 - Initial focus: Play/Resume. Opening from Continue watching opens on that episode's season and block.
 
 ### 7.4 Episodes and downloads (the trap that broke before)
-- **Each episode row is a row of two cells:** the episode itself (OK plays it) and its download button. Up and Down keep the cell: on the download button of episode 3, Down goes to the download button of episode 4 (R2's column memory). So a whole season can be downloaded one by one going down a single column.
+- **Each episode row is a row of two cells** (inside the episodes column of the split): the episode itself (OK plays it) and its download button. Up and Down keep the cell: on the download button of episode 3, Down goes to the download button of episode 4 (R2's column memory). So a whole season can be downloaded one by one going down a single column.
 - The download button shows the state: ⇩ (not downloaded), a progress ring with the percentage, ✓ (done), or an error mark.
 - OK on ⇩ opens a `TvChoicePanel` "Download in…" with each quality and its size (as on the phone, asked each time). OK starts it; the panel closes and focus is back on the same button, now showing progress.
 - OK on a download in progress opens a panel: Pause or Resume, Cancel (asks first), Go to Downloads. OK on ✓: Play, Delete (asks first).
@@ -234,7 +240,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 ### 7.5 Library
 - Zones: the segment ⟵⟶ (Continue watching · Favorites) · the list ↕.
 - **Continue watching** is a list of rows, each a row of cells: the title (OK resumes) · Details · Remove. Remove hides the title the same way as the phone (`continue_hidden`). Focus then moves to the next row (R7).
-- **Favorites** is a grid ▦. OK opens Details; removing is the My list button on Details.
+- **Favorites** is a grid ▦. OK opens Details; removing is the Favorite button on Details.
 
 ### 7.6 Search
 - Zones: the search box (a `TvButton`, R8) · kind chips ⟵⟶ (All · Movies · Series) · results ▦ (or recent searches ↕, then the genre grid ▦, before anything is typed) · People ⟵⟶.
