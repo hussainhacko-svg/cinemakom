@@ -69,7 +69,12 @@ class _PosterCardState extends State<PosterCard> {
                       ? Border.all(color: MarqueeColors.bulb, width: 2)
                       : null,
                 ),
-                child: MediaImage(url: item.posterUrl, borderRadius: _radius),
+                child: MediaImage(
+                  url: isTv
+                      ? (item.hdPosterUrl ?? item.posterUrl)
+                      : item.posterUrl,
+                  borderRadius: _radius,
+                ),
               ),
             ),
             const SizedBox(height: 6),

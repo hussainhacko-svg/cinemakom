@@ -160,7 +160,9 @@ class _ContinueCardState extends ConsumerState<ContinueCard> {
                   width: 56,
                   height: 84,
                   child: MediaImage(
-                    url: item.posterUrl,
+                    url: isTv
+                        ? (item.hdPosterUrl ?? item.posterUrl)
+                        : item.posterUrl,
                     borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
                   ),
                 ),

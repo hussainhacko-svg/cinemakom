@@ -1,6 +1,8 @@
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/app/widgets/media_image.dart';
 import 'package:cinemakom/app/widgets/media_row.dart';
+import 'package:cinemakom/app/widgets/poster_card.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/platform/orientation.dart';
 import 'package:cinemakom/core/platform/platform_info.dart';
@@ -160,6 +162,17 @@ void main() {
         find.descendant(of: row, matching: find.byType(ExcludeFocus)),
       );
       expect(headerExcludes.any((e) => e.excluding), isTrue);
+
+      // Poster cards on TV prefer the full-resolution hdPosterUrl over the
+      // 293 px medium thumbnail.
+      final card = tester.widget<PosterCard>(find.byType(PosterCard).first);
+      final img = tester.widget<MediaImage>(
+        find.descendant(
+          of: find.byType(PosterCard).first,
+          matching: find.byType(MediaImage),
+        ),
+      );
+      expect(img.url, card.item.hdPosterUrl ?? card.item.posterUrl);
     });
 
     testWidgets('First-launch language picker confirms via D-pad and Select', (
