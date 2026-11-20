@@ -267,7 +267,9 @@ Every error message goes in the ARB files.
   - The seek bar still wins its own drags, and the buttons their taps.
   - The lock hides Skip intro, Up next and "Resuming from", and unlocks by itself for errors, the end and "Still watching?".
 
-### 9.2 Desktop (Linux, Windows)
+- **Android TV / Google TV (`ANDROID_TV.md`, built 2026-11-20):** plays on `ExoPlayerEngine` with `AudioFocus` and wakelock, without mobile touch gestures or screen-lock. Dedicated media keys always work; when controls are hidden, D-pad Left/Right quick-seeks (accelerated `10→30→60 s`), Up/Down reveals controls and focuses Play/Pause, Select activates Skip intro / Up next or toggles Play/Pause, and Back exits. When controls are visible, D-pad traverses every control (including a focusable, accelerated `SeekBar` with preview frames), menus autofocus the active choice, and Back hides controls first.
+
+### 9.2 Desktop (Linux, Windows, macOS)
 - **Mouse:**
   - Moving shows the controls. The cursor hides with them after 3 s.
   - Click on the video = play/pause. Double-click = fullscreen. Scroll wheel = volume.
