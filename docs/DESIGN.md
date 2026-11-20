@@ -86,7 +86,7 @@ Use it sparingly. It is never a divider between every section.
 - **Long seasons:** a season of more than 50 episodes (One Piece is one season of 1,179) gets a second row of range chips under the season chips ("1–50", "51–100", …, from the episode numbers), so at most 50 rows sit between the episodes heading and Cast and crew. The list opens on the block of the episode playing, else the one watched last, and scrolls that chip into view. The numeral column is as wide as the widest number in the block shown (at least 52), so "1179" stays on one line and the labels line up.
 - **Buttons:** primary = `bulb` pill, `onBulb` label with an icon. Secondary = outlined pill (`velvetStrong` border, `cream` label). Icon button = 44 px circle, `booth` fill, `velvet` border.
 - **Section header:** `sectionTitle` at the start edge, a "See all" link (`bulb`, `label`) at the end edge.
-- **Navigation:** five destinations: **Home · Search · Library · Downloads · Settings** (*decision 2026-11-19*). Library holds Continue watching and Favorites.
+- **Navigation:** five destinations: **Home · Search · Library · Downloads · Settings** (*decision 2026-11-19*). Library holds Continue watching and Favorites. On Android TV the UI is separate, with top tabs instead (`docs/TV.md` §6–7).
   - Below 600 dp: bottom `NavigationBar` (`navBar`, height 72, top border `boothRaised`).
   - 600–1199 dp: `NavigationRail` (`navBar`, end border `boothRaised`), small mark at the top, labels under the icons.
   - 1200 dp and up: extended rail, 232 wide, with the mark and CINEMAKOM at the top and labels beside the icons.

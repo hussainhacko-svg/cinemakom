@@ -1,0 +1,330 @@
+# Cinemakom on TV (Android TV / Google TV): plan
+
+**Goal:** a TV app you can use from the sofa with only the remote (D-pad, OK, Back), where **every action on every screen can be reached and nothing traps the focus**. It is a **separate UI** (`lib/tv`) built on the same data layer as the phone and desktop app. The target is the owner's TCL Google TV.
+
+Read with [`DESIGN.md`](DESIGN.md) (colours, type, motif) and [`PLAYER.md`](PLAYER.md) (the player this UI drives). This file replaces `ANDROID_TV.md` (*2026-11-20*).
+
+---
+
+## 1. Why a separate UI
+
+The first attempt (2026-11-20, reverted the same day) patched the phone and desktop widgets with `isTv` branches. Testing it on the TV showed focus traps that made features unusable, for example **downloading one episode of a series**. The causes, which this plan is built to avoid:
+
+| What went wrong | Rule in this plan |
+|---|---|
+| Arrow keys used Flutter's default *geometric* traversal (it guesses the nearest widget on screen), so focus jumped to the wrong row or couldn't reach small buttons beside big ones (an episode's download button) | Every move is declared by the screen (§5.1 R1) |
+| A side rail competed with the content for Left; ~300 lines of edge heuristics in `AppShell` tried to guess when Left meant "open the rail" | Top tabs, reached with Up and Back only (§2) |
+| Hidden things could take focus (9 invisible hero banners, hidden player controls) | Nothing invisible is focusable (R5) |
+| Some actions only existed as long-press or hover (Remove from Continue watching) | Every action is a visible, focusable control (R6) |
+| The search box grabbed focus and the arrow keys moved its cursor | Text input only on OK (R8) |
+| Phone layouts at 960 × 540 dp: small text and targets, hero filling the screen | Own layouts and type sizes for 3 m away (§6) |
+| The phone UI was hard to change without breaking TV, and the other way round | `lib/tv` is separate; phone and desktop code never checks `isTv` (§4.3) |
+| A second UI (`lib/features/tv`, 5.6k lines) was written but never compiled or wired in, and milestones were ticked without a TV check | Each milestone ends with a check on the TV, and "done" means checked (§10) |
+
+## 2. Decisions *(2026-11-20)*
+
+1. **Separate TV UI in `lib/tv`**, chosen at startup when `isTv`. Phone, tablet and desktop UIs are unchanged.
+2. **One APK** for phones and TVs (no separate flavor or store listing). The release workflow stays as it is.
+3. **Navigation: top tabs** (Home · Search · Library · Downloads · Settings), like Google TV's own home screen. Up from the first row reaches them; Back goes there. There is no side rail.
+4. **Focus look: ring plus a slight grow.** The focused card scales to 1.08 with a 3 px `bulb` ring; focused buttons and rows also get a `boothRaised` fill. It's a `Transform` (no shadow, blur or gradient), so DESIGN.md §6 still holds.
+5. **Downloads stay on TV**, with the same rules as phones (quality asked each time, Download season, at most 2 at once).
+6. **Same Marquee theme:** the same colours and fonts, with TV sizes (§6.2). Still one theme.
+7. **No touch gestures, no screen lock, no brightness, no app volume on TV.** The TV's own volume keys stay with the system.
+8. **No wrap-around:** pressing an arrow at the end of a row does nothing. Focus never jumps somewhere unexpected.
+
+**Open (decide while building, recommended choice first):**
+- **Search keyboard:** the system keyboard (Gboard for TV, which has Arabic and voice) opened by OK on the search box. If it misbehaves on the TCL (it can hold the D-pad, or cover the results), build an in-app letter grid like YouTube TV. Decide in TV-5 after trying it on the TV.
+- **Back on the Home tab bar:** exit the app straight away (Google TV apps do), or ask "Press Back again to exit". Recommended: exit straight away.
+- **Skip intro while the controls are hidden:** it takes the focus when it appears, so OK skips (Netflix does this). The catch: someone pressing OK to pause skips the intro instead. Recommended: take the focus, because the button says what OK will do.
+
+## 3. What exists today
+
+**Kept from the first attempt** (the groundwork, all reviewed):
+- `AndroidManifest.xml`: `LEANBACK_LAUNCHER`, `touchscreen` and `leanback` not required, `android:banner`.
+- `tool/brand/generate.py` makes `drawable-xhdpi/tv_banner.png` (640 × 360).
+- `MainActivity.kt`: `isTvDevice()` (TV UI mode or the leanback feature), the `io.github.sharon_xa.cinemakom/platform` channel (`isTv`), and portrait only on phones.
+- `lib/core/platform/platform_info.dart`: `initPlatformInfo()` (awaited in `main`), `isTv`, `isTouchMobile`, `debugIsTvOverride`.
+- `setBrowseOrientation` / `setPlayerOrientation` do nothing on TV. Settings hides Screen rotation, and downloads don't ask for the notification permission.
+
+Until TV-2 ships, a TV shows the normal tablet layout (navigation rail), which is usable only in parts.
+
+**Problems in the groundwork, fixed in TV-0:**
+- The manifest now says `screenOrientation="unspecified"` and `MainActivity` asks for portrait in `onCreate`. The system's starting window comes before `onCreate`, so a phone held sideways shows the splash in landscape and then flips. That's what the manifest's `portrait` was there to prevent (AGENTS.md).
+- `MainActivity` asks for the display's fastest mode on every device. On a TV that can switch the HDMI output mode (a black blink, or 4K60 → another mode), so skip it on TV.
+- The banner has only the mark. Google TV's guidelines want the app name on it.
+
+**Reused as is:** everything under `lib/core` and `lib/data`, and the providers and logic of the features:
+- `home_providers.dart`, `details_providers.dart`, `library_providers.dart`, `search_history.dart`, `catalog_providers.dart`
+- `MediaSource` + `pagedMediaProvider` (infinite paging)
+- `PlayerController`, `PlayerState`, `quality.dart`, `subtitles.dart`, `up_next.dart`, the engines, `AudioFocus`
+- `DownloadsRepository`, `SearchRepository`, `LibraryRepository`, `StatusRepository`
+- UI pieces with no layout opinions: `MediaImage`, `BulbLoader`, `CinemakomMark`, `errorMessage`, `context.joinMeta` / `context.isolate`, and `HeroTitle`'s fitting (with the TV size)
+
+**Moved out of screen files in TV-0**, so `lib/tv` doesn't import phone screens:
+- `staffProvider` (in `staff_screen.dart`) → `staff_providers.dart`
+- `downloadOfProvider`, `progressOfProvider` and the UI-free parts of `startDownload` / `startSeasonDownload` (in `download_actions.dart`, mixed with sheets and snack bars) → `download_flow.dart`. The phone keeps its sheets and the TV gets its own panels.
+
+## 4. Architecture
+
+### 4.1 Entry
+```dart
+// main.dart
+runApp(ProviderScope(retry: noRetry, child: useTvUi ? const TvApp() : const CinemakomApp()));
+```
+- `useTvUi` = `isTv || const bool.fromEnvironment('CINEMAKOM_TV')`. The define lets us **build the TV UI on Linux**: `fvm flutter run -d linux --dart-define=CINEMAKOM_TV=true` opens a 960 × 540 window (window_manager). The keyboard stands in for the remote: arrows, Enter = OK, Esc/Backspace = Back, Space = play/pause.
+- `TvApp` is its own `MaterialApp.router` with `tvRouterProvider`, `buildMarqueeTvTheme()`, the same l10n and locale handling, and the first-launch language step. The settings, preferences and database are the same, so switching UIs on one device keeps history, favorites and downloads.
+
+### 4.2 Folders
+```
+lib/tv/
+  tv_app.dart              # MaterialApp.router, theme, remote key bindings
+  tv_router.dart           # welcome, the tab shell, title, genre, list, person, watch
+  tv_navigation.dart       # tvOpenTitle / tvOpenGenre / tvOpenList / tvOpenPerson / tvOpenPlayer
+  theme/                   # MarqueeTvText (TV sizes), TvSpace (safe area, keylines), focus constants
+  focus/                   # the focus system (§5): TvFocusable, TvZone, TvScreen, TvPanel, memory, scroll, watchdog
+  widgets/                 # TvTabBar, TvPosterCard, TvWideCard, TvRow, TvGrid, TvButton, TvChip, TvListRow,
+                           # TvSidePanel, TvChoicePanel, TvErrorView, TvEmpty
+  screens/                 # welcome, home, search, library, downloads, settings, details, genre, list, person
+  player/                  # tv_player_screen.dart, tv_controls.dart, tv_seek_bar.dart, panels
+```
+
+### 4.3 Boundaries
+- `lib/tv` may import `lib/core`, `lib/data`, the `*_providers.dart` / flow / logic files of `lib/features`, and the shared pieces listed in §3. It never imports a phone screen or a phone widget.
+- `lib/features` and `lib/app` never import `lib/tv`, and never check `isTv` for layout. (`isTouchMobile` stays for platform behaviour: orientation, notification permission.)
+- `test/tv/boundaries_test.dart` reads the import lines and fails on a crossing, so this can't drift.
+- New strings go in the ARB files with a `tv` prefix where the wording differs from the phone ("Press OK to type").
+
+### 4.4 Routes
+The same paths and argument classes as the phone (`TitleArgs`, `MediaListArgs`, `PersonArgs`, `PlaybackRequest`), in their own router. A `StatefulShellRoute.indexedStack` keeps one back stack per tab. Pages push inside the tab; the player pushes above the shell. On pop, focus goes back to the item that opened the page (§5.1 R2).
+
+## 5. The focus system
+
+This is what makes or breaks the TV app. It's built first (TV-1) and every screen uses it. No screen handles arrow keys by itself.
+
+### 5.1 Rules
+- **R1 Declared moves, no guessing.** A screen is a vertical list of **zones**. A zone is a row, a column or a grid of focusable items. Inside a zone, arrows move by index. Between zones, Up and Down go to the previous or next zone. Flutter's directional traversal is switched off in the TV app (a `TvScreen` handles the arrows, with a traversal policy that never guesses), so where focus goes depends only on the order of the zones, never on pixel positions.
+- **R2 Focus memory.** Each zone remembers its last index, so Down then Up comes back to the same card. Moving between zones keeps the column where the layout lines up (an episode's play part and download button, see §7.4). Each page remembers its focus while another page is on top, and gets it back on pop.
+- **R3 Edges.** An arrow at the edge of a zone does nothing (no wrap, no jump). Up from the top zone of a tab's root screen goes to the tab bar. There are two named exceptions: Left/Right at the ends of the Home hero's buttons change the banner (§7.1), and the player while its controls are hidden (§8).
+- **R4 The Back ladder.** Back always does something, in this order:
+  1. Close the open panel or dialog. Focus goes back to the control that opened it.
+  2. On a pushed page: pop the page.
+  3. On a tab's root screen with focus in the content: scroll to the top and focus that tab in the tab bar.
+  4. On the tab bar, not on Home: go to Home.
+  5. On the Home tab bar: exit (§2 open decision).
+- **R5 Nothing hidden is focusable.** Anything invisible, faded out, collapsed or still loading is inside `ExcludeFocus`. Disabled controls are skipped by their zone but stay visible.
+- **R6 No hidden actions.** Every action is a visible control you can focus. Long-press OK and the remote's menu key can be shortcuts, never the only way.
+- **R7 Focus is never lost.** When the focused item goes away (a download deleted, a list refreshed, a title removed from Continue watching), focus moves to the next item, then the previous one, then the next zone. In debug builds, a watchdog (`TvFocusWatchdog`) asserts that focus never falls back to the root scope, and logs the screen and the last key. That's how a trap shows up in a test or a debug run instead of on the sofa.
+- **R8 Text input only on OK.** A text field is never focused by moving through the screen. It sits behind a `TvButton` that looks like a search box. OK opens the keyboard; Done or Back closes it and returns to D-pad moves.
+- **R9 Panels are modal.** Side panels and dialogs keep focus inside them (on purpose), open with the current choice focused, and close with Back.
+- **R10 Scrolling follows focus.** The focused card stays fully on screen at a fixed keyline. Rows scroll so the focused card sits at the start keyline (until the row's end); the page scrolls so the focused zone sits at a fixed height. A held arrow (key repeat) jumps without animation, so holding Right through 100 posters doesn't queue 100 animations. Paged grids load the next page when focus gets within 2 rows of the end.
+- **R11 Initial focus.** Each screen declares where focus starts (Home: Play on the hero; Details: Play/Resume; a panel: the current choice). Focus is never left empty after a load, a route change or an error.
+- **R12 RTL.** Arrows follow what you see: in Arabic, Right moves toward the start of a row. Zones use start/end, never left/right. The player's seek bar keeps PLAYER.md §2 (always left → right, so Right always seeks forward).
+
+### 5.2 Building blocks (`lib/tv/focus`)
+| Widget | Job |
+|---|---|
+| `TvFocusable` | One focusable item: a builder gets `focused`, plus `onSelect` and an optional `onLongSelect`. It draws the focus look (§6.3), runs `onSelect` on OK, Enter and gamepad A, and reports to its zone |
+| `TvZone.row` / `.column` / `.grid(columns:)` | Owns the moves inside it (R1), remembers its index (R2), restores it, and passes edge arrows up to the screen |
+| `TvScreen` | The ordered zones of a page, its initial focus (R11), Back (R4) and the scroll keylines (R10) |
+| `TvSidePanel` | A panel that slides in from the end edge with a focus scope. It autofocuses and gives focus back to its opener (R4, R9). Every picker uses it (quality, subtitles, sort, language, settings choices, download actions) |
+| `TvFocusWatchdog` | The debug check for R7 |
+
+The remote keys are bound once, in `TvApp`'s `Shortcuts`: `select`, `enter`, `numpadEnter` and `gameButtonA` → activate; `goBack` and `escape` → back. Media keys go to the player. Don't rely on Flutter's default bindings for `select` (check them in TV-0).
+
+### 5.3 Proving there are no traps
+- **`TvDriver`** (`test/tv/tv_driver.dart`) presses keys in widget tests: `right()`, `down()`, `ok()`, `back()`, `focused` (the focused item's semantics label), `focusPath`.
+- **A reachability test for every screen**, with fixture data (`fixtureApi()`), in English and in Arabic. Starting from the initial focus, it tries every arrow from every item it reaches (a breadth-first search over focus states). It checks that:
+  1. every enabled control on the screen was reached (from the semantics tree: every button has a label);
+  2. pressing Back repeatedly from any reached item leaves the screen;
+  3. the watchdog never fired.
+- **Scenario tests** for the things that broke before, each with keys only:
+  - download episode 3 of season 2 of a series, pause it, resume it, delete it
+  - Download season
+  - play an episode, change subtitles and quality, open the episodes panel, play the next one, go back
+  - remove a title from Continue watching
+  - search, open a result, go back to the results with the same item focused
+  - change the language to Arabic in Settings, with focus kept on the language row
+
+A new screen isn't done until its reachability test passes.
+
+## 6. Visual design for TV
+
+### 6.1 The canvas
+- Android TV draws apps at **960 × 540 dp** (1080p at 2×), also on 4K panels. Design and test at that size.
+- **Safe area** (overscan): 48 dp at the start and end, 27 dp at the top and bottom (Google's 5%). Nothing focusable goes outside it. Rows may scroll under the edge.
+- One screen = one or two zones of real content, plus a peek of the next. Rows are kept short (no 30-item header bars).
+
+### 6.2 Type and size (`MarqueeTvText`)
+The phone sizes are too small at 3 m. Starting values, to tune on the TV in TV-2:
+
+| Style | Phone | TV |
+|---|---|---|
+| `heroTitle` | 58 | 52 (with `HeroTitle`'s steps) |
+| `displayLarge` | 40 | 40 |
+| `sectionTitle` | 22 | 24 |
+| `title` | 16 | 18 |
+| `body` | 15 | 17 |
+| `label` | 14 | 16 |
+| `caption` | 12 | 14 |
+| `navLabel` (tab bar) | 11 | 16 |
+
+The fonts and the Arabic rules (no tracking, no uppercase, taller line heights) are the same as DESIGN.md §2. Focusable items are at least 48 dp tall.
+
+### 6.3 Focus look
+- **Cards** (posters, wide cards, cast): scale to **1.08** over 150 ms ease-out, with a **3 px `bulb` ring** at the card's radius. Each card has its own `RepaintBoundary`, so growing one doesn't repaint the row. Rows leave enough padding that a grown card isn't clipped.
+- **Buttons, chips, list rows, tabs:** a `boothRaised` fill and a 3 px `bulb` ring. The primary (`bulb`) button gets a `cream` ring, so it shows against its own fill.
+- Nothing else is dimmed (no opacity over images, DESIGN.md §6). Selected and focused look different: a selected chip has the phone's selected style; focus adds the ring.
+- `disableAnimations`: no grow animation (the ring and fill still show).
+
+### 6.4 Tab bar
+At the top, inside the safe area: the mark at the start, then Home · Search · Library · Downloads · Settings. The current tab has a `boothRaised` pill and a `bulb` label; the focused tab adds the ring. Moving onto a tab switches to it (like Google TV); Down enters that tab's content where it was left. The tab bar scrolls away with the page and comes back with Up from the top zone or with Back.
+
+## 7. Screens
+
+Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, ▦ a grid.
+
+### 7.1 Home
+```
+ ▸ Home  Search  Library  Downloads  Settings                [mark]
+ NOW SHOWING                                ┌────────────────────────┐
+ THE TITLE, FITTED                          │   banner cover 2.7:1   │
+ 2023 · Drama · 2h                          └────────────────────────┘
+ [ ▶ Play ] [ ⊡ My list ]                       • • ● • • • • • • •
+ Continue watching
+ [▣ wide][▣ wide][▣ wide][▣ wide] →
+ Latest movies
+ [▯][▯][▯][▯][▯][▯][▯][See all]
+```
+- Zones: hero buttons ⟵⟶ · Continue watching ⟵⟶ · one zone per row ⟵⟶.
+- **The hero:** text at the start, the banner beside it (always side by side on TV). Left from Play shows the previous banner and Right from My list the next one (R3's exception), with the bulb pager showing where you are. Auto-advance (10 s) pauses while the hero has focus.
+- **Rows:** the header isn't focusable; **See all** is the last card of the row. Continue cards are wide (16:9 artwork if the title has it, else the poster with the text beside it), with the progress bar. Removing one is in the Library (§7.5).
+- Initial focus: Play.
+
+### 7.2 Genre page and full lists
+- Zones: the filter chips ⟵⟶ (Sort · Kind · Language; each opens a `TvChoicePanel`) · the grid ▦ (6 posters per row at 960 dp).
+- Infinite paging through `pagedMediaProvider` (R10 loads ahead). The grid shows a placeholder row while a page loads; placeholders aren't focusable (R5).
+- A failed page shows a focusable "Try again" in place of the next row.
+
+### 7.3 Details
+```
+ ┌──────┐  THE TITLE
+ │poster│  2021 · Action · 2h 10m · Arabic, English
+ │      │  Synopsis, 3 lines…
+ └──────┘  [ ▶ Resume S2 E3 ] [ ⇩ Download ] [ ⊡ My list ] [ ▷ Trailer ]
+ Season  ( 1 ) ( 2 ) ( 3 )
+ Episodes ( 1–50 ) ( 51–100 ) …                 ← long seasons only
+ 03  Episode 3 · 42 min  ▬▬▬───        [ ⇩ ]   ← focused row
+ 04  Episode 4 · 41 min                [ ⇩ ]
+ Cast and crew   [◯][◯][◯][◯] →
+ More like this  [▯][▯][▯][▯][▯] →
+```
+- Zones: actions ⟵⟶ · seasons ⟵⟶ · ranges ⟵⟶ · episodes ↕ · cast ⟵⟶ · more like this ⟵⟶.
+- Movies: Download in the actions row. Series: Download in the actions row means **Download season**; each episode has its own button.
+- Trailer opens the YouTube app on the TV (`url_launcher` with the YouTube TV intent). If no app can take it, the button isn't shown.
+- Initial focus: Play/Resume. Opening from Continue watching opens on that episode's season and block.
+
+### 7.4 Episodes and downloads (the trap that broke before)
+- **Each episode row is a row of two cells:** the episode itself (OK plays it) and its download button. Up and Down keep the cell: on the download button of episode 3, Down goes to the download button of episode 4 (R2's column memory). So a whole season can be downloaded one by one going down a single column.
+- The download button shows the state: ⇩ (not downloaded), a progress ring with the percentage, ✓ (done), or an error mark.
+- OK on ⇩ opens a `TvChoicePanel` "Download in…" with each quality and its size (as on the phone, asked each time). OK starts it; the panel closes and focus is back on the same button, now showing progress.
+- OK on a download in progress opens a panel: Pause or Resume, Cancel (asks first), Go to Downloads. OK on ✓: Play, Delete (asks first).
+- Download season opens the same quality panel, then queues the season's episodes (at most 2 run at once, like the phone).
+- Low storage: before starting, compare the size with the free space (TVs often have about 4 GB free). If it doesn't fit, say so in the panel instead of starting.
+
+### 7.5 Library
+- Zones: the segment ⟵⟶ (Continue watching · Favorites) · the list ↕.
+- **Continue watching** is a list of rows, each a row of cells: the title (OK resumes) · Details · Remove. Remove hides the title the same way as the phone (`continue_hidden`). Focus then moves to the next row (R7).
+- **Favorites** is a grid ▦. OK opens Details; removing is the My list button on Details.
+
+### 7.6 Search
+- Zones: the search box (a `TvButton`, R8) · kind chips ⟵⟶ (All · Movies · Series) · results ▦ (or recent searches ↕, then the genre grid ▦, before anything is typed) · People ⟵⟶.
+- OK on the box opens the system keyboard (§2 open decision). Results update as you type (the same 400 ms debounce and search as the phone). Done or Back closes the keyboard; then Down enters the results.
+- Recent searches: each row is a row of cells: the search (OK runs it) · ✕. "Clear all" is at the end of the list.
+- Coming back from a result focuses the same result.
+
+### 7.7 Downloads
+- Zones: the storage line (not focusable) · the list ↕.
+- Each row is a row of cells: the title (OK plays when done, or opens the series' episodes) · Pause/Resume · Delete. A series is one row; OK opens its episodes as the same kind of list.
+- Empty state: text plus a focusable "Browse Home" button.
+
+### 7.8 Settings and first launch
+- Settings is a column ↕ of rows (Language, Default quality, Default subtitles, Downloads storage info, About/licenses). OK opens a `TvChoicePanel` with the current value focused. Changing the language rebuilds the app in RTL or LTR and keeps the focus on the Language row.
+- First launch: two large buttons, English and العربية, with English focused. OK picks one and opens Home.
+
+## 8. Player on TV
+
+`TvPlayerScreen` drives the same `PlayerController` and engine as the phone (ExoPlayer on Android TV, with audio focus and wakelock). It has its own controls and no gestures. PLAYER.md §6 (playback flow, recovery) and §7 (features) apply as written.
+
+### 8.1 Controls hidden (watching)
+| Key | Does |
+|---|---|
+| OK | Pause and show the controls with Play/Pause focused. When **Skip intro** or **Up next** is showing, it has the focus and OK activates it (§2 open decision) |
+| Left / Right | Seek −10 / +10 s. Held: 10 s steps, then 30 s after 2 s, then 60 s after 5 s. Shows the seek bar with the preview frame and the target time; it plays from there 600 ms after the last key |
+| Up / Down | Show the controls (Play/Pause focused) |
+| Back | Save the position and leave the player |
+| Play/pause, Play, Pause, Rewind, Fast forward, Next | Always work, controls shown or not |
+
+### 8.2 Controls shown
+```
+  THE TITLE · S2 E3                         [Subtitles: Arabic] [1080p] [1×] [Fit]
+  ───────────────●───────────────────────────────────  41:02 / 58:30
+            [ ⏮ −10 ] [ ▶ ] [ +10 ⏭ ]        [ Episodes ] [ Next episode ]
+```
+- Zones: chips ⟵⟶ (top) · seek bar · buttons ⟵⟶ (bottom). Initial focus: Play/Pause.
+- **Seek bar:** focusable. Left/Right scrub with the preview frame and the same speed-up; OK or 600 ms without a key plays from there; Up/Down leave it without seeking.
+- **Chips** open `TvChoicePanel`s (quality, subtitles with "Arabic (styled)" where the engine supports it, speed, fit) with the current choice focused. **Episodes** opens a side panel with season chips and the episode list (the block logic from Details).
+- The controls hide after 5 s without a key. Back hides them first; a second Back leaves.
+- Errors, "Still watching?", Up next and the end screen show focused buttons (Try again, Back, Play next). Focus is never left on a hidden control (R5).
+
+### 8.3 TV specifics
+- No app volume: the system handles the remote's volume keys.
+- 4K: TVs decode HEVC and H.264 in hardware through ExoPlayer. Check frame times and memory with 4K on the TCL (TV-4).
+- Later, not in v1: matching the TV's refresh rate to the video (24p) through ExoPlayer's frame-rate support.
+
+## 9. Performance
+
+- TV UIs run at **60 Hz**, so the frame budget is 16.7 ms, but TV chips are much slower than phones. Budget for a low-end quad-core with 2 GB of RAM.
+- Images: posters use the medium thumbnail (293 × 439). A focused card is about 130 × 195 dp = 260 × 390 px, so that's enough. **Don't** load the full poster or decode at 2× (the first attempt did, which only costs memory). Set the image cache smaller on TV (`imageCache.maximumSizeBytes` about 100 MB) and measure.
+- Rows: `ListView.builder` with a fixed `itemExtent` (DESIGN.md §6). A held arrow jumps without animation (R10).
+- Grow animation: `Transform.scale` inside a `RepaintBoundary`, never a layout change.
+- The player overlay doesn't repaint the video: it's above the texture, behind its own `RepaintBoundary`.
+- Measure on the TV: `integration_test/tv_scroll_perf_test.dart` (holding Right along a row, Down through Home) with `flutter drive --profile` over network adb, like `scroll_perf_test.dart` on the phone.
+
+## 10. Milestones
+
+| | Scope | Done when |
+|---|---|---|
+| **TV-0** | Groundwork fixes (§3): phone splash upright again (manifest back to `portrait`, plus a `TvActivity` subclass declared `landscape` with only `LEANBACK_LAUNCHER`, and `android.hardware.screen.portrait` not required); no display-mode request on TV; banner with the name (generator); the `CINEMAKOM_TV` define and a placeholder `TvApp`; move `staffProvider` and the download flow out of screen files; the boundaries test; the remote key bindings | The phone starts upright even held sideways. The TV shows the banner and opens the placeholder in landscape. `--dart-define=CINEMAKOM_TV=true` runs on Linux. Analyze and tests clean |
+| **TV-1** | The focus system (§5.2), `TvDriver`, the reachability test helper, the watchdog, `MarqueeTvText`, `TvSpace`, the focus look, `TvSidePanel` / `TvChoicePanel` | Unit tests for R1–R12 on a demo screen pass, in English and Arabic |
+| **TV-2** | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes |
+| **TV-3** | Details: actions, seasons, ranges, episodes, cast, more like this, person page; the TV download panels (§7.4) | The episode download scenario passes in tests. **On the TV:** download, pause, resume and delete an episode, and Download season |
+| **TV-4** | The TV player (§8): controls, seek bar with previews and speed-up, panels, episodes panel, skip intro, up next, errors | Player scenarios pass with `FakeEngine`. **On the TV:** a movie and a series in 1080p and 4K, every control by remote, frame times and memory |
+| **TV-5** | Search (decide the keyboard), Library, Downloads, Settings | Reachability tests for every screen. **On the TV:** the §11 checklist, in English and Arabic |
+| **TV-6** | Polish: the performance test on the TV, low storage, offline, error states, `tv_screenshots_test.dart` at 960 × 540, docs (PLAN.md, DESIGN.md, AGENTS.md) | The §11 checklist passes on the TCL with a release APK |
+
+Each milestone is committed on its own, and only ticked in PLAN.md after its TV check.
+
+## 11. Checklist on the TV (release APK)
+
+- Install: `adb connect <tv-ip>:5555` (Developer options → Network debugging). Check `adb shell getprop ro.product.cpu.abilist`: many TVs run 32-bit Android on a 64-bit chip, and then they need `app-armeabi-v7a-release.apk`.
+- The banner on the home screen; opens straight into landscape; Home's first focus is Play.
+- Every tab with only the remote: in, around, out with Back, and the app exits from the Home tab bar.
+- Details of a long series (One Piece): the range chips, download an episode in the middle of a block, Download season, pause, resume, delete.
+- Player: OK, Left/Right held, the seek bar with previews, every chip panel, the episodes panel, skip intro, up next, Back; 1080p and 4K; subtitle size readable from the sofa.
+- Search with the TV keyboard, in Arabic too; open a result and come back.
+- Library: remove from Continue watching; Favorites.
+- Settings: switch to Arabic and check every screen in RTL.
+- Offline: unplug the network, play a download, see the error screens' Try again.
+- Holding an arrow along a long row and down Home stays smooth.
+
+## 12. Risks
+
+| Risk | Plan |
+|---|---|
+| Flutter's `TextField` with Gboard for TV (the keyboard may hold the D-pad or cover the results) | Try it first in TV-5; fall back to an in-app letter grid |
+| Remotes without media keys | Everything works with D-pad, OK and Back; media keys are extras |
+| Small storage on TVs | The free-space check before every download (§7.4) |
+| Slow TV chips | §9, and measure in TV-4 and TV-6 instead of guessing |
+| 32-bit TVs | Ship and test `armeabi-v7a` (the release already builds it) |
+| HDMI mode switches | No display-mode request on TV (TV-0) |
+| Two UIs drifting apart in behaviour | They share the providers and repositories; only widgets are separate. The boundaries test keeps them apart |
