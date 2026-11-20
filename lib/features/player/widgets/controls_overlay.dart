@@ -7,7 +7,7 @@ import '../../../app/widgets/media_text.dart';
 import '../player_controller.dart';
 import '../player_state.dart';
 import '../quality.dart';
-import '../subtitles.dart';
+import '../player_labels.dart';
 import 'chip_menus.dart' show anchorOf;
 import 'seek_bar.dart';
 
@@ -384,37 +384,4 @@ ButtonStyle withFocusRing(ButtonStyle style) {
           : rest?.resolve(states),
     ),
   );
-}
-
-IconData fitIcon(VideoFit fit) => switch (fit) {
-  VideoFit.fit => Icons.fit_screen_outlined,
-  VideoFit.fill => Icons.crop_free,
-  VideoFit.stretch => Icons.aspect_ratio,
-};
-
-/// "Fit", "Fill", "Stretch".
-String fitLabel(AppLocalizations l10n, VideoFit fit) => switch (fit) {
-  VideoFit.fit => l10n.playerFit,
-  VideoFit.fill => l10n.playerFill,
-  VideoFit.stretch => l10n.playerStretch,
-};
-
-/// "1×", "1.25×". Wrapped in a left-to-right isolate, or Arabic text
-/// shows "×1".
-String speedLabel(double speed) {
-  final s = speed == speed.roundToDouble()
-      ? speed.toStringAsFixed(0)
-      : speed.toString();
-  return '\u2066$s×\u2069';
-}
-
-/// The subtitle menu and chip label for [option].
-String subtitleLabel(AppLocalizations l10n, SubtitleOption option) {
-  if (option.isOff) return l10n.subtitleOff;
-  if (option.isStyled) return l10n.subtitleStyledArabic;
-  return switch (option.languageCode) {
-    'ar' => l10n.subtitleArabic,
-    'en' => l10n.subtitleEnglish,
-    final code => code?.toUpperCase() ?? l10n.subtitleOff,
-  };
 }

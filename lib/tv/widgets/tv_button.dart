@@ -25,6 +25,8 @@ class TvButton extends StatelessWidget {
     this.onLongSelect,
     this.primary = false,
     this.enabled = true,
+    this.autofocus = false,
+    this.onKey,
   });
 
   final int index;
@@ -35,6 +37,10 @@ class TvButton extends StatelessWidget {
   final bool primary;
   final bool enabled;
 
+  /// See `TvFocusable.autofocus` and `TvFocusable.onKey`.
+  final bool autofocus;
+  final KeyEventResult Function(KeyEvent event)? onKey;
+
   @override
   Widget build(BuildContext context) {
     final text = MarqueeTvText.of(context);
@@ -44,6 +50,8 @@ class TvButton extends StatelessWidget {
       enabled: enabled,
       onSelect: onSelect,
       onLongSelect: onLongSelect,
+      autofocus: autofocus,
+      onKey: onKey,
       builder: (context, focused) {
         final color = primary
             ? MarqueeColors.onBulb

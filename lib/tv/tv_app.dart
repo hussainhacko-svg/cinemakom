@@ -37,6 +37,9 @@ const _localizationsDelegates = [
 final _actions = <Type, Action<Intent>>{
   ...WidgetsApp.defaultActions,
   TvBackIntent: CallbackAction<TvBackIntent>(onInvoke: (_) => tvHandleBack()),
+  TvMediaIntent: CallbackAction<TvMediaIntent>(
+    onInvoke: (intent) => TvMedia.handler?.call(intent.key),
+  ),
 };
 
 /// The TV app's root (docs/TV.md §4.1), chosen in `main` when `useTvUi`:

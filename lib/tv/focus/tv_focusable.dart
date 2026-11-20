@@ -25,6 +25,8 @@ class TvFocusable extends StatefulWidget {
     this.onSelect,
     this.onLongSelect,
     this.onFocus,
+    this.onKey,
+    this.autofocus = false,
     this.enabled = true,
   });
 
@@ -37,6 +39,14 @@ class TvFocusable extends StatefulWidget {
   /// When it gains focus (moving onto a tab switches to it; a season shows
   /// its episodes).
   final VoidCallback? onFocus;
+
+  /// Sees every key first; returning `handled` keeps it from the zone. Only
+  /// the player uses it: Left and Right seek there instead of moving.
+  final KeyEventResult Function(KeyEvent event)? onKey;
+
+  /// Takes focus once it's built: the player's Play/Pause when the controls
+  /// show, Skip intro when it appears (docs/TV.md §2). One per screen.
+  final bool autofocus;
 
   /// Disabled items stay visible but their zone skips them (R5).
   final bool enabled;
@@ -66,6 +76,19 @@ class _TvFocusableState extends State<TvFocusable> implements TvItem {
 
   @override
   void focus() => _node.requestFocus();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autofocus) {
+      tvAutofocusPending++;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _node.canRequestFocus) _node.requestFocus();
+        // The request applies in a microtask; until then focus is taken.
+        scheduleMicrotask(() => tvAutofocusPending--);
+      });
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -140,6 +163,9 @@ class _TvFocusableState extends State<TvFocusable> implements TvItem {
       };
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (widget.onKey?.call(event) == KeyEventResult.handled) {
+      return KeyEventResult.handled;
+    }
     final key = event.logicalKey;
     final direction = _direction(key);
     if (direction != null) {

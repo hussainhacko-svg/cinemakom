@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../data/models/playback_models.dart';
+import '../player_labels.dart';
 import 'seek_preview_frame.dart';
 
 /// The seek bar: `bulb` played, `velvetStrong` buffered, `velvet` track,
@@ -301,19 +302,6 @@ class _SeekBarPainter extends CustomPainter {
       old.duration != duration ||
       old.position != position ||
       old.buffered != buffered;
-}
-
-/// "18:42", or "1:05:09" from an hour up. Western digits in every locale
-/// (DESIGN.md §2).
-String formatClock(Duration d) {
-  final negative = d.isNegative;
-  final t = d.abs();
-  final h = t.inHours;
-  final m = t.inMinutes.remainder(60);
-  final s = t.inSeconds.remainder(60);
-  String two(int n) => n.toString().padLeft(2, '0');
-  final text = h > 0 ? '$h:${two(m)}:${two(s)}' : '$m:${two(s)}';
-  return negative ? '−$text' : text;
 }
 
 /// Elapsed or remaining time, rebuilt only when the shown second changes.

@@ -6,6 +6,9 @@ import '../app/navigation_args.dart';
 import '../app/theme/marquee_colors.dart';
 import '../core/storage/preferences.dart';
 import '../data/models/catalog_models.dart';
+import '../data/models/media_item.dart';
+import '../data/models/playback_request.dart';
+import 'player/tv_player_screen.dart';
 import 'screens/browse/tv_genre_screen.dart';
 import 'screens/details/tv_details_screen.dart';
 import 'screens/person/tv_person_screen.dart';
@@ -42,8 +45,18 @@ final tvRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       _route('/welcome', (_) => const TvWelcomeScreen()),
-      // The TV player comes in TV-4.
-      _route('/watch/:id', (_) => const TvPendingScreen()),
+      // Full screen, above the tabs (tvOpenPlayer). Without its request (a
+      // restored location) it plays the ID alone.
+      _route(
+        '/watch/:id',
+        (state) => TvPlayerScreen(
+          request: state.extra is PlaybackRequest
+              ? state.extra! as PlaybackRequest
+              : PlaybackRequest(
+                  item: MediaItem(id: state.pathParameters['id']!),
+                ),
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, state, shell) => TvShell(
           shell: shell,

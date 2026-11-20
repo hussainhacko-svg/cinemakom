@@ -201,5 +201,9 @@
   "tvDeleteQuestion": "حذف هذا التنزيل من التلفاز؟",
   "tvDownloadingPercent": "جارٍ التنزيل · {percent}٪",
   "tvWatched": "تمت مشاهدتها",
-  "tvDownloadSeasonNumber": "تنزيل الموسم {number}"
+  "tvDownloadSeasonNumber": "تنزيل الموسم {number}",
+  "tvPlayerVideo": "الفيديو",
+  "tvPlayerWas": "كان {time}",
+  "tvPlayerChip": "{name}: {value}",
+  "tvPlaying": "قيد التشغيل"
 }

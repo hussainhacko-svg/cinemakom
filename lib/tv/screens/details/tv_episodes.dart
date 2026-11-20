@@ -41,6 +41,9 @@ typedef _Entry = ({int season, int? block});
 ///   one Up from the first episode. (In the actions row it could only be
 ///   reached by going up through the seasons, which picked Season 1.)
 /// Both columns scroll by themselves under one heading.
+///
+/// The player's Episodes panel uses the same panes ([downloads] off,
+/// [onPlay] switching in place, [currentId] marked "Playing").
 class TvEpisodes extends StatelessWidget {
   const TvEpisodes({
     super.key,
@@ -50,6 +53,14 @@ class TvEpisodes extends StatelessWidget {
     required this.view,
     required this.watched,
     required this.onSelect,
+    this.onPlay,
+    this.currentId,
+    this.downloads = true,
+    this.initial = false,
+    this.heading = true,
+    this.height = defaultHeight,
+    this.edge = TvSpace.safeH,
+    this.seasonsWidth = 210,
   });
 
   final int order;
@@ -59,7 +70,30 @@ class TvEpisodes extends StatelessWidget {
   final Map<String, WatchProgress> watched;
   final void Function(int season, int? block) onSelect;
 
-  static const double height = 360;
+  /// OK on an episode; by default it opens the player.
+  final ValueChanged<Episode>? onPlay;
+
+  /// The episode playing now, marked in the list.
+  final String? currentId;
+
+  /// Download season and each episode's download button.
+  final bool downloads;
+
+  /// Focus starts on the episodes (at the anchor): the player's panel.
+  final bool initial;
+
+  /// The EPISODES heading above the panes.
+  final bool heading;
+
+  /// The panes' height; infinite fills the space given (a panel).
+  final double height;
+
+  /// The space outside the panes: the page's safe area on Details, nothing
+  /// in a panel (it has its own padding).
+  final double edge;
+  final double seasonsWidth;
+
+  static const double defaultHeight = 360;
 
   List<_Entry> _entries() {
     final entries = <_Entry>[];
@@ -107,113 +141,131 @@ class TvEpisodes extends StatelessWidget {
       return first == last ? '$first' : l10n.episodeRange(first, last);
     }
 
+    final panes = TvGroup.split(
+      order: order,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: edge + seasonsWidth + _ringRoom,
+            child: TvZone.column(
+              order: 0,
+              initialIndex: selected < 0 ? 0 : selected,
+              pageWhole: true,
+              keyline: 0,
+              child: ListView.separated(
+                // Room for the focus ring, which the list clips.
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  edge + _ringRoom,
+                  8,
+                  _ringRoom,
+                  8,
+                ),
+                itemCount: entries.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 6),
+                itemBuilder: (context, i) {
+                  final e = entries[i];
+                  return _SeasonEntry(
+                    index: i,
+                    label: entryLabel(e),
+                    block: e.block != null,
+                    selected: i == selected,
+                    onFocus: () => onSelect(e.season, e.block),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 32 - 2 * _ringRoom),
+          Expanded(
+            child: TvZone.grid(
+              // A new season or block starts on its anchor episode.
+              key: ValueKey((view.season, view.block)),
+              order: 1,
+              columns: downloads ? 2 : 1,
+              initial: initial,
+              // With downloads, row 0 is Download season and episode i
+              // is row i + 1, its play cell then its button.
+              initialIndex: downloads
+                  ? (anchorAt < 0 ? 0 : anchorAt) * 2 + 2
+                  : (anchorAt < 0 ? 0 : anchorAt),
+              pageWhole: true,
+              keyline: 0,
+              child: ListView.separated(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  _ringRoom,
+                  8,
+                  edge + _ringRoom,
+                  8,
+                ),
+                itemCount: shown.length + (downloads ? 1 : 0),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, row) {
+                  void play(Episode e) => onPlay != null
+                      ? onPlay!(e)
+                      : tvOpenPlayer(
+                          context,
+                          PlaybackRequest(item: series, episode: e),
+                        );
+                  if (!downloads) {
+                    return _EpisodeCell(
+                      index: row,
+                      episode: shown[row],
+                      progress: watched[shown[row].id],
+                      numeralWidth: 18.0 * digits + 16,
+                      playing: shown[row].id == currentId,
+                      onSelect: () => play(shown[row]),
+                    );
+                  }
+                  if (row == 0) {
+                    return Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _SeasonDownload(
+                        series: series,
+                        season: view.season,
+                        episodes: view.inSeason,
+                      ),
+                    );
+                  }
+                  final i = row - 1;
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _EpisodeCell(
+                          index: row * 2,
+                          episode: shown[i],
+                          progress: watched[shown[i].id],
+                          numeralWidth: 18.0 * digits + 16,
+                          playing: shown[i].id == currentId,
+                          onSelect: () => play(shown[i]),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      TvEpisodeDownloadButton(
+                        index: row * 2 + 1,
+                        series: series,
+                        episode: shown[i],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TvSectionTitle(l10n.episodesHeading),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: height,
-          child: TvGroup.split(
-            order: order,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: TvSpace.safeH + 210 + _ringRoom,
-                  child: TvZone.column(
-                    order: 0,
-                    initialIndex: selected < 0 ? 0 : selected,
-                    pageWhole: true,
-                    keyline: 0,
-                    child: ListView.separated(
-                      // Room for the focus ring, which the list clips.
-                      padding: const EdgeInsetsDirectional.fromSTEB(
-                        TvSpace.safeH,
-                        8,
-                        _ringRoom,
-                        8,
-                      ),
-                      itemCount: entries.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 6),
-                      itemBuilder: (context, i) {
-                        final e = entries[i];
-                        return _SeasonEntry(
-                          index: i,
-                          label: entryLabel(e),
-                          block: e.block != null,
-                          selected: i == selected,
-                          onFocus: () => onSelect(e.season, e.block),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 32 - 2 * _ringRoom),
-                Expanded(
-                  child: TvZone.grid(
-                    // A new season or block starts on its anchor episode.
-                    key: ValueKey((view.season, view.block)),
-                    order: 1,
-                    columns: 2,
-                    // Row 0 is Download season; episode i is row i + 1.
-                    initialIndex: (anchorAt < 0 ? 0 : anchorAt) * 2 + 2,
-                    pageWhole: true,
-                    keyline: 0,
-                    child: ListView.separated(
-                      padding: const EdgeInsetsDirectional.fromSTEB(
-                        _ringRoom,
-                        8,
-                        TvSpace.safeH,
-                        8,
-                      ),
-                      itemCount: shown.length + 1,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, row) {
-                        if (row == 0) {
-                          return Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: _SeasonDownload(
-                              series: series,
-                              season: view.season,
-                              episodes: view.inSeason,
-                            ),
-                          );
-                        }
-                        final i = row - 1;
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: _EpisodeCell(
-                                index: row * 2,
-                                episode: shown[i],
-                                progress: watched[shown[i].id],
-                                numeralWidth: 18.0 * digits + 16,
-                                onSelect: () => tvOpenPlayer(
-                                  context,
-                                  PlaybackRequest(
-                                    item: series,
-                                    episode: shown[i],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            TvEpisodeDownloadButton(
-                              index: row * 2 + 1,
-                              series: series,
-                              episode: shown[i],
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        if (heading) ...[
+          TvSectionTitle(l10n.episodesHeading),
+          const SizedBox(height: 4),
+        ],
+        if (height.isFinite)
+          SizedBox(height: height, child: panes)
+        else
+          Expanded(child: panes),
       ],
     );
   }
@@ -280,6 +332,7 @@ class _EpisodeCell extends StatelessWidget {
     required this.numeralWidth,
     required this.onSelect,
     this.progress,
+    this.playing = false,
   });
 
   final int index;
@@ -287,6 +340,10 @@ class _EpisodeCell extends StatelessWidget {
   final WatchProgress? progress;
   final double numeralWidth;
   final VoidCallback onSelect;
+
+  /// The episode the player is on: a `boothRaised` row and "Playing" in
+  /// `bulb` (DESIGN.md §5: the current episode sits on `boothRaised`).
+  final bool playing;
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +355,9 @@ class _EpisodeCell extends StatelessWidget {
     final label = episodeLabel(l10n, episode.numbering);
     final meta = context.joinMeta([
       if (episode.duration case final d?) formatDuration(l10n, d),
-      if (started)
+      if (playing)
+        l10n.tvPlaying
+      else if (started)
         minutesLeft(l10n, progress.remaining)
       else if (finished)
         l10n.tvWatched,
@@ -314,7 +373,7 @@ class _EpisodeCell extends StatelessWidget {
           height: 60,
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : null,
+            color: focused || playing ? MarqueeColors.boothRaised : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -367,7 +426,13 @@ class _EpisodeCell extends StatelessWidget {
                         ],
                       ],
                     ),
-                    if (meta.isNotEmpty) Text(meta, style: text.caption),
+                    if (meta.isNotEmpty)
+                      Text(
+                        meta,
+                        style: playing
+                            ? text.caption.copyWith(color: MarqueeColors.bulb)
+                            : text.caption,
+                      ),
                     if (started) ...[
                       const SizedBox(height: 4),
                       SizedBox(

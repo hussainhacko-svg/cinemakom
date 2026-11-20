@@ -9,7 +9,7 @@ import '../../../core/storage/preferences.dart';
 import '../../../data/models/playback_request.dart';
 import '../../settings/settings_screen.dart' show subtitleSizeLabel;
 import '../player_controller.dart';
-import 'controls_overlay.dart' show subtitleLabel;
+import '../player_labels.dart';
 
 /// The player's menus (PLAYER.md §8): a bottom sheet below 600 dp, and from
 /// 600 dp a popover under the chip that opened it, so the video stays in
@@ -252,11 +252,13 @@ class MenuRow extends StatelessWidget {
                     children: [
                       Text(
                         label,
-                        style: text.body.withWeight(FontWeight.w500).copyWith(
-                          color: selected
-                              ? MarqueeColors.bulb
-                              : MarqueeColors.cream,
-                        ),
+                        style: text.body
+                            .withWeight(FontWeight.w500)
+                            .copyWith(
+                              color: selected
+                                  ? MarqueeColors.bulb
+                                  : MarqueeColors.cream,
+                            ),
                       ),
                       if (caption != null) Text(caption, style: text.caption),
                     ],
@@ -474,17 +476,6 @@ class SubtitleMenu extends ConsumerWidget {
       },
     );
   }
-}
-
-/// "+1.5", "0", "−0.5" (Western digits, DESIGN.md §2).
-String delayLabel(Duration delay) {
-  final ms = delay.inMilliseconds;
-  if (ms == 0) return '0';
-  final abs = ms.abs() / 1000;
-  final digits = abs == abs.roundToDouble()
-      ? abs.toStringAsFixed(0)
-      : abs.toStringAsFixed(ms % 100 == 0 ? 1 : 2);
-  return '${ms > 0 ? '+' : '−'}$digits';
 }
 
 /// A filter-chip style pill (DESIGN.md §5).

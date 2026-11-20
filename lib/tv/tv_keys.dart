@@ -8,10 +8,21 @@ class TvBackIntent extends Intent {
   const TvBackIntent();
 }
 
-/// Play/pause on the remote, or Space on a keyboard. Only the player handles
-/// it (TV-4); elsewhere it does nothing.
-class TvPlayPauseIntent extends Intent {
-  const TvPlayPauseIntent();
+/// The remote's media keys (Space on a keyboard is play/pause).
+enum TvMediaKey { playPause, play, pause, rewind, fastForward, next }
+
+/// A media key. `TvApp` hands it to [TvMedia.handler]: the open player's,
+/// so the keys work over its panels too. Elsewhere they do nothing.
+class TvMediaIntent extends Intent {
+  const TvMediaIntent(this.key);
+
+  final TvMediaKey key;
+}
+
+/// Who gets the media keys: the player while it's open (docs/TV.md §8.1:
+/// they always work, controls shown or not).
+abstract final class TvMedia {
+  static void Function(TvMediaKey key)? handler;
 }
 
 /// The keys that mean OK. `TvFocusable` reads them itself (it fires on key
@@ -41,6 +52,23 @@ const tvShortcuts = <ShortcutActivator, Intent>{
   SingleActivator(LogicalKeyboardKey.backspace): TvBackIntent(),
   SingleActivator(LogicalKeyboardKey.gameButtonB): TvBackIntent(),
   // Media
-  SingleActivator(LogicalKeyboardKey.space): TvPlayPauseIntent(),
-  SingleActivator(LogicalKeyboardKey.mediaPlayPause): TvPlayPauseIntent(),
+  SingleActivator(LogicalKeyboardKey.space): TvMediaIntent(
+    TvMediaKey.playPause,
+  ),
+  SingleActivator(LogicalKeyboardKey.mediaPlayPause): TvMediaIntent(
+    TvMediaKey.playPause,
+  ),
+  SingleActivator(LogicalKeyboardKey.mediaPlay): TvMediaIntent(TvMediaKey.play),
+  SingleActivator(LogicalKeyboardKey.mediaPause): TvMediaIntent(
+    TvMediaKey.pause,
+  ),
+  SingleActivator(LogicalKeyboardKey.mediaRewind): TvMediaIntent(
+    TvMediaKey.rewind,
+  ),
+  SingleActivator(LogicalKeyboardKey.mediaFastForward): TvMediaIntent(
+    TvMediaKey.fastForward,
+  ),
+  SingleActivator(LogicalKeyboardKey.mediaTrackNext): TvMediaIntent(
+    TvMediaKey.next,
+  ),
 };

@@ -360,11 +360,18 @@ class TvNavZone extends TvNavNode {
 /// Focus is on nothing useful: no item, no text field, or an item of a
 /// screen that isn't shown any more.
 bool tvFocusIsLost() {
+  // A `TvFocusable(autofocus: true)` was just built and is taking focus:
+  // nothing should move focus elsewhere meanwhile (the removed item's
+  // recovery, the screen's initial focus).
+  if (tvAutofocusPending > 0) return false;
   final focus = FocusManager.instance.primaryFocus;
   if (focus == null || focus.context == null) return true;
   if (focus is TvItemNode) return !(focus.zone?.isActive ?? false);
   return !tvIsEditingText(focus);
 }
+
+/// How many autofocus requests are on their way (see [tvFocusIsLost]).
+int tvAutofocusPending = 0;
 
 /// Whether [focus] is a text field (R8: it keeps the arrows while typing).
 bool tvIsEditingText(FocusNode? focus) =>

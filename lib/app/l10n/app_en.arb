@@ -951,5 +951,13 @@
   "tvWatched": "watched",
   "@tvWatched": {"description": "TV episode row: an episode watched to the end"},
   "tvDownloadSeasonNumber": "Download season {number}",
-  "@tvDownloadSeasonNumber": {"description": "TV episodes pane: downloads every episode of that season", "placeholders": {"number": {"type": "int"}}}
+  "@tvDownloadSeasonNumber": {"description": "TV episodes pane: downloads every episode of that season", "placeholders": {"number": {"type": "int"}}},
+  "tvPlayerVideo": "Video",
+  "@tvPlayerVideo": {"description": "TV player: the accessible name of the video while the controls are hidden (OK pauses, arrows seek)"},
+  "tvPlayerWas": "was {time}",
+  "@tvPlayerWas": {"description": "TV player, while seeking: where the video was before, e.g. '24:26 · was 19:26'", "placeholders": {"time": {"type": "String"}}},
+  "tvPlayerChip": "{name}: {value}",
+  "@tvPlayerChip": {"description": "TV player: the accessible name of a chip, e.g. 'Subtitles: Arabic'", "placeholders": {"name": {"type": "String"}, "value": {"type": "String"}}},
+  "tvPlaying": "Playing",
+  "@tvPlaying": {"description": "TV player's episodes panel: marks the episode playing now"}
 }

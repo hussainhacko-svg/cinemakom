@@ -76,6 +76,9 @@ const _sharedFiles = {
   'lib/features/player/quality.dart',
   'lib/features/player/subtitles.dart',
   'lib/features/player/up_next.dart',
+  'lib/features/player/player_labels.dart', // clock, speed, fit, subtitles
+  'lib/features/player/widgets/seek_preview_frame.dart', // one sprite cell
+  'lib/features/player/widgets/subtitle_layer.dart', // Flutter-drawn lines
 };
 
 bool _shared(String path) =>

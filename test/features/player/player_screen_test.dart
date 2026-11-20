@@ -6,6 +6,7 @@ import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/playback_request.dart';
 import 'package:cinemakom/features/details/details_screen.dart';
+import 'package:cinemakom/features/player/player_labels.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
 import 'package:cinemakom/features/player/widgets/chip_menus.dart';
 import 'package:cinemakom/features/player/widgets/controls_overlay.dart';

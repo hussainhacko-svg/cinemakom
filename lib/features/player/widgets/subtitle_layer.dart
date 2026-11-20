@@ -15,6 +15,7 @@ class SubtitleLayer extends StatelessWidget {
     required this.lines,
     required this.lifted,
     this.scale = 1,
+    this.liftedBy = 120,
   });
 
   final ValueListenable<List<String>> lines;
@@ -22,6 +23,10 @@ class SubtitleLayer extends StatelessWidget {
 
   /// The size setting: 1 is Medium (PLAYER.md §7.2).
   final double scale;
+
+  /// How far above the bottom [lifted] puts the lines: clear of the
+  /// controls (the TV's bottom controls are taller).
+  final double liftedBy;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +43,7 @@ class SubtitleLayer extends StatelessWidget {
           MarqueeSpace.xxl,
           0,
           MarqueeSpace.xxl,
-          lifted ? 120 : MarqueeSpace.xxxl,
+          lifted ? liftedBy : MarqueeSpace.xxxl,
         ),
         child: Align(
           alignment: Alignment.bottomCenter,
