@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/network/api_client.dart';
-import '../../core/platform/platform_info.dart';
 import '../theme/marquee_colors.dart';
 
 /// Whether [MediaImage] loads from the network. Widget tests turn it off.
@@ -21,12 +20,19 @@ class MediaImage extends ConsumerWidget {
     this.borderRadius = BorderRadius.zero,
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
+    this.decodeScale = 1.0,
+    this.filterQuality = FilterQuality.low,
   });
 
   final String? url;
   final BorderRadius borderRadius;
   final BoxFit fit;
   final Alignment alignment;
+
+  /// Multiplier over `maxWidth * devicePixelRatio` for `memCacheWidth`
+  /// (capped at 1920 px). TV cards pass `2.0` for sharper 4K upscaling.
+  final double decodeScale;
+  final FilterQuality filterQuality;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,12 +50,9 @@ class MediaImage extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, box) {
         // Decode at the size on screen, never at the source size: a detail
-        // poster can be 2000×3000. Android TV runs its UI layer at 1080p
-        // (960×540 dp @ 2×) and upscales to 4K, so decode 2× sharper on TV
-        // (capped at 1920 px).
-        final scale = isTv ? 2.0 : 1.0;
+        // poster can be 2000×3000.
         final width = box.hasBoundedWidth
-            ? (box.maxWidth * dpr * scale).round().clamp(1, 1920)
+            ? (box.maxWidth * dpr * decodeScale).round().clamp(1, 1920)
             : null;
         final image = CachedNetworkImage(
           imageUrl: url,
@@ -57,7 +60,7 @@ class MediaImage extends ConsumerWidget {
           memCacheWidth: width,
           fit: fit,
           alignment: alignment,
-          filterQuality: isTv ? FilterQuality.medium : FilterQuality.low,
+          filterQuality: filterQuality,
           width: box.hasBoundedWidth ? box.maxWidth : null,
           height: box.hasBoundedHeight ? box.maxHeight : null,
           fadeInDuration: Duration.zero,

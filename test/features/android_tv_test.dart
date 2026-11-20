@@ -11,6 +11,8 @@ import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/playback_request.dart';
+import 'package:cinemakom/features/details/widgets/episode_list.dart';
+import 'package:cinemakom/features/downloads/download_actions.dart';
 import 'package:cinemakom/features/home/widgets/home_hero.dart';
 import 'package:cinemakom/features/onboarding/language_screen.dart';
 import 'package:cinemakom/features/player/player_screen.dart';
@@ -372,6 +374,62 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'D-pad Right from an episode row focuses its download button instead of playing',
+      (tester) async {
+        useAndroidTv();
+        await pumpApp(tester, width: 960, height: 540);
+        // Open Friends series details (ID 4328).
+        ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+            .read(routerProvider)
+            .push('/home/title/4328');
+        await tester.pumpAndSettle();
+
+        // Scroll to the episode list and focus the first episode row's InkWell.
+        final downloadBtn = find.byType(EpisodeDownloadButton).first;
+        await tester.ensureVisible(downloadBtn);
+        await tester.pumpAndSettle();
+
+        final episodeInkWell = find
+            .descendant(
+              of: find.byType(EpisodeList),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        // Find the Focus node inside the first episode row (not a FilterPill).
+        final epRowNode = FocusManager.instance.rootScope.descendants
+            .firstWhere(
+              (n) =>
+                  n.context != null &&
+                  n.context!.findAncestorWidgetOfExactType<EpisodeList>() !=
+                      null &&
+                  n.context!.findAncestorWidgetOfExactType<
+                          EpisodeDownloadButton>() ==
+                      null &&
+                  n.rect.height >= 60,
+            );
+        epRowNode.requestFocus();
+        await tester.pump();
+
+        // Press D-pad Right → focus moves to the sibling EpisodeDownloadButton!
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pump();
+        final focusedCtx = FocusManager.instance.primaryFocus?.context;
+        expect(focusedCtx, isNotNull);
+        expect(
+          focusedCtx!.findAncestorWidgetOfExactType<EpisodeDownloadButton>(),
+          isNotNull,
+        );
+
+        // Pressing Select triggers the download quality picker, NOT the player!
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pumpAndSettle();
+        expect(find.byType(PlayerScreen), findsNothing);
+        expect(find.text('Download quality'), findsOneWidget);
+        expect(episodeInkWell, findsOneWidget);
+      },
+    );
   });
 
   group('Android TV player remote controls', () {
@@ -550,7 +608,6 @@ void main() {
         FocusManager.instance.primaryFocus?.debugLabel,
         isNot('tvNavDest_0'),
       );
-
 
       await openTvEpisode(tester);
       engine.emitReady();

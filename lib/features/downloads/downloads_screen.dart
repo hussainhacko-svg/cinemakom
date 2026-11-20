@@ -124,54 +124,69 @@ class _RowState extends State<_Row> {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(bottom: MarqueeSpace.s),
     child: Material(
-      color: _focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
-      shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        side: _focused
-            ? const BorderSide(color: MarqueeColors.bulb, width: 2)
-            : BorderSide.none,
-      ),
+      color: MarqueeColors.booth,
+      borderRadius: const BorderRadius.all(MarqueeRadius.card),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        onTap: widget.onTap,
-        onLongPress: widget.onMenu,
-        onSecondaryTap: widget.onMenu,
-        onFocusChange: (f) => setState(() => _focused = f),
-        focusColor: Colors.transparent,
-        child: Padding(
-          padding: const EdgeInsets.all(MarqueeSpace.s),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 48,
-                height: 72,
-                child: MediaImage(
-                  url: widget.posterUrl,
-                  borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
-                ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Material(
+              color: _focused ? MarqueeColors.boothRaised : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                side: _focused
+                    ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+                    : BorderSide.none,
               ),
-              const SizedBox(width: MarqueeSpace.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: widget.children,
-                ),
-              ),
-              ...widget.trailing,
-              if (isTv && widget.onMenu != null && widget.trailing.isEmpty)
-                IconButton(
-                  onPressed: widget.onMenu,
-                  icon: const Icon(
-                    Icons.more_vert,
-                    size: 20,
-                    color: MarqueeColors.dust,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                onTap: widget.onTap,
+                onLongPress: widget.onMenu,
+                onSecondaryTap: widget.onMenu,
+                onFocusChange: (f) => setState(() => _focused = f),
+                focusColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.all(MarqueeSpace.s),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 72,
+                        child: MediaImage(
+                          url: widget.posterUrl,
+                          borderRadius: const BorderRadius.all(
+                            MarqueeRadius.thumb,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: MarqueeSpace.m),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: widget.children,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
+          ...widget.trailing,
+          if (isTv && widget.onMenu != null && widget.trailing.isEmpty)
+            IconButton(
+              onPressed: widget.onMenu,
+              icon: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: MarqueeColors.dust,
+              ),
+            ),
+          if (widget.trailing.isNotEmpty || (isTv && widget.onMenu != null))
+            const SizedBox(width: MarqueeSpace.xs),
+        ],
       ),
     ),
   );

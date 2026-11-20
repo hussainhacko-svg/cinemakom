@@ -378,46 +378,59 @@ class _RecentSearchRowState extends State<_RecentSearchRow> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeText.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _focused ? MarqueeColors.boothRaised : null,
-        borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        border: _focused
-            ? Border.all(color: MarqueeColors.bulb, width: 2)
-            : null,
-      ),
-      child: InkWell(
-        onTap: widget.onTap,
-        onFocusChange: (f) => setState(() => _focused = f),
-        focusColor: Colors.transparent,
-        borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4),
-          child: Row(
-            children: [
-              const Icon(Icons.history, size: 20, color: MarqueeColors.dust),
-              const SizedBox(width: MarqueeSpace.m),
-              Expanded(
-                child: Text(
-                  widget.query,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.body.copyWith(color: MarqueeColors.cream),
+    return Row(
+      children: [
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _focused ? MarqueeColors.boothRaised : null,
+              borderRadius: const BorderRadius.all(MarqueeRadius.card),
+              border: _focused
+                  ? Border.all(color: MarqueeColors.bulb, width: 2)
+                  : null,
+            ),
+            child: InkWell(
+              onTap: widget.onTap,
+              onFocusChange: (f) => setState(() => _focused = f),
+              focusColor: Colors.transparent,
+              borderRadius: const BorderRadius.all(MarqueeRadius.card),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.history,
+                      size: 20,
+                      color: MarqueeColors.dust,
+                    ),
+                    const SizedBox(width: MarqueeSpace.m),
+                    Expanded(
+                      child: Text(
+                        widget.query,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.body.copyWith(color: MarqueeColors.cream),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              IconButton(
-                tooltip: l10n.removeSearch(widget.query),
-                onPressed: widget.onRemove,
-                icon: const Icon(
-                  Icons.close,
-                  size: 18,
-                  color: MarqueeColors.dust,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        IconButton(
+          tooltip: l10n.removeSearch(widget.query),
+          onPressed: widget.onRemove,
+          icon: const Icon(
+            Icons.close,
+            size: 18,
+            color: MarqueeColors.dust,
+          ),
+        ),
+      ],
     );
   }
 }
