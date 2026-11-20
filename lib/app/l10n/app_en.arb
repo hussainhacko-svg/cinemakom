@@ -918,5 +918,13 @@
         "type": "String"
       }
     }
+  },
+  "tvPressOkToType": "OK to type",
+  "@tvPressOkToType": {
+    "description": "TV: shown on a focused text box; typing starts only after OK (docs/TV.md R8)"
+  },
+  "tvBackCloses": "Back closes",
+  "@tvBackCloses": {
+    "description": "TV: at the bottom of a side panel, says the remote's Back button closes it"
   }
 }

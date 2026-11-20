@@ -121,19 +121,29 @@ This is what makes or breaks the TV app. It's built first (TV-1) and every scree
 - **R11 Initial focus.** Each screen declares where focus starts (Home: Play on the hero; Details: Play/Resume; a panel: the current choice). Focus is never left empty after a load, a route change or an error.
 - **R12 RTL.** Arrows follow what you see: in Arabic, Right moves toward the start of a row. Zones use start/end, never left/right. The player's seek bar keeps PLAYER.md §2 (always left → right, so Right always seeks forward).
 
-### 5.2 Building blocks (`lib/tv/focus`)
+### 5.2 Building blocks (`lib/tv/focus`) *(built in TV-1)*
 | Widget | Job |
 |---|---|
-| `TvFocusable` | One focusable item: a builder gets `focused`, plus `onSelect` and an optional `onLongSelect`. It draws the focus look (§6.3), runs `onSelect` on OK, Enter and gamepad A, and reports to its zone |
-| `TvZone.row` / `.column` / `.grid(columns:)` / `.split` | Owns the moves inside it (R1), remembers its index (R2), restores it, and passes edge arrows up to the screen |
-| `TvScreen` | The ordered zones of a page, its initial focus (R11), Back (R4) and the scroll keylines (R10) |
-| `TvSidePanel` | A panel that slides in from the end edge with a focus scope. It autofocuses and gives focus back to its opener (R4, R9). Every picker uses it (quality, subtitles, sort, language, settings choices, download actions) |
-| `TvFocusWatchdog` | The debug check for R7 |
+| `TvFocusable` | One focusable item at an `index` of its zone, with a `label` (its accessible name, and how tests find it): a builder gets `focused`, plus `onSelect` and an optional `onLongSelect`. It handles the arrows (always used: they never reach Flutter's traversal) and OK, and reports focus to its zone |
+| `TvZone.row` / `.column` / `.grid(columns:)` | Owns the moves inside it by index (R1), skips disabled and `ExcludeFocus`ed items (R5), remembers its index (R2), and passes edge arrows to its group. `order` is its place in the screen. A row of cells (an episode's play part and download button, a Continue row's title · Details · Remove) is a grid, so Up and Down keep the cell |
+| `TvGroup.split` | Zones side by side (seasons \| episodes): Left and Right move between them, each keeps its own memory, Up and Down go on to the screen |
+| `TvScreen` | The ordered zones of a page (the root group), its initial focus (`TvZone(initial: true)`, R11), getting focus back when its route is current again or its content loads (R2), Back (R4) and the scroll keylines (R10, give its `ScrollController` to the page's scroll view). A screen inside another's group continues it (a tab's content under the tab bar) |
+| `TvBack` | One rung of the Back ladder. `TvApp` asks them from the focused widget outwards (`tvHandleBack`); none takes it: exit. Not nested `Actions`: Flutter's `Shortcuts` stops at the nearest action even when it's disabled, so they can't fall through |
+| `showTvSidePanel` | A panel that slides in from the end edge, as its own route and screen: modal, opens on its initial zone, Back closes it, focus goes back to its opener (R4, R9, R11). `showTvChoicePanel` (`widgets/`) is the picker on top of it |
+| `TvFocusWatchdog` | The debug check for R7: three frames after a focus change, focus on nothing while a shown screen has something to focus is reported with the route and the last key. In a test that's a failure |
 
-The remote keys are bound once, in `TvApp`'s `Shortcuts`: `select`, `enter`, `numpadEnter` and `gameButtonA` → activate; `goBack` and `escape` → back. Media keys go to the player. *Checked in TV-0:* Flutter 3.47.9 already maps `select` to activate on Android, but `TvApp` passes its own complete map (`tvShortcuts` in `lib/tv/tv_keys.dart`), so nothing depends on Flutter's defaults. Space and play/pause map to `TvPlayPauseIntent` (the player, TV-4); Backspace and gamepad B also mean Back.
+The widgets on top (`lib/tv/widgets`): `TvCardFocus` (the card look), `tvFocusRing`, `TvButton`, `TvListRow`, `TvChoicePanel`, and `TvTextEntry` (R8: a button that looks like the field; OK swaps in the `TextField`, Done or Back swaps back). Sizes are in `MarqueeTvText` and `TvSpace` (`lib/tv/theme`); `buildMarqueeTvTheme` is the one Marquee theme with them.
+
+**Choices made while building (TV-1):**
+- **OK fires when the key comes back up**, as Android TV's own buttons do. Held for 0.5 s it fires `onLongSelect` instead, and a key that comes up on another item (after the first opened something) does nothing.
+- **Scrolling (R10):** a horizontal scroll view puts the focused item's edge at its zone's `keyline` (48 dp by default), until the row's end. The page puts the zone's top at 27 dp for a row (and for a grid's first row, so its header shows), scrolls only as far as needed further down a grid or column, and goes back to the top for the first zone. A column that scrolls by itself (the seasons) scrolls only as far as needed. A key repeat jumps.
+- **Focus memory across pages (R2)** is the screen's: its root group remembers its last zone, and the screen takes focus back when its route is current again and focus is on nothing.
+
+The remote keys are bound once, in `TvApp`'s `Shortcuts`: `select`, `enter`, `numpadEnter` and `gameButtonA` → activate (outside a `TvFocusable`, which reads OK itself); `goBack` and `escape` → back. The arrows are not bound at all, so Flutter never guesses. Media keys go to the player. *Checked in TV-0:* Flutter 3.47.9 already maps `select` to activate on Android, but `TvApp` passes its own complete map (`tvShortcuts` in `lib/tv/tv_keys.dart`), so nothing depends on Flutter's defaults. Space and play/pause map to `TvPlayPauseIntent` (the player, TV-4); Backspace and gamepad B also mean Back.
 
 ### 5.3 Proving there are no traps
 - **`TvDriver`** (`test/tv/tv_driver.dart`) presses keys in widget tests: `right()`, `down()`, `ok()`, `back()`, `focused` (the focused item's semantics label), `focusPath`.
+- **`expectNoTraps`** (`test/tv/reachability.dart`) is the reachability check below; `test/tv/focus_rules_test.dart` runs it and a test per rule on `test/tv/demo_screen.dart` (every kind of zone, a panel, a pushed page, a text entry).
 - **A reachability test for every screen**, with fixture data (`fixtureApi()`), in English and in Arabic. Starting from the initial focus, it tries every arrow from every item it reaches (a breadth-first search over focus states). It checks that:
   1. every enabled control on the screen was reached (from the semantics tree: every button has a label);
   2. pressing Back repeatedly from any reached item leaves the screen;
@@ -318,7 +328,7 @@ The first TV test showed soft, blurry posters. There are three causes, and each 
 | | Scope | Done when |
 |---|---|---|
 | **TV-0** ✅ | Groundwork fixes (§3): phone splash upright again (manifest back to `portrait`, plus a `TvActivity` subclass declared `landscape` with only `LEANBACK_LAUNCHER`, and `android.hardware.screen.portrait` not required); no display-mode request on TV; banner with the name (generator); the `CINEMAKOM_TV` define and a placeholder `TvApp`; move `staffProvider` and the download flow out of screen files; the boundaries test; the remote key bindings; measure the TCL's UI resolution and pixel ratio (§9.1) | The phone starts upright even held sideways. The TV shows the banner and opens the placeholder in landscape. `--dart-define=CINEMAKOM_TV=true` runs on Linux. Analyze and tests clean. *Checked 2026-11-20 on the TCL (banner, landscape start, arrows, OK, Back exits) and the phone (upright when started sideways)* |
-| **TV-1** | The focus system (§5.2), `TvDriver`, the reachability test helper, the watchdog, `MarqueeTvText`, `TvSpace`, the focus look, `TvSidePanel` / `TvChoicePanel` | Unit tests for R1–R12 on a demo screen pass, in English and Arabic |
+| **TV-1** ✅ | The focus system (§5.2), `TvDriver`, the reachability test helper, the watchdog, `MarqueeTvText`, `TvSpace`, the focus look, `TvSidePanel` / `TvChoicePanel` | Unit tests for R1–R12 on a demo screen pass, in English and Arabic. *Done 2026-11-20: 16 tests in `focus_rules_test.dart`, with the no-trap check in both languages and a test that the watchdog fires* |
 | **TV-2** | Shell and tab bar, Back ladder, first launch, Home (hero, rows, Continue watching, See all), genre page and lists, sharp artwork (§9.1: original images, decode size, filter, the thumbnail-then-original swap) | Reachability tests pass. **On the TV:** browse Home to a list and back with no trap; tune the type sizes; posters and the hero look sharp on the 4K panel from close up |
 | **TV-3** | Details: actions, seasons, ranges, episodes, cast, more like this, person page; the TV download panels (§7.4) | The episode download scenario passes in tests. **On the TV:** download, pause, resume and delete an episode, and Download season |
 | **TV-4** | The TV player (§8): controls, seek bar with previews and speed-up, panels, episodes panel, skip intro, up next, errors | Player scenarios pass with `FakeEngine`. **On the TV:** a movie and a series in 1080p and 4K, every control by remote, frame times and memory |

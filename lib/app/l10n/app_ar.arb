@@ -186,5 +186,7 @@
   "playerMuted": "الصوت مكتوم",
   "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}.",
   "tvPlaceholder": "تطبيق التلفاز قيد البناء. اضغط OK والأسهم والرجوع لتجربة جهاز التحكم.",
-  "tvLastKey": "آخر زر: {key}"
+  "tvLastKey": "آخر زر: {key}",
+  "tvPressOkToType": "اضغط OK للكتابة",
+  "tvBackCloses": "زر الرجوع يغلق"
 }

@@ -1,0 +1,91 @@
+import 'package:material_ui/material_ui.dart';
+
+import '../../app/theme/marquee_colors.dart';
+import '../../app/theme/marquee_text.dart';
+import '../focus/tv_focusable.dart';
+import '../theme/tv_text.dart';
+import 'tv_focus_look.dart';
+
+/// A row in a TV panel (choices: subtitles, quality, language), item
+/// [index] of its zone (the TV panel designs): 52 tall, radius 12, [label] at
+/// 17 and [value] (a size, "1.2 GB") in `dust` at the end; a `bulb` check when
+/// [selected]. Focused: a `boothRaised` fill, the label at 600 and the ring
+/// touching its edge. Selected and focused never look the same: the check is
+/// the selection, the fill and ring are the focus. Disabled ones ("Too big")
+/// stay visible in `dustDim` and the zone skips them.
+class TvListRow extends StatelessWidget {
+  const TvListRow({
+    super.key,
+    required this.index,
+    required this.label,
+    this.value,
+    this.selected = false,
+    this.onSelect,
+    this.enabled = true,
+  });
+
+  final int index;
+  final String label;
+  final String? value;
+  final bool selected;
+  final VoidCallback? onSelect;
+  final bool enabled;
+
+  static const double height = 52;
+  static const double radius = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = MarqueeTvText.of(context);
+    return TvFocusable(
+      index: index,
+      label: value == null ? label : '$label, $value',
+      enabled: enabled,
+      onSelect: onSelect,
+      builder: (context, focused) => TvRing(
+        on: focused,
+        radius: radius,
+        child: Container(
+          height: height,
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: focused ? MarqueeColors.boothRaised : null,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.body
+                      .withWeight(focused ? FontWeight.w600 : FontWeight.w500)
+                      .copyWith(
+                        height: 1.2,
+                        color: enabled
+                            ? MarqueeColors.cream
+                            : MarqueeColors.dustDim,
+                      ),
+                ),
+              ),
+              if (value != null) ...[
+                const SizedBox(width: 12),
+                Text(
+                  value!,
+                  style: text.caption
+                      .copyWith(fontSize: 15)
+                      .withWeight(FontWeight.w500),
+                ),
+              ],
+              if (selected) ...[
+                const SizedBox(width: 12),
+                const Icon(Icons.check, size: 20, color: MarqueeColors.bulb),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

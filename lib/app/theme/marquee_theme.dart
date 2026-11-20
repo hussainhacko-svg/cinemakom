@@ -5,8 +5,10 @@ import 'marquee_text.dart';
 
 /// The app's single theme (DESIGN.md). [arabic] only changes letter-spacing
 /// (see [MarqueeText]); colours and shapes are identical in both languages.
-ThemeData buildMarqueeTheme({required bool arabic}) {
-  final text = MarqueeText(arabic: arabic);
+/// [text] swaps in another size table of the same type scale (the TV's,
+/// docs/TV.md §6.2); it must match [arabic].
+ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
+  text ??= MarqueeText(arabic: arabic);
   const c = MarqueeColors.night;
 
   WidgetStateProperty<T> selected<T>(T on, T off) =>
