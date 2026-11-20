@@ -97,8 +97,12 @@ void main() {
     await tv.down(); // moving onto a season shows its episodes
     expect(tv.focused, 'Season 2');
     await tv.right();
-    expect(tv.focusPath, '1/1/1:0');
+    // Row 0 is Download season; the episodes start at row 1.
+    expect(tv.focusPath, '1/1/1:2');
     expect(tv.focused, startsWith('Episode 1'));
+    await tv.up();
+    expect(tv.focused, 'Download season 2');
+    await tv.down();
     await tv.right();
     expect(tv.focused, 'Download episode, Episode 1');
     await tv.down();
@@ -166,7 +170,9 @@ void main() {
     expect(tv.focused, 'Download episode, Episode 3');
   });
 
-  testWidgets('Download season queues the season shown', (tester) async {
+  testWidgets('Download season, above the episodes, queues the season picked', (
+    tester,
+  ) async {
     final downloader = FakeDownloader();
     final tv = await _pumpDetails(
       tester,
@@ -176,9 +182,8 @@ void main() {
     await tv.down();
     await tv.down(); // Season 2
     await tv.right(); // its first episode
-    await tv.up(); // the actions (Up in the seasons would pick Season 1)
-    await tv.right();
-    expect(tv.focused, 'Download season');
+    await tv.up();
+    expect(tv.focused, 'Download season 2');
     await tv.ok();
     await tv.ok();
     // Each episode is saved one after the other.
@@ -188,7 +193,7 @@ void main() {
     expect(downloader.enqueued.map((j) => j.taskId), [
       for (var n = 1; n <= 8; n++) '${2000 + n}',
     ]);
-    expect(tv.focused, 'Download season');
+    expect(tv.focused, 'Download season 2');
   });
 
   testWidgets('A quality that would not fit is shown but skipped; when none '
@@ -261,7 +266,8 @@ void main() {
       leftScreen: () => _exits.isNotEmpty,
       backChecks: 10,
     );
-    expect(reached, containsAll(['Play', 'Season 2', 'Download season']));
+    expect(reached, containsAll(['Play', 'Season 2']));
+    expect(reached.where((l) => l.startsWith('Download season ')), isNotEmpty);
   });
 
   testWidgets('No traps on a movie page', (tester) async {

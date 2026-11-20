@@ -128,11 +128,7 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
               item: item,
               details: record,
               seasons: view?.seasons.length,
-              actions: _Actions(
-                item: item,
-                details: record,
-                season: view?.inSeason,
-              ),
+              actions: _Actions(item: item, details: record),
             ),
             if (record == null && details.hasError)
               Padding(
@@ -259,18 +255,13 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Play or Resume (primary), Download (a movie) or Download season (the
-/// season shown), Favorite, and Trailer when this TV can open it.
+/// Play or Resume (primary), Download (a movie; a series downloads from its
+/// episodes pane), Favorite, and Trailer when this TV can open it.
 class _Actions extends ConsumerWidget {
-  const _Actions({
-    required this.item,
-    required this.details,
-    required this.season,
-  });
+  const _Actions({required this.item, required this.details});
 
   final MediaItem item;
   final MediaDetails? details;
-  final List<Episode>? season;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -301,7 +292,6 @@ class _Actions extends ConsumerWidget {
     final canTrailer =
         trailer != null &&
         (ref.watch(_canOpenProvider(trailer)).value ?? false);
-    final season = this.season;
     return TvZone.row(
       order: 0,
       initial: true,
@@ -317,15 +307,8 @@ class _Actions extends ConsumerWidget {
             label: playLabel,
             onSelect: () => tvOpenPlayer(context, target.request),
           ),
-          if (!item.isSeries)
-            TvMovieDownloadButton(index: 1, item: item)
-          else if (season != null && season.isNotEmpty)
-            TvButton(
-              index: 1,
-              icon: Icons.download_rounded,
-              label: l10n.downloadSeason,
-              onSelect: () => tvStartSeasonDownload(context, ref, item, season),
-            ),
+          // A series downloads a season from the episodes pane.
+          if (!item.isSeries) TvMovieDownloadButton(index: 1, item: item),
           TvButton(
             index: 2,
             icon: saved ? Icons.bookmark : Icons.bookmark_border,

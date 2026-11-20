@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/l10n/app_localizations.dart';
@@ -14,9 +15,13 @@ import '../../focus/tv_zone.dart';
 import '../../theme/tv_space.dart';
 import '../../theme/tv_text.dart';
 import '../../tv_navigation.dart';
+import '../../widgets/tv_button.dart';
 import '../../widgets/tv_downloads.dart';
 import '../../widgets/tv_focus_look.dart';
 import '../../widgets/tv_row.dart';
+
+/// Room beside each pane's list for a focus ring, which the list clips.
+const double _ringRoom = 8;
 
 /// One entry of the seasons column: a season, or one block of 50 of a long
 /// season ("1–50"; [block] set).
@@ -32,6 +37,9 @@ typedef _Entry = ({int season, int? block});
 /// - Each episode row is two cells, the episode (OK plays it) and its
 ///   download button, so Up and Down keep the cell: a whole season can be
 ///   downloaded one by one going down the button column.
+/// - Above the episodes, "Download season 3" downloads the season picked:
+///   one Up from the first episode. (In the actions row it could only be
+///   reached by going up through the seasons, which picked Season 1.)
 /// Both columns scroll by themselves under one heading.
 class TvEpisodes extends StatelessWidget {
   const TvEpisodes({
@@ -112,17 +120,18 @@ class TvEpisodes extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: TvSpace.safeH + 210,
+                  width: TvSpace.safeH + 210 + _ringRoom,
                   child: TvZone.column(
                     order: 0,
                     initialIndex: selected < 0 ? 0 : selected,
                     pageWhole: true,
                     keyline: 0,
                     child: ListView.separated(
+                      // Room for the focus ring, which the list clips.
                       padding: const EdgeInsetsDirectional.fromSTEB(
                         TvSpace.safeH,
                         8,
-                        0,
+                        _ringRoom,
                         8,
                       ),
                       itemCount: entries.length,
@@ -140,50 +149,64 @@ class TvEpisodes extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 32),
+                const SizedBox(width: 32 - 2 * _ringRoom),
                 Expanded(
                   child: TvZone.grid(
                     // A new season or block starts on its anchor episode.
                     key: ValueKey((view.season, view.block)),
                     order: 1,
                     columns: 2,
-                    initialIndex: anchorAt < 0 ? 0 : anchorAt * 2,
+                    // Row 0 is Download season; episode i is row i + 1.
+                    initialIndex: (anchorAt < 0 ? 0 : anchorAt) * 2 + 2,
                     pageWhole: true,
                     keyline: 0,
                     child: ListView.separated(
                       padding: const EdgeInsetsDirectional.fromSTEB(
-                        0,
+                        _ringRoom,
                         8,
                         TvSpace.safeH,
                         8,
                       ),
-                      itemCount: shown.length,
+                      itemCount: shown.length + 1,
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, i) => Row(
-                        children: [
-                          Expanded(
-                            child: _EpisodeCell(
-                              index: i * 2,
-                              episode: shown[i],
-                              progress: watched[shown[i].id],
-                              numeralWidth: 18.0 * digits + 16,
-                              onSelect: () => tvOpenPlayer(
-                                context,
-                                PlaybackRequest(
-                                  item: series,
-                                  episode: shown[i],
+                      itemBuilder: (context, row) {
+                        if (row == 0) {
+                          return Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: _SeasonDownload(
+                              series: series,
+                              season: view.season,
+                              episodes: view.inSeason,
+                            ),
+                          );
+                        }
+                        final i = row - 1;
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _EpisodeCell(
+                                index: row * 2,
+                                episode: shown[i],
+                                progress: watched[shown[i].id],
+                                numeralWidth: 18.0 * digits + 16,
+                                onSelect: () => tvOpenPlayer(
+                                  context,
+                                  PlaybackRequest(
+                                    item: series,
+                                    episode: shown[i],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          TvEpisodeDownloadButton(
-                            index: i * 2 + 1,
-                            series: series,
-                            episode: shown[i],
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 16),
+                            TvEpisodeDownloadButton(
+                              index: row * 2 + 1,
+                              series: series,
+                              episode: shown[i],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -369,4 +392,25 @@ class _EpisodeCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Download season 3": every episode of the season shown, in one quality.
+class _SeasonDownload extends ConsumerWidget {
+  const _SeasonDownload({
+    required this.series,
+    required this.season,
+    required this.episodes,
+  });
+
+  final MediaItem series;
+  final int season;
+  final List<Episode> episodes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => TvButton(
+    index: 0,
+    icon: Icons.download_rounded,
+    label: AppLocalizations.of(context).tvDownloadSeasonNumber(season),
+    onSelect: () => tvStartSeasonDownload(context, ref, series, episodes),
+  );
 }

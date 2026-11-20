@@ -200,5 +200,6 @@
   "tvKeepIt": "إبقاؤه",
   "tvDeleteQuestion": "حذف هذا التنزيل من التلفاز؟",
   "tvDownloadingPercent": "جارٍ التنزيل · {percent}٪",
-  "tvWatched": "تمت مشاهدتها"
+  "tvWatched": "تمت مشاهدتها",
+  "tvDownloadSeasonNumber": "تنزيل الموسم {number}"
 }
