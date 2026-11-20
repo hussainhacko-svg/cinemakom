@@ -369,6 +369,9 @@ Each milestone is committed on its own, and only ticked in PLAN.md after its TV 
 
 ## 11. Checklist on the TV (release APK)
 
+The step-by-step check for TV-4 and TV-5 is [`TV_CHECK.md`](TV_CHECK.md).
+
+
 - Install: `adb connect <tv-ip>:5555` (Developer options → Network debugging). Check `adb shell getprop ro.product.cpu.abilist`: many TVs run 32-bit Android on a 64-bit chip, and then they need `app-armeabi-v7a-release.apk`.
 - The banner on the home screen; opens straight into landscape; Home's first focus is Play.
 - Every tab with only the remote: in, around, out with Back, and the app exits from the Home tab bar.
