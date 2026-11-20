@@ -1,15 +1,47 @@
 package io.github.sharon_xa.cinemakom
 
+import android.app.UiModeManager
+import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Upright from the first frame on phones and tablets; TVs stay landscape
+        // (docs/ANDROID_TV.md).
+        if (!isTvDevice()) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         super.onCreate(savedInstanceState)
         requestHighestRefreshRate()
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            PLATFORM_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isTv" -> result.success(isTvDevice())
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun isTvDevice(): Boolean {
+        val uiMode = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        if (uiMode?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION) {
+            return true
+        }
+        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -44,5 +76,9 @@ class MainActivity : FlutterActivity() {
         if (attributes.preferredDisplayModeId == best.modeId) return
         attributes.preferredDisplayModeId = best.modeId
         window.attributes = attributes
+    }
+
+    companion object {
+        private const val PLATFORM_CHANNEL = "io.github.sharon_xa.cinemakom/platform"
     }
 }

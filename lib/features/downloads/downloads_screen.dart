@@ -12,6 +12,7 @@ import '../../app/widgets/progress_line.dart';
 import '../../app/widgets/section_header.dart';
 import '../../app/widgets/sub_page.dart';
 import '../../app/widgets/tab_page.dart';
+import '../../core/platform/platform_info.dart';
 import '../../data/models/download.dart';
 import '../../data/repositories/downloads_repository.dart';
 import 'download_actions.dart';
@@ -97,7 +98,7 @@ class _Lists extends ConsumerWidget {
 }
 
 /// A `booth` row (radius 12) with a 48 × 72 poster.
-class _Row extends StatelessWidget {
+class _Row extends StatefulWidget {
   const _Row({
     required this.posterUrl,
     required this.children,
@@ -113,40 +114,79 @@ class _Row extends StatelessWidget {
   final List<Widget> trailing;
 
   @override
+  State<_Row> createState() => _RowState();
+}
+
+class _RowState extends State<_Row> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(bottom: MarqueeSpace.s),
     child: Material(
       color: MarqueeColors.booth,
       borderRadius: const BorderRadius.all(MarqueeRadius.card),
-      child: InkWell(
-        borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        onTap: onTap,
-        onLongPress: onMenu,
-        onSecondaryTap: onMenu,
-        child: Padding(
-          padding: const EdgeInsets.all(MarqueeSpace.s),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 48,
-                height: 72,
-                child: MediaImage(
-                  url: posterUrl,
-                  borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          Expanded(
+            child: Material(
+              color: _focused ? MarqueeColors.boothRaised : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                side: _focused
+                    ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+                    : BorderSide.none,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                onTap: widget.onTap,
+                onLongPress: widget.onMenu,
+                onSecondaryTap: widget.onMenu,
+                onFocusChange: (f) => setState(() => _focused = f),
+                focusColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.all(MarqueeSpace.s),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 72,
+                        child: MediaImage(
+                          url: widget.posterUrl,
+                          borderRadius: const BorderRadius.all(
+                            MarqueeRadius.thumb,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: MarqueeSpace.m),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: widget.children,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: MarqueeSpace.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: children,
-                ),
-              ),
-              ...trailing,
-            ],
+            ),
           ),
-        ),
+          ...widget.trailing,
+          if (isTv && widget.onMenu != null && widget.trailing.isEmpty)
+            IconButton(
+              onPressed: widget.onMenu,
+              icon: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: MarqueeColors.dust,
+              ),
+            ),
+          if (widget.trailing.isNotEmpty || (isTv && widget.onMenu != null))
+            const SizedBox(width: MarqueeSpace.xs),
+        ],
       ),
     ),
   );
@@ -306,7 +346,7 @@ class _TitleRow extends ConsumerWidget {
             // Mirrors in RTL (the icon matches the text direction).
             child: Icon(Icons.chevron_right_rounded, color: MarqueeColors.dust),
           )
-        else
+        else ...[
           IconButton(
             tooltip: l10n.play,
             onPressed: () => openPlayer(context, first.request),
@@ -316,6 +356,17 @@ class _TitleRow extends ConsumerWidget {
               color: MarqueeColors.bulb,
             ),
           ),
+          if (isTv)
+            IconButton(
+              tooltip: l10n.downloadDelete,
+              onPressed: () => showDownloadMenu(context, ref, first),
+              icon: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: MarqueeColors.dust,
+              ),
+            ),
+        ],
       ],
       children: [
         Text(

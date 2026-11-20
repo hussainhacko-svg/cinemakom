@@ -6,10 +6,16 @@ import '../theme/marquee_text.dart';
 /// A row heading: `sectionTitle` at the start, an optional "See all" link at
 /// the end (DESIGN.md §5). Latin titles are uppercased; Arabic never is.
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, this.onSeeAll});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.onSeeAll,
+    this.focusSeeAll = true,
+  });
 
   final String title;
   final VoidCallback? onSeeAll;
+  final bool focusSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +39,12 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         if (onSeeAll != null)
-          TextButton(
-            onPressed: onSeeAll,
-            child: Text(AppLocalizations.of(context).seeAll),
+          ExcludeFocus(
+            excluding: !focusSeeAll,
+            child: TextButton(
+              onPressed: onSeeAll,
+              child: Text(AppLocalizations.of(context).seeAll),
+            ),
           ),
       ],
     );

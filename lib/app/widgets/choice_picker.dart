@@ -65,6 +65,7 @@ class _ChoiceList<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = MarqueeText.of(context);
+    final hasSelected = choices.any((c) => c.value == selected);
     return SingleChildScrollView(
       padding: const EdgeInsetsDirectional.only(bottom: MarqueeSpace.l),
       child: Column(
@@ -83,45 +84,80 @@ class _ChoiceList<T> extends StatelessWidget {
               child: Text(title, style: text.title),
             ),
           ),
-          for (final c in choices)
-            _ChoiceRow(choice: c, selected: c.value == selected),
+          for (var i = 0; i < choices.length; i++)
+            _ChoiceRow(
+              choice: choices[i],
+              selected: choices[i].value == selected,
+              autofocus: hasSelected ? choices[i].value == selected : i == 0,
+            ),
         ],
       ),
     );
   }
 }
 
-class _ChoiceRow<T> extends StatelessWidget {
-  const _ChoiceRow({required this.choice, required this.selected});
+class _ChoiceRow<T> extends StatefulWidget {
+  const _ChoiceRow({
+    required this.choice,
+    required this.selected,
+    this.autofocus = false,
+  });
 
   final Choice<T> choice;
   final bool selected;
+  final bool autofocus;
+
+  @override
+  State<_ChoiceRow<T>> createState() => _ChoiceRowState<T>();
+}
+
+class _ChoiceRowState<T> extends State<_ChoiceRow<T>> {
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final text = MarqueeText.of(context);
-    final style = (choice.labelStyle ?? text.title.withWeight(FontWeight.w500))
-        .copyWith(color: selected ? MarqueeColors.bulb : MarqueeColors.cream);
+    final style =
+        (widget.choice.labelStyle ?? text.title.withWeight(FontWeight.w500))
+            .copyWith(
+              color: widget.selected ? MarqueeColors.bulb : MarqueeColors.cream,
+            );
     return Semantics(
       inMutuallyExclusiveGroup: true,
-      checked: selected,
+      checked: widget.selected,
       button: true,
       excludeSemantics: true,
-      label: choice.label,
+      label: widget.choice.label,
       child: InkWell(
-        onTap: () => Navigator.of(context).pop(choice.value),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: MarqueeSpace.xxl,
-            ),
-            child: Row(
-              children: [
-                Expanded(child: Text(choice.label, style: style)),
-                if (selected)
-                  const Icon(Icons.check, color: MarqueeColors.bulb, size: 20),
-              ],
+        autofocus: widget.autofocus,
+        onTap: () => Navigator.of(context).pop(widget.choice.value),
+        onFocusChange: (f) => setState(() => _focused = f),
+        focusColor: Colors.transparent,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _focused ? MarqueeColors.boothRaised : null,
+            border: _focused
+                ? Border.all(color: MarqueeColors.bulb, width: 2)
+                : null,
+            borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: MarqueeSpace.xxl,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(widget.choice.label, style: style)),
+                  if (widget.selected)
+                    const Icon(
+                      Icons.check,
+                      color: MarqueeColors.bulb,
+                      size: 20,
+                    ),
+                ],
+              ),
             ),
           ),
         ),

@@ -325,6 +325,23 @@ def android():
         png(svg(detail_for(px), tile=True, scale=0.8, tile_radius=20), px, res / f'mipmap-{folder}/ic_launcher.png')
     # Play Store listing icon (Google applies its own mask).
     png(svg('full', tile=True, scale=0.72), 512, ROOT / 'branding/store/play-store-512.png', opaque=True)
+    # Android TV home-screen banner (320×180 dp → 640×360 px at xhdpi).
+    tv_svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">'
+        f'<rect width="320" height="180" fill="{NIGHT}"/>'
+        f'<g transform="translate(95 25) scale(1.3)">'
+        f'<path fill="{BULB}" fill-rule="evenodd" d="{DETAIL["full"]}"/>'
+        f'</g></svg>\n'
+    )
+    tv_dest = res / 'drawable-xhdpi/tv_banner.png'
+    tv_dest.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile('w', suffix='.svg', delete=False) as f:
+        f.write(tv_svg)
+    try:
+        subprocess.run(['rsvg-convert', '-w', '640', '-h', '360', f.name, '-o', str(tv_dest)], check=True)
+        subprocess.run(['magick', str(tv_dest), '-background', NIGHT, '-alpha', 'remove', '-alpha', 'off', str(tv_dest)], check=True)
+    finally:
+        os.unlink(f.name)
 
 
 # ---- iOS ----------------------------------------------------------------------

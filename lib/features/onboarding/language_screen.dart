@@ -123,7 +123,7 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
   }
 }
 
-class _LanguageOption extends StatelessWidget {
+class _LanguageOption extends StatefulWidget {
   const _LanguageOption({
     required this.label,
     required this.style,
@@ -137,33 +137,48 @@ class _LanguageOption extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_LanguageOption> createState() => _LanguageOptionState();
+}
+
+class _LanguageOptionState extends State<_LanguageOption> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
+    final selected = widget.selected;
     final accent = selected ? MarqueeColors.bulb : MarqueeColors.velvetStrong;
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
       button: true,
       excludeSemantics: true,
-      label: label,
+      label: widget.label,
       child: Material(
-        color: MarqueeColors.booth,
+        color: _focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.all(MarqueeRadius.panel),
           side: BorderSide(
-            color: selected ? MarqueeColors.bulb : MarqueeColors.velvet,
-            width: 2,
+            color: _focused
+                ? MarqueeColors.bulbBright
+                : selected
+                ? MarqueeColors.bulb
+                : MarqueeColors.velvet,
+            width: _focused ? 3 : 2,
           ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
+          autofocus: selected,
+          onTap: widget.onTap,
+          onFocusChange: (f) => setState(() => _focused = f),
+          focusColor: Colors.transparent,
           child: SizedBox(
             height: 68,
             child: Padding(
               padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
               child: Row(
                 children: [
-                  Expanded(child: Text(label, style: style)),
+                  Expanded(child: Text(widget.label, style: widget.style)),
                   // A radio mark: ring, filled when selected.
                   Container(
                     width: 22,

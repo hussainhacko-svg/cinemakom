@@ -6,11 +6,13 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/navigation.dart';
+import '../../../app/shell/app_shell.dart' show tvPrimaryFocusLabel;
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../app/widgets/error_view.dart';
 import '../../../app/widgets/media_image.dart';
 import '../../../app/widgets/media_text.dart';
+import '../../../core/platform/platform_info.dart';
 import '../../../data/models/media_item.dart';
 import '../../../data/models/playback_request.dart';
 import '../../library/widgets/favorite_button.dart';
@@ -73,6 +75,28 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
   bool _held = false;
   bool _shown = true;
   bool _still = false;
+  bool _initialTvFocusRequested = false;
+  final Map<int, FocusNode> _playNodes = {};
+
+  FocusNode _playNodeFor(int i) => _playNodes.putIfAbsent(
+    i,
+    () => FocusNode(debugLabel: tvPrimaryFocusLabel),
+  );
+
+  void _maybeRequestInitialTvFocus(int count) {
+    if (!isTv || _initialTvFocusRequested || count == 0 || !_shown) return;
+    _initialTvFocusRequested = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_shown) return;
+      final primary = FocusManager.instance.primaryFocus;
+      // Only claim initial focus if nothing concrete is focused yet (never
+      // steal focus from the TV nav rail or another widget).
+      if (primary == null || primary is FocusScopeNode) {
+        final safe = _index.clamp(0, count - 1);
+        _playNodeFor(safe).requestFocus();
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -97,6 +121,9 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
   void dispose() {
     _timer?.cancel();
     _pages.dispose();
+    for (final node in _playNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -172,64 +199,86 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
         if (items.isEmpty && !banners.isLoading) {
           return const SizedBox.shrink();
         }
+        _maybeRequestInitialTvFocus(items.length);
         final index = items.isEmpty ? 0 : _index.clamp(0, items.length - 1);
-        final wide = box.maxWidth - 2 * gutter >= _sideBySide;
+        // On Android TV (960×540 dp logical), keep the hero side-by-side so
+        // the first poster row stays visible below the fold (docs/ANDROID_TV.md).
+        final wide = isTv || box.maxWidth - 2 * gutter >= _sideBySide;
         final pager = items.length > 1
-            ? _BulbPager(count: items.length, index: index, onTap: _goTo)
+            ? _BulbPager(
+                count: items.length,
+                index: index,
+                onTap: _goTo,
+                showArrows: isTv,
+                onStep: (delta) => _toPage(_currentPage + delta),
+              )
             : const SizedBox.shrink();
         // Every banner's text is laid out at once and only the current one
         // shows, so the hero is always as tall as its tallest text and the
         // page below never shifts when the banner changes.
-        // Bottom-aligned: the meta line and Play stay in one place, and a
-        // longer title only lifts the eyebrow. The swap is sequential, the
-        // old text fading out before the new one fades in, so two titles
-        // are never drawn over each other.
+        // Inactive banners are excluded from focus so D-pad/Tab never steps
+        // through invisible Play/Favorite buttons.
         final info = Stack(
           alignment: AlignmentDirectional.bottomStart,
           children: [
             for (var i = 0; i < items.length; i++)
-              IgnorePointer(
-                ignoring: i != index,
-                child: AnimatedOpacity(
-                  opacity: i == index ? 1 : 0,
-                  duration: _still
-                      ? Duration.zero
-                      : const Duration(milliseconds: 300),
-                  curve: i == index ? _fadeIn : _fadeOut,
-                  child: _HeroInfo(item: items[i]),
+              ExcludeFocus(
+                excluding: i != index,
+                child: IgnorePointer(
+                  ignoring: i != index,
+                  child: AnimatedOpacity(
+                    opacity: i == index ? 1 : 0,
+                    duration: _still
+                        ? Duration.zero
+                        : const Duration(milliseconds: 300),
+                    curve: i == index ? _fadeIn : _fadeOut,
+                    child: _HeroInfo(
+                      item: items[i],
+                      playFocusNode: isTv ? _playNodeFor(i) : null,
+                    ),
+                  ),
                 ),
               ),
           ],
         );
 
+        Widget wrapFocus(Widget child) => Focus(
+          skipTraversal: true,
+          canRequestFocus: false,
+          onFocusChange: _hold,
+          child: child,
+        );
+
         if (wide) {
-          final width = (box.maxWidth - 2 * gutter) * 0.6;
-          return Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: width,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      pager,
-                      const SizedBox(height: MarqueeSpace.s),
-                      _Carousel(
-                        items: items,
-                        controller: _controllerFor(1),
-                        height: width / _coverRatio,
-                        gap: 0,
-                        clip: Clip.hardEdge,
-                        onPageChanged: _onPageChanged,
-                        onHold: _hold,
-                      ),
-                    ],
+          final width = (box.maxWidth - 2 * gutter) * (isTv ? 0.54 : 0.6);
+          return wrapFocus(
+            Padding(
+              padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: width,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        pager,
+                        const SizedBox(height: MarqueeSpace.s),
+                        _Carousel(
+                          items: items,
+                          controller: _controllerFor(1),
+                          height: width / _coverRatio,
+                          gap: 0,
+                          clip: Clip.hardEdge,
+                          onPageChanged: _onPageChanged,
+                          onHold: _hold,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: MarqueeSpace.xxxl),
-                Expanded(child: info),
-              ],
+                  const SizedBox(width: MarqueeSpace.xxxl),
+                  Expanded(child: info),
+                ],
+              ),
             ),
           );
         }
@@ -239,32 +288,34 @@ class _HomeHeroState extends ConsumerState<HomeHero> {
         // start gutter.
         final viewport = box.maxWidth - gutter;
         final cover = viewport * _peekFraction - _gap;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
-              child: pager,
-            ),
-            const SizedBox(height: MarqueeSpace.s),
-            Padding(
-              padding: EdgeInsetsDirectional.only(start: gutter),
-              child: _Carousel(
-                items: items,
-                controller: _controllerFor(_peekFraction),
-                height: cover / _coverRatio,
-                gap: _gap,
-                clip: Clip.none,
-                onPageChanged: _onPageChanged,
-                onHold: _hold,
+        return wrapFocus(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
+                child: pager,
               ),
-            ),
-            const SizedBox(height: MarqueeSpace.l),
-            Padding(
-              padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
-              child: info,
-            ),
-          ],
+              const SizedBox(height: MarqueeSpace.s),
+              Padding(
+                padding: EdgeInsetsDirectional.only(start: gutter),
+                child: _Carousel(
+                  items: items,
+                  controller: _controllerFor(_peekFraction),
+                  height: cover / _coverRatio,
+                  gap: _gap,
+                  clip: Clip.none,
+                  onPageChanged: _onPageChanged,
+                  onHold: _hold,
+                ),
+              ),
+              const SizedBox(height: MarqueeSpace.l),
+              Padding(
+                padding: EdgeInsetsDirectional.symmetric(horizontal: gutter),
+                child: info,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -351,16 +402,10 @@ class _Carousel extends StatelessWidget {
                 },
                 child: Padding(
                   padding: EdgeInsetsDirectional.only(end: gap),
-                  child: Semantics(
-                    button: true,
-                    label: context.titleOf(item),
-                    child: GestureDetector(
-                      onTap: () => openTitle(context, item),
-                      child: MediaImage(
-                        url: item.backdropUrl,
-                        borderRadius: _radius,
-                      ),
-                    ),
+                  child: _HeroCover(
+                    item: item,
+                    radius: _radius,
+                    onTap: () => openTitle(context, item),
                   ),
                 ),
               );
@@ -378,16 +423,64 @@ class _Carousel extends StatelessWidget {
 /// every banner gets one and the lit bulb walks along the row. When even
 /// the smallest bulbs don't fit, the row shows one page of them at a time
 /// and turns to the next page when the lit bulb runs off its end.
+class _HeroCover extends StatefulWidget {
+  const _HeroCover({
+    required this.item,
+    required this.radius,
+    required this.onTap,
+  });
+
+  final MediaItem item;
+  final BorderRadius radius;
+  final VoidCallback onTap;
+
+  @override
+  State<_HeroCover> createState() => _HeroCoverState();
+}
+
+class _HeroCoverState extends State<_HeroCover> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: context.titleOf(widget.item),
+    child: InkWell(
+      onTap: widget.onTap,
+      onFocusChange: (f) => setState(() => _focused = f),
+      borderRadius: widget.radius,
+      focusColor: Colors.transparent,
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: widget.radius,
+          border: _focused
+              ? Border.all(color: MarqueeColors.bulb, width: 2)
+              : null,
+        ),
+        child: MediaImage(
+          url: widget.item.backdropUrl,
+          borderRadius: widget.radius,
+        ),
+      ),
+    ),
+  );
+}
+
 class _BulbPager extends StatelessWidget {
   const _BulbPager({
     required this.count,
     required this.index,
     required this.onTap,
+    this.showArrows = false,
+    this.onStep,
   });
 
   final int count;
   final int index;
   final ValueChanged<int> onTap;
+  final bool showArrows;
+  final ValueChanged<int>? onStep;
 
   /// Bulb centre to centre, roomiest and tightest.
   static const _widePitch = 19.0;
@@ -396,7 +489,7 @@ class _BulbPager extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
-    return ExcludeSemantics(
+    final bulbs = ExcludeSemantics(
       child: LayoutBuilder(
         builder: (context, box) {
           final pitch = (box.maxWidth / count).clamp(_tightPitch, _widePitch);
@@ -437,13 +530,39 @@ class _BulbPager extends StatelessWidget {
         },
       ),
     );
+    if (!showArrows || onStep == null) return bulbs;
+    // TV users can't swipe the carousel: provide D-pad-accessible steppers.
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () => onStep!(-1),
+          icon: const Icon(Icons.chevron_left, size: 20),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(36, 36),
+            fixedSize: const Size.square(36),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        Expanded(child: bulbs),
+        IconButton(
+          onPressed: () => onStep!(1),
+          icon: const Icon(Icons.chevron_right, size: 20),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(36, 36),
+            fixedSize: const Size.square(36),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    );
   }
 }
 
 class _HeroInfo extends StatelessWidget {
-  const _HeroInfo({required this.item});
+  const _HeroInfo({required this.item, this.playFocusNode});
 
   final MediaItem item;
+  final FocusNode? playFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -479,6 +598,7 @@ class _HeroInfo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             FilledButton.icon(
+              focusNode: playFocusNode,
               onPressed: () => openPlayer(
                 context,
                 PlaybackRequest(item: item, episodeId: item.linkedEpisodeId),

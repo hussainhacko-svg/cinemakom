@@ -37,6 +37,7 @@ class EpisodeList extends ConsumerStatefulWidget {
     required this.onPlay,
     this.initialSeason,
     this.currentId,
+    this.autofocusCurrent = false,
     this.trailing,
     this.seasonAction,
   });
@@ -52,6 +53,9 @@ class EpisodeList extends ConsumerStatefulWidget {
 
   /// The episode playing now, marked in `bulb` (the player's panel).
   final String? currentId;
+
+  /// Autofocus the current episode row (for the player's Episodes panel).
+  final bool autofocusCurrent;
 
   /// Shown at the end of each row (Details: the download button).
   final Widget Function(Episode episode)? trailing;
@@ -198,14 +202,18 @@ class _EpisodeListState extends ConsumerState<EpisodeList> {
             ),
           ],
           const SizedBox(height: MarqueeSpace.m),
-          for (final e in shown)
+          for (var i = 0; i < shown.length; i++)
             _EpisodeRow(
-              episode: e,
-              progress: watched[e.id],
-              current: e.id == widget.currentId,
+              episode: shown[i],
+              progress: watched[shown[i].id],
+              current: shown[i].id == widget.currentId,
+              autofocus:
+                  widget.autofocusCurrent &&
+                  (shown[i].id == widget.currentId ||
+                      (widget.currentId == null && i == 0)),
               numeralWidth: numeralWidth,
-              onTap: () => widget.onPlay(e),
-              trailing: widget.trailing?.call(e),
+              onTap: () => widget.onPlay(shown[i]),
+              trailing: widget.trailing?.call(shown[i]),
             ),
         ],
       );
@@ -299,13 +307,14 @@ class _BlockChipsState extends State<_BlockChips> {
 /// An episode row's big number: "07", "112", "1179".
 String _numeralText(Episode e) => '${e.numbering.first}'.padLeft(2, '0');
 
-class _EpisodeRow extends StatelessWidget {
+class _EpisodeRow extends StatefulWidget {
   const _EpisodeRow({
     required this.episode,
     required this.numeralWidth,
     required this.onTap,
     this.progress,
     this.current = false,
+    this.autofocus = false,
     this.trailing,
   });
 
@@ -313,97 +322,136 @@ class _EpisodeRow extends StatelessWidget {
   final Widget? trailing;
   final WatchProgress? progress;
   final bool current;
+  final bool autofocus;
   final double numeralWidth;
   final VoidCallback onTap;
+
+  @override
+  State<_EpisodeRow> createState() => _EpisodeRowState();
+}
+
+class _EpisodeRowState extends State<_EpisodeRow> {
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeText.of(context);
+    final episode = widget.episode;
     final numbering = episode.numbering;
     final duration = episode.duration;
-    final progress = this.progress;
+    final progress = widget.progress;
     final finished = progress?.isFinished ?? false;
     final started = progress != null && !finished;
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(vertical: 2),
-      child: InkWell(
-        onTap: onTap,
+      child: Material(
+        color: widget.current ? MarqueeColors.boothRaised : Colors.transparent,
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: 14,
-              vertical: 10,
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: numeralWidth,
-                  child: Text(
-                    _numeralText(episode),
-                    maxLines: 1,
-                    softWrap: false,
-                    style: text.numeral.copyWith(
-                      color: started
-                          ? MarqueeColors.bulb
-                          : finished
-                          ? MarqueeColors.cream
-                          : MarqueeColors.dustDim,
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: [
+            Expanded(
+              child: Material(
+                color: _focused
+                    ? MarqueeColors.boothRaised
+                    : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                  side: _focused
+                      ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+                      : BorderSide.none,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  autofocus: widget.autofocus,
+                  onTap: widget.onTap,
+                  onFocusChange: (f) => setState(() => _focused = f),
+                  focusColor: Colors.transparent,
+                  borderRadius: const BorderRadius.all(MarqueeRadius.card),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 64),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: widget.numeralWidth,
+                            child: Text(
+                              _numeralText(episode),
+                              maxLines: 1,
+                              softWrap: false,
+                              style: text.numeral.copyWith(
+                                color: started
+                                    ? MarqueeColors.bulb
+                                    : finished
+                                    ? MarqueeColors.cream
+                                    : MarqueeColors.dustDim,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: MarqueeSpace.s),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        episodeLabel(l10n, numbering),
+                                        style: widget.current
+                                            ? text.label.copyWith(
+                                                color: MarqueeColors.bulb,
+                                              )
+                                            : text.label,
+                                      ),
+                                    ),
+                                    if (numbering.isFinale) ...[
+                                      const SizedBox(width: MarqueeSpace.s),
+                                      _Badge(l10n.finalEpisode),
+                                    ],
+                                  ],
+                                ),
+                                if (started)
+                                  Text(
+                                    minutesLeft(l10n, progress.remaining),
+                                    style: text.caption,
+                                  )
+                                else if (duration != null)
+                                  Text(
+                                    formatDuration(l10n, duration),
+                                    style: text.caption,
+                                  ),
+                                if (started) ...[
+                                  const SizedBox(height: MarqueeSpace.xs),
+                                  ProgressLine(value: progress.fraction),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (widget.current)
+                            const Icon(
+                              Icons.play_arrow,
+                              size: 22,
+                              color: MarqueeColors.bulb,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: MarqueeSpace.s),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              episodeLabel(l10n, numbering),
-                              style: current
-                                  ? text.label.copyWith(
-                                      color: MarqueeColors.bulb,
-                                    )
-                                  : text.label,
-                            ),
-                          ),
-                          if (numbering.isFinale) ...[
-                            const SizedBox(width: MarqueeSpace.s),
-                            _Badge(l10n.finalEpisode),
-                          ],
-                        ],
-                      ),
-                      if (started)
-                        Text(
-                          minutesLeft(l10n, progress.remaining),
-                          style: text.caption,
-                        )
-                      else if (duration != null)
-                        Text(
-                          formatDuration(l10n, duration),
-                          style: text.caption,
-                        ),
-                      if (started) ...[
-                        const SizedBox(height: MarqueeSpace.xs),
-                        ProgressLine(value: progress.fraction),
-                      ],
-                    ],
-                  ),
-                ),
-                if (current)
-                  const Icon(
-                    Icons.play_arrow,
-                    size: 22,
-                    color: MarqueeColors.bulb,
-                  ),
-                ?trailing,
-              ],
+              ),
             ),
-          ),
+            if (widget.trailing case final trailing?)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: trailing,
+              ),
+          ],
         ),
       ),
     );

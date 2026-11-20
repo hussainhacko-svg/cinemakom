@@ -111,7 +111,7 @@ class BackgroundFileDownloader implements Downloader {
 
   @override
   Future<void> askToNotify() async {
-    if (!isMobile) return;
+    if (!isTouchMobile) return;
     final permissions = _fd.permissions;
     if (await permissions.status(PermissionType.notifications) !=
         PermissionStatus.granted) {
