@@ -10,12 +10,13 @@ import 'core/platform/orientation.dart';
 import 'core/platform/platform_info.dart';
 import 'core/storage/preferences.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  await initPlatformInfo();
   registerFontLicenses();
-  // Upright from the first frame; the saved choice applies once settings
-  // load (CinemakomApp).
+  // Upright from the first frame on phones/tablets; TVs stay landscape.
+  // The saved choice applies once settings load (CinemakomApp).
   setBrowseOrientation(ScreenRotation.portrait);
 
   // cached_network_image stores its cache index in sqflite, which has no

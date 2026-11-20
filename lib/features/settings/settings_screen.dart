@@ -101,7 +101,7 @@ class SettingsScreen extends ConsumerWidget {
                       notifier.setLanguage,
                     ),
                   ),
-                  if (isMobile)
+                  if (isTouchMobile)
                     SettingsRow(
                       label: l10n.settingsScreenRotation,
                       value: rotationLabel(l10n, settings.screenRotation),
