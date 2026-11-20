@@ -50,7 +50,7 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 - `lib/core/platform/platform_info.dart`: `initPlatformInfo()` (awaited in `main`), `isTv`, `isTouchMobile`, `debugIsTvOverride`.
 - `setBrowseOrientation` / `setPlayerOrientation` do nothing on TV. Settings hides Screen rotation, and downloads don't ask for the notification permission.
 
-*Status (2026-11-20):* TV-0 to TV-3 are done and checked on the TCL: the tab shell, Home, genre pages and See all, Details with episodes, the person page and downloads. TV-4 (the player) and TV-5 (Search, Library, Downloads, Settings) are built and tested, waiting for their check on the TV.
+*Status (2026-11-20):* TV-0 to TV-3 are done and checked on the TCL: the tab shell, Home, genre pages and See all, Details with episodes, the person page and downloads. TV-4 (the player) and TV-5 (Search, Library, Downloads, Settings) are built and tested, waiting for their check on the TV; TV-6 is done except the performance run on the TCL (§10). What to check is [`TV_CHECK.md`](TV_CHECK.md).
 
 **Problems in the groundwork, fixed in TV-0** *(code done 2026-11-20: `TvActivity`, no display-mode request on TV, the lockup banner)*:
 - The manifest now says `screenOrientation="unspecified"` and `MainActivity` asks for portrait in `onCreate`. The system's starting window comes before `onCreate`, so a phone held sideways shows the splash in landscape and then flips. That's what the manifest's `portrait` was there to prevent (AGENTS.md).
