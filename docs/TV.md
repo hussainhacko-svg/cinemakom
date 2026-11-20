@@ -33,10 +33,13 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 8. **No wrap-around:** pressing an arrow at the end of a row does nothing. Focus never jumps somewhere unexpected.
 9. **The screens are designed** on the TV page of the "Cinemakom Design Directions" canvas (claude.ai artifact `XEb3j3VhiknZVEpX4FuLnU`, page TV): the system sheet, every screen at 960 × 540, English and Arabic. Chosen from its alternatives (*2026-11-20*): the Home hero **side by side** (not banner first), episodes in **two panes** (seasons beside episodes), and the player with **chips at the top and buttons at the bottom** (not everything at the bottom).
 
-**Open (decide while building, recommended choice first):**
-- **Search keyboard:** the system keyboard (Gboard for TV, which has Arabic and voice) opened by OK on the search box. If it misbehaves on the TCL (it can hold the D-pad, or cover the results), build an in-app letter grid like YouTube TV. Decide in TV-5 after trying it on the TV.
-- ~~**Back on the Home tab bar**~~ *Decided (TV-2): exit straight away, as Google TV apps do.*
-- **Skip intro while the controls are hidden** (decide in TV-4): it takes the focus when it appears, so OK skips (Netflix does this). The catch: someone pressing OK to pause skips the intro instead. Recommended: take the focus, because the button says what OK will do.
+**Decided while building:**
+- **Search keyboard** *(owner, 2026-11-20)*: the system keyboard (Gboard for TV, which has Arabic and voice) opened by OK on the search box. If it misbehaves on the TCL (it can hold the D-pad, or cover the results), build an in-app letter grid like YouTube TV afterwards.
+- **Back on the Home tab bar** *(TV-2)*: exit straight away, as Google TV apps do.
+- **Skip intro while the controls are hidden** *(owner, 2026-11-20)*: it takes the focus when it appears, so OK skips (Netflix does this), and so does Up next. The button says what OK will do. Up and Down still show the controls.
+- **The player's preview frame** *(owner, 2026-11-20)*: the design's 99 dp height and 2 px `cream` border, at the video's shape (PLAYER.md §7.8), not a fixed 16:9.
+- **The subtitles panel** *(owner, 2026-11-20)*: the choices as drawn, then a Sync row (−0.5 s · the delay · +0.5 s, and a reset). The size stays in Settings.
+- **Player states without an artboard** *(owner, 2026-11-20)*: the focused seek bar, the Episodes panel, Up next, "Still watching?", the error and end screens, and "Resuming from": built from the existing TV pieces and listed in §8 for the TV check.
 
 ## 3. What exists today
 
@@ -111,7 +114,7 @@ This is what makes or breaks the TV app. It's built first (TV-1) and every scree
   2. On a pushed page: pop the page.
   3. On a tab's root screen with focus in the content: scroll to the top and focus that tab in the tab bar.
   4. On the tab bar, not on Home: go to Home.
-  5. On the Home tab bar: exit (§2 open decision).
+  5. On the Home tab bar: exit (§2).
 - **R5 Nothing hidden is focusable.** Anything invisible, faded out, collapsed or still loading is inside `ExcludeFocus`. Disabled controls are skipped by their zone but stay visible.
 - **R6 No hidden actions.** Every action is a visible control you can focus. Long-press OK and the remote's menu key can be shortcuts, never the only way.
 - **R7 Focus is never lost.** When the focused item goes away (a download deleted, a list refreshed, a title removed from Continue watching), focus moves to the next item, then the previous one, then the next zone. In debug builds, a watchdog (`TvFocusWatchdog`) asserts that focus never falls back to the root scope, and logs the screen and the last key. That's how a trap shows up in a test or a debug run instead of on the sofa.
@@ -258,7 +261,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 
 ### 7.6 Search
 - Zones: the search box (a `TvButton`, R8) · kind chips ⟵⟶ (All · Movies · Series) · results ▦ (or recent searches ↕, then the genre grid ▦, before anything is typed). There is no People row: the API has no people search (DESIGN.md §8).
-- OK on the box opens the system keyboard (§2 open decision). Results update as you type (the same 400 ms debounce and search as the phone). Done or Back closes the keyboard; then Down enters the results.
+- OK on the box opens the system keyboard (§2). Results update as you type (the same 400 ms debounce and search as the phone). Done or Back closes the keyboard; then Down enters the results.
 - Recent searches: each row is a row of cells: the search (OK runs it) · ✕. "Clear all" is at the end of the list.
 - Coming back from a result focuses the same result.
 
@@ -278,7 +281,7 @@ Each screen lists its zones from top to bottom. ⟵⟶ is a row, ↕ a column, �
 ### 8.1 Controls hidden (watching)
 | Key | Does |
 |---|---|
-| OK | Pause and show the controls with Play/Pause focused. When **Skip intro** or **Up next** is showing, it has the focus and OK activates it (§2 open decision) |
+| OK | Pause and show the controls with Play/Pause focused. When **Skip intro** or **Up next** is showing, it has the focus and OK activates it (§2) |
 | Left / Right | Seek −10 / +10 s. Held: 10 s steps, then 30 s after 2 s, then 60 s after 5 s. Shows the seek bar with the preview frame and the target time; it plays from there 600 ms after the last key |
 | Up / Down | Show the controls (Play/Pause focused) |
 | Back | Save the position and leave the player |
