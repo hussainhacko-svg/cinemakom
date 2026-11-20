@@ -106,4 +106,9 @@ Start a movie from Details (Play), and an episode from a series.
 - [ ] Focus is never lost (nothing focused after a load, a delete or a removal).
 - [ ] Holding an arrow along a row and down Home stays smooth.
 
+## 13. TV-6, with the TV connected to this machine
+
+- [ ] **Offline Home:** turn Wi-Fi off and open the app. The hero says there's no connection, with **Try again focused**; the rows say so too. Wi-Fi back on, Try again loads them.
+- [ ] **Performance** (Claude runs it over adb, it wipes the app's data): `fvm flutter drive --profile --no-dds -d 192.168.0.145:5555 --driver=test_driver/perf_driver.dart --target=integration_test/tv_perf_test.dart --dart-define=PERF_HZ=60`. It holds Right along a Home row, goes Down through Home, then plays 4K Avengers: Endgame with the controls, a held seek and a panel, and reports frame times and memory.
+
 When everything passes, tick TV-4 and TV-5 in `TV.md` §10 and in `PLAN.md`.
