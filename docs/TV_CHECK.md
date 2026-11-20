@@ -65,6 +65,7 @@ Start a movie from Details (Play), and an episode from a series.
 - [ ] The controls fade in and out without stutter over 4K.
 - [ ] **Subtitles are readable from the sofa** at Medium; Small and Large (Settings) change them. They move up when the controls show.
 - [ ] Not measured yet: frame times and memory with 4K (`TV.md` TV-4). Say if anything feels slow.
+- [ ] Each subtitle line shows **once**. (On Linux, in the live screenshot run, one Arabic line was drawn twice; it may be the subtitle file or mpv, but check on the TV.)
 
 ## 8. Search (TV-5)
 
