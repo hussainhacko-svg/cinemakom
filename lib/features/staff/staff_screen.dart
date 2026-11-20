@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../app/catalog_providers.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../app/navigation.dart';
 import '../../app/theme/marquee_colors.dart';
@@ -11,16 +10,8 @@ import '../../app/widgets/error_view.dart';
 import '../../app/widgets/paged_grid.dart';
 import '../../app/widgets/sub_page.dart';
 import '../../data/models/media_details.dart';
-import '../../data/repositories/media_repository.dart';
+import 'staff_providers.dart';
 import 'widgets/person_photo.dart';
-
-/// A person's page (`staff/actorID`); `null` when the server has none. The
-/// role comes back in the UI language.
-final staffProvider = FutureProvider.autoDispose.family<StaffPage?, String>(
-  (ref, id) => ref
-      .read(mediaRepositoryProvider)
-      .staff(id, ref.watch(apiLanguageProvider)),
-);
 
 /// An actor's, director's or writer's page, pushed inside the current tab:
 /// photo, name and role, then every title they're credited on (newest

@@ -6,9 +6,11 @@ import 'package:media_kit/media_kit.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/app.dart';
+import 'core/platform/full_screen.dart';
 import 'core/platform/orientation.dart';
 import 'core/platform/platform_info.dart';
 import 'core/storage/preferences.dart';
+import 'tv/tv_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +31,15 @@ Future<void> main() async {
   // No automatic provider retries: ApiClient already retries a failed GET
   // once, and the screens show errors with a "Try again" button instead of
   // a loader that silently spins.
-  runApp(const ProviderScope(retry: noRetry, child: CinemakomApp()));
+  // The TV has its own UI (docs/TV.md). On Linux the define shows it in a
+  // window the size Android TV draws apps at.
+  if (useTvUi && isDesktop) setWindowContentSize(const Size(960, 540));
+  runApp(
+    ProviderScope(
+      retry: noRetry,
+      child: useTvUi ? const TvApp() : const CinemakomApp(),
+    ),
+  );
 }
 
 /// The bundled fonts' licenses (SIL OFL 1.1), for the app's licenses page.

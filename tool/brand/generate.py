@@ -15,7 +15,7 @@ installed. Three levels of detail keep it clean at every size:
 Outputs (all regenerated, never edit them by hand):
   branding/*.svg                         masters (with and without the tile)
   lib/app/brand/brand_paths.g.dart       paths for the in-app CinemakomMark
-  android/app/src/main/res/...           adaptive, monochrome, legacy, splash
+  android/app/src/main/res/...           adaptive, monochrome, legacy, splash, TV banner
   ios/Runner/Assets.xcassets/...         AppIcon set, LaunchImage
   windows/runner/resources/app_icon.ico  16–256 px
   linux/packaging/icons/...              hicolor PNGs + scalable SVG
@@ -39,6 +39,7 @@ from fontTools.varLib import instancer
 ROOT = Path(__file__).resolve().parents[2]
 NIGHT = '#15100C'
 BULB = '#F4B740'
+CREAM = '#F4EAD7'
 
 # ---- geometry (100×100 design space) ----------------------------------------
 
@@ -326,22 +327,46 @@ def android():
     # Play Store listing icon (Google applies its own mask).
     png(svg('full', tile=True, scale=0.72), 512, ROOT / 'branding/store/play-store-512.png', opaque=True)
     # Android TV home-screen banner (320×180 dp → 640×360 px at xhdpi).
-    tv_svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">'
-        f'<rect width="320" height="180" fill="{NIGHT}"/>'
-        f'<g transform="translate(95 25) scale(1.3)">'
-        f'<path fill="{BULB}" fill-rule="evenodd" d="{DETAIL["full"]}"/>'
-        f'</g></svg>\n'
+    tv_banner(res / 'drawable-xhdpi/tv_banner.png')
+
+
+def tv_banner(dest):
+    """The TV home-screen banner: the lockup (mark, CINEMAKOM over سينماكم,
+    as `CinemakomLogo` draws it in English) centred on Night. Google TV wants
+    the app's name on it (docs/TV.md §3).
+
+    The names are set in the bundled fonts by rsvg-convert (Pango shapes the
+    Arabic, which tracing glyphs from the cmap can't). Its fontconfig sees only
+    assets/fonts, so a missing font fails loudly instead of falling back.
+    """
+    m = 400  # mark size; the text follows CinemakomLogo's ratios to it
+    latin, arabic = round(m * 0.62), round(m * 0.36)
+    x = round(m * 1.22)
+    lockup = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="700">'
+        f'<g transform="translate(0 150) scale({m / 100})">'
+        f'<path fill="{BULB}" fill-rule="evenodd" d="{DETAIL["full"]}"/></g>'
+        f'<text x="{x}" y="{150 + round(m * 0.6)}" fill="{CREAM}" '
+        f'font-family="Big Shoulders Display" font-weight="800" font-size="{latin}" '
+        f'letter-spacing="{latin * 0.04:.1f}">CINEMAKOM</text>'
+        f'<text x="{x}" y="{150 + round(m * 0.98)}" fill="{BULB}" '
+        f'font-family="Reem Kufi" font-weight="700" font-size="{arabic}">سينماكم</text>'
+        f'</svg>\n'
     )
-    tv_dest = res / 'drawable-xhdpi/tv_banner.png'
-    tv_dest.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile('w', suffix='.svg', delete=False) as f:
-        f.write(tv_svg)
-    try:
-        subprocess.run(['rsvg-convert', '-w', '640', '-h', '360', f.name, '-o', str(tv_dest)], check=True)
-        subprocess.run(['magick', str(tv_dest), '-background', NIGHT, '-alpha', 'remove', '-alpha', 'off', str(tv_dest)], check=True)
-    finally:
-        os.unlink(f.name)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        conf = Path(tmp) / 'fonts.conf'
+        conf.write_text(
+            f'<?xml version="1.0"?><fontconfig><dir>{ROOT / "assets/fonts"}</dir>'
+            f'<cachedir>{tmp}</cachedir></fontconfig>\n')
+        src, big = Path(tmp) / 'banner.svg', Path(tmp) / 'banner.png'
+        src.write_text(lockup)
+        subprocess.run(['rsvg-convert', str(src), '-o', str(big)], check=True,
+                       env={**os.environ, 'FONTCONFIG_FILE': str(conf)})
+        # Trim to the ink, fit inside 74% × 50% of the banner, centre on Night.
+        subprocess.run(['magick', str(big), '-trim', '+repage', '-resize', '474x180>',
+                        '-background', NIGHT, '-gravity', 'center', '-extent', '640x360',
+                        '-alpha', 'remove', '-alpha', 'off', str(dest)], check=True)
 
 
 # ---- iOS ----------------------------------------------------------------------

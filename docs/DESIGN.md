@@ -103,7 +103,7 @@ Use it sparingly. It is never a divider between every section.
   - **The hero** uses the banner cover, decoded at screen width × device pixel ratio.
 - **No** `BackdropFilter`, shadows, `Opacity` animations over images, or `saveLayer` effects. Round images with `ClipRRect` only where needed, and everything else with `BoxDecoration.borderRadius`.
 - **Lists:** horizontal rows use `ListView.builder` with a fixed `itemExtent` where possible. Use `const` widgets wherever possible.
-- **Refresh rate (Android):** `MainActivity` asks for the display's fastest mode at the current resolution (`preferredDisplayModeId`). Without it, OnePlus/OPPO (ColorOS) and some other vendors hold apps that aren't on their allowlist at 60 Hz on a 120 Hz panel. It is only a preference: battery saver, thermal limits and the user's refresh setting still cap it. The frame budget is therefore **8.3 ms**, not 16.7 ms. Check with `integration_test/scroll_perf_test.dart` (see AGENTS.md).
+- **Refresh rate (Android):** `MainActivity` asks for the display's fastest mode at the current resolution (`preferredDisplayModeId`). Without it, OnePlus/OPPO (ColorOS) and some other vendors hold apps that aren't on their allowlist at 60 Hz on a 120 Hz panel. It is only a preference: battery saver, thermal limits and the user's refresh setting still cap it. The frame budget is therefore **8.3 ms**, not 16.7 ms. TVs are the exception: there a display mode is an HDMI output mode, so `MainActivity` doesn't ask, and the budget is 16.7 ms (`docs/TV.md` §9). Check with `integration_test/scroll_perf_test.dart` (see AGENTS.md).
 - **Fonts:** bundled in the app (no runtime downloads), each with its SIL OFL text in `assets/fonts/licenses/`, registered on the licenses page (`registerFontLicenses` in `main.dart`). Variable fonts where available; for IBM Plex Sans Arabic, only Regular, Medium and SemiBold.
 
 ## 7. Logo (final: mark 1, "Ticket")
@@ -125,7 +125,7 @@ Use it sparingly. It is never a divider between every section.
 | Platform | Output |
 |---|---|
 | Masters | `branding/*.svg`, `branding/store/play-store-512.png` |
-| Android | adaptive icon (Night background, ticket scaled into the 66 dp safe zone), **monochrome** layer (themed icons), legacy mipmaps, Android TV home-screen banner (`drawable-xhdpi/tv_banner.png`, 640×360), Android 12+ splash (`values-v31`) and the older launch background. There is one theme only, so no `values-night` |
+| Android | adaptive icon (Night background, ticket scaled into the 66 dp safe zone), **monochrome** layer (themed icons), legacy mipmaps, Android TV home-screen banner (`drawable-xhdpi/tv_banner.png`, 640×360: the English lockup on Night, its names set in the bundled fonts), Android 12+ splash (`values-v31`) and the older launch background. There is one theme only, so no `values-night` |
 | macOS | the full AppIcon set (rounded Night tile, 16–1024 px) |
 | iOS | the full AppIcon set (opaque, square: iOS rounds it) and LaunchImage on a Night launch screen |
 | Windows | `windows/runner/resources/app_icon.ico`: 16, 24, 32, 48, 64, 128 and 256 px, transparent, no tile |

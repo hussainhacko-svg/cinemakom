@@ -15,6 +15,7 @@ import '../../app/widgets/tab_page.dart';
 import '../../data/models/download.dart';
 import '../../data/repositories/downloads_repository.dart';
 import 'download_actions.dart';
+import 'download_flow.dart';
 
 /// The Downloads tab (DESIGN.md §8): the space used, then **Downloading**
 /// (progress, size, speed, time left, pause or resume, cancel) and **On

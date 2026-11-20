@@ -12,12 +12,19 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+/**
+ * The phone and tablet entry, declared portrait in the manifest. TVs launch
+ * [TvActivity] (landscape, LEANBACK_LAUNCHER), which is this same activity.
+ */
+open class MainActivity : FlutterActivity() {
+    private val isTv: Boolean by lazy { isTvDevice() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Upright from the first frame on phones and tablets; TVs stay landscape
-        // (docs/TV.md).
-        if (!isTvDevice()) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        // A TV that opens this entry anyway (`flutter run`, a launcher that
+        // lists LAUNCHER apps) gets landscape. Phones keep the manifest's
+        // portrait.
+        if (isTv) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
         super.onCreate(savedInstanceState)
         requestHighestRefreshRate()
@@ -30,7 +37,7 @@ class MainActivity : FlutterActivity() {
             PLATFORM_CHANNEL,
         ).setMethodCallHandler { call, result ->
             when (call.method) {
-                "isTv" -> result.success(isTvDevice())
+                "isTv" -> result.success(isTv)
                 else -> result.notImplemented()
             }
         }
@@ -60,8 +67,12 @@ class MainActivity : FlutterActivity() {
      * looked half as smooth as the rest of the phone. This is a preference,
      * not a lock: battery saver, thermal limits and the user's own refresh
      * setting still win, and it only applies while this window is in front.
+     *
+     * Not on TVs: there a display mode is an HDMI output mode, and switching
+     * it blanks the screen or leaves 4K60 (docs/TV.md §3).
      */
     private fun requestHighestRefreshRate() {
+        if (isTv) return
         @Suppress("DEPRECATION")
         val display: Display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else null)
             ?: windowManager.defaultDisplay

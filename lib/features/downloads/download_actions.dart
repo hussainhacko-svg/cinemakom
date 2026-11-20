@@ -7,47 +7,12 @@ import '../../app/theme/marquee_colors.dart';
 import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/error_view.dart';
 import '../../app/widgets/media_text.dart';
-import '../../core/storage/preferences.dart';
 import '../../data/models/download.dart';
 import '../../data/models/media_item.dart';
 import '../../data/models/playback_models.dart';
 import '../../data/repositories/downloads_repository.dart';
 import '../player/quality.dart';
-
-/// [videoId]'s download, or `null` when it was never downloaded.
-final downloadOfProvider = Provider.autoDispose.family<Download?, String>((
-  ref,
-  videoId,
-) {
-  final all = ref.watch(downloadsProvider).value ?? const <Download>[];
-  return all.where((d) => d.videoId == videoId).firstOrNull;
-});
-
-/// [videoId]'s live progress while it runs.
-final progressOfProvider = Provider.autoDispose
-    .family<DownloadProgress?, String>(
-      (ref, videoId) => ref.watch(downloadProgressProvider).value?[videoId],
-    );
-
-/// "2.9 GB", "640 MB".
-String formatBytes(AppLocalizations l10n, int bytes) {
-  const mb = 1024 * 1024;
-  const gb = 1024 * mb;
-  if (bytes >= gb) {
-    final value = bytes / gb;
-    return l10n.sizeGb(value.toStringAsFixed(value >= 10 ? 0 : 1));
-  }
-  return l10n.sizeMb((bytes / mb).clamp(1, 1023).toStringAsFixed(0));
-}
-
-String problemText(AppLocalizations l10n, DownloadProblem? problem) =>
-    switch (problem) {
-      DownloadProblem.network => l10n.downloadProblemNetwork,
-      DownloadProblem.noSpace => l10n.downloadProblemSpace,
-      DownloadProblem.unavailable => l10n.downloadProblemUnavailable,
-      DownloadProblem.storage => l10n.downloadProblemStorage,
-      DownloadProblem.unknown || null => l10n.downloadProblemUnknown,
-    };
+import 'download_flow.dart';
 
 void _say(BuildContext context, String message) {
   if (!context.mounted) return;
@@ -65,27 +30,24 @@ Future<void> startDownload(
   Episode? episode,
 }) async {
   final l10n = AppLocalizations.of(context);
-  final repo = ref.read(downloadsRepositoryProvider);
-  final height = ref.read(settingsProvider).defaultQuality.height;
-  final List<DownloadChoice> choices;
+  final DownloadOffer? offer;
   try {
-    choices = await repo.choices(episode?.id ?? item.id);
+    offer = await downloadOffer(ref, episode?.id ?? item.id);
   } on Object catch (e) {
     if (context.mounted) _say(context, errorMessage(l10n, e));
     return;
   }
   if (!context.mounted) return;
-  if (choices.isEmpty) {
+  if (offer == null) {
     _say(context, l10n.downloadProblemUnavailable);
     return;
   }
-  final preferred = pickQuality([for (final c in choices) c.source], height);
   final picked = await showChoicePicker<DownloadChoice>(
     context,
     title: l10n.downloadQualityTitle,
-    selected: choices.firstWhere((c) => c.source == preferred),
+    selected: offer.preferred,
     choices: [
-      for (final c in choices)
+      for (final c in offer.choices)
         Choice(
           c,
           c.bytes == null
@@ -99,12 +61,7 @@ Future<void> startDownload(
   );
   if (picked == null || !context.mounted) return;
   try {
-    await repo.download(
-      item,
-      episode: episode,
-      source: picked.source,
-      bytes: picked.bytes,
-    );
+    await queueDownload(ref, item, picked, episode: episode);
     if (context.mounted) _say(context, l10n.downloadAdded);
   } on Object {
     if (context.mounted) _say(context, l10n.downloadStartFailed);
@@ -121,23 +78,20 @@ Future<void> startSeasonDownload(
 ) async {
   if (season.isEmpty) return;
   final l10n = AppLocalizations.of(context);
-  final repo = ref.read(downloadsRepositoryProvider);
-  final height = ref.read(settingsProvider).defaultQuality.height;
-  final List<DownloadChoice> choices;
+  final DownloadOffer? offer;
   try {
-    choices = await repo.choices(season.first.id);
+    offer = await downloadOffer(ref, season.first.id);
   } on Object catch (e) {
     if (context.mounted) _say(context, errorMessage(l10n, e));
     return;
   }
-  if (!context.mounted || choices.isEmpty) return;
-  final preferred = pickQuality([for (final c in choices) c.source], height);
+  if (!context.mounted || offer == null) return;
   final picked = await showChoicePicker<DownloadChoice>(
     context,
     title: l10n.downloadQualityTitle,
-    selected: choices.firstWhere((c) => c.source == preferred),
+    selected: offer.preferred,
     choices: [
-      for (final c in choices)
+      for (final c in offer.choices)
         Choice(
           c,
           c.bytes == null
@@ -150,11 +104,7 @@ Future<void> startSeasonDownload(
     ],
   );
   if (picked == null || !context.mounted) return;
-  final queued = await repo.downloadEpisodes(
-    series,
-    season,
-    picked.source.height ?? height,
-  );
+  final queued = await queueSeason(ref, series, season, picked);
   if (context.mounted) _say(context, l10n.downloadSeasonQueued(queued));
 }
 

@@ -184,5 +184,7 @@
   "playerFullScreen": "ملء الشاشة",
   "playerExitFullScreen": "إنهاء ملء الشاشة",
   "playerMuted": "الصوت مكتوم",
-  "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}."
+  "playerQualityLowered": "تعذّر تشغيل {from} على هذا الجهاز، فتم التبديل إلى {to}.",
+  "tvPlaceholder": "تطبيق التلفاز قيد البناء. اضغط OK والأسهم والرجوع لتجربة جهاز التحكم.",
+  "tvLastKey": "آخر زر: {key}"
 }

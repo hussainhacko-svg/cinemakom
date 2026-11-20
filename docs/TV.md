@@ -49,7 +49,7 @@ The first attempt (2026-11-20, reverted the same day) patched the phone and desk
 
 Until TV-2 ships, a TV shows the normal tablet layout (navigation rail), which is usable only in parts.
 
-**Problems in the groundwork, fixed in TV-0:**
+**Problems in the groundwork, fixed in TV-0** *(code done 2026-11-20: `TvActivity`, no display-mode request on TV, the lockup banner)*:
 - The manifest now says `screenOrientation="unspecified"` and `MainActivity` asks for portrait in `onCreate`. The system's starting window comes before `onCreate`, so a phone held sideways shows the splash in landscape and then flips. That's what the manifest's `portrait` was there to prevent (AGENTS.md).
 - `MainActivity` asks for the display's fastest mode on every device. On a TV that can switch the HDMI output mode (a black blink, or 4K60 → another mode), so skip it on TV.
 - The banner has only the mark. Google TV's guidelines want the app name on it.
@@ -130,7 +130,7 @@ This is what makes or breaks the TV app. It's built first (TV-1) and every scree
 | `TvSidePanel` | A panel that slides in from the end edge with a focus scope. It autofocuses and gives focus back to its opener (R4, R9). Every picker uses it (quality, subtitles, sort, language, settings choices, download actions) |
 | `TvFocusWatchdog` | The debug check for R7 |
 
-The remote keys are bound once, in `TvApp`'s `Shortcuts`: `select`, `enter`, `numpadEnter` and `gameButtonA` → activate; `goBack` and `escape` → back. Media keys go to the player. Don't rely on Flutter's default bindings for `select` (check them in TV-0).
+The remote keys are bound once, in `TvApp`'s `Shortcuts`: `select`, `enter`, `numpadEnter` and `gameButtonA` → activate; `goBack` and `escape` → back. Media keys go to the player. *Checked in TV-0:* Flutter 3.47.9 already maps `select` to activate on Android, but `TvApp` passes its own complete map (`tvShortcuts` in `lib/tv/tv_keys.dart`), so nothing depends on Flutter's defaults. Space and play/pause map to `TvPlayPauseIntent` (the player, TV-4); Backspace and gamepad B also mean Back.
 
 ### 5.3 Proving there are no traps
 - **`TvDriver`** (`test/tv/tv_driver.dart`) presses keys in widget tests: `right()`, `down()`, `ok()`, `back()`, `focused` (the focused item's semantics label), `focusPath`.

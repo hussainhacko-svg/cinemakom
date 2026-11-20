@@ -905,5 +905,18 @@
         "type": "String"
       }
     }
+  },
+  "tvPlaceholder": "The TV app is being built. Press OK, the arrows and Back to check the remote.",
+  "@tvPlaceholder": {
+    "description": "TV placeholder screen (docs/TV.md TV-0), shown until the TV screens exist"
+  },
+  "tvLastKey": "Last key: {key}",
+  "@tvLastKey": {
+    "description": "TV placeholder: the name of the last remote key pressed",
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
   }
 }
