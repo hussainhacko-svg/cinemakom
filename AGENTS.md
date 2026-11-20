@@ -32,6 +32,7 @@ fvm flutter test integration_test/player_test.dart -d linux  # the player end to
 fvm flutter test integration_test/downloads_test.dart -d linux  # downloads end to end (live CDN, ~50 MB): pause, resume, offline play
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/player_perf_test.dart  # 4K player frame times and memory on the phone. Also wipes the app's data
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/scroll_perf_test.dart  # frame times on the phone at 120 Hz. Uninstalls the app first, wiping its data
+fvm flutter drive --profile --no-dds -d <tv-ip>:5555 --driver=test_driver/perf_driver.dart --target=integration_test/tv_perf_test.dart --dart-define=PERF_HZ=60  # the TV UI's frame times (Home rows held, the 4K player) and memory on the TV. Wipes the app's data
 fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flutter-apk/ (phones: app-arm64-v8a-release.apk)
 tool/build_all.sh                        # every release this machine can build (Android APKs, Linux tarball) into dist/<git describe>/
 ```

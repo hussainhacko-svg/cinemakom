@@ -334,7 +334,7 @@ Differences from the artboards, for the TV check:
 - Rows: `ListView.builder` with a fixed `itemExtent` (DESIGN.md §6). A held arrow jumps without animation (R10).
 - Grow animation: `Transform.scale` inside a `RepaintBoundary`, never a layout change.
 - The player overlay doesn't repaint the video: it's above the texture, behind its own `RepaintBoundary`.
-- Measure on the TV: `integration_test/tv_scroll_perf_test.dart` (holding Right along a row, Down through Home) with `flutter drive --profile` over network adb, like `scroll_perf_test.dart` on the phone.
+- Measure on the TV: `integration_test/tv_perf_test.dart` (holding Right along a Home row, Down through Home, then the 4K player: controls up, fading, a held seek over the video, a panel; and memory) with `flutter drive --profile` over network adb and `--dart-define=PERF_HZ=60` (the command is in AGENTS.md). *Written in TV-6 and dry-run on Linux (2026-11-20); to run on the TCL.*
 
 ### 9.1 Sharp artwork on a 4K TV
 The first TV test showed soft, blurry posters. There are three causes, and each has a fix:
