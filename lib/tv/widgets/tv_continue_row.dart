@@ -124,7 +124,7 @@ class _ContinueCard extends StatelessWidget {
           scale: TvFocusStyle.wideCardScale,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+              color: focused ? context.palette.boothRaised : context.palette.booth,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -158,8 +158,8 @@ class _ContinueCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: text.caption.copyWith(
                             color: next != null
-                                ? MarqueeColors.bulb
-                                : MarqueeColors.dust,
+                                ? context.palette.bulb
+                                : context.palette.dust,
                           ),
                         ),
                         const Spacer(),
@@ -169,8 +169,8 @@ class _ContinueCard extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: p.fraction,
                               minHeight: 4,
-                              color: MarqueeColors.bulb,
-                              backgroundColor: MarqueeColors.velvet,
+                              color: context.palette.bulb,
+                              backgroundColor: context.palette.velvet,
                             ),
                           ),
                       ],

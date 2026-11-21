@@ -41,10 +41,11 @@ class SkipIntroButton extends StatelessWidget {
                 iconAlignment: IconAlignment.end,
                 label: Text(AppLocalizations.of(context).playerSkipIntro),
                 style: withFocusRing(
+                  context,
                   OutlinedButton.styleFrom(
-                    backgroundColor: MarqueeColors.booth,
-                    foregroundColor: MarqueeColors.cream,
-                    side: const BorderSide(color: MarqueeColors.cream),
+                    backgroundColor: context.palette.booth,
+                    foregroundColor: context.palette.cream,
+                    side: BorderSide(color: context.palette.cream),
                     shape: const StadiumBorder(),
                     minimumSize: const Size(44, 44),
                     padding: const EdgeInsetsDirectional.symmetric(

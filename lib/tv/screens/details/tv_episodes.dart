@@ -295,7 +295,7 @@ class _SeasonEntry extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           padding: EdgeInsetsDirectional.only(start: block ? 32 : 16, end: 16),
           decoration: BoxDecoration(
-            color: selected || focused ? MarqueeColors.boothRaised : null,
+            color: selected || focused ? context.palette.boothRaised : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -306,7 +306,7 @@ class _SeasonEntry extends StatelessWidget {
                 .withWeight(FontWeight.w500)
                 .copyWith(
                   height: 1.2,
-                  color: selected ? MarqueeColors.bulb : MarqueeColors.dust,
+                  color: selected ? context.palette.bulb : context.palette.dust,
                 ),
           ),
         ),
@@ -366,7 +366,7 @@ class _EpisodeCell extends StatelessWidget {
           height: 60,
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: focused || playing ? MarqueeColors.boothRaised : null,
+            color: focused || playing ? context.palette.boothRaised : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -380,10 +380,10 @@ class _EpisodeCell extends StatelessWidget {
                   style: text.numeral.copyWith(
                     fontSize: 32,
                     color: started
-                        ? MarqueeColors.bulb
+                        ? context.palette.bulb
                         : finished
-                        ? MarqueeColors.cream
-                        : MarqueeColors.dustDim,
+                        ? context.palette.cream
+                        : context.palette.dustDim,
                   ),
                 ),
               ),
@@ -404,7 +404,7 @@ class _EpisodeCell extends StatelessWidget {
                                 .withWeight(FontWeight.w600)
                                 .copyWith(
                                   height: 1.2,
-                                  color: MarqueeColors.cream,
+                                  color: context.palette.cream,
                                 ),
                           ),
                         ),
@@ -413,7 +413,7 @@ class _EpisodeCell extends StatelessWidget {
                           Text(
                             l10n.finalEpisode,
                             style: text.caption.copyWith(
-                              color: MarqueeColors.bulb,
+                              color: context.palette.bulb,
                             ),
                           ),
                         ],
@@ -423,7 +423,7 @@ class _EpisodeCell extends StatelessWidget {
                       Text(
                         meta,
                         style: playing
-                            ? text.caption.copyWith(color: MarqueeColors.bulb)
+                            ? text.caption.copyWith(color: context.palette.bulb)
                             : text.caption,
                       ),
                     if (started) ...[
@@ -435,8 +435,8 @@ class _EpisodeCell extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: progress.fraction,
                             minHeight: 4,
-                            color: MarqueeColors.bulb,
-                            backgroundColor: MarqueeColors.velvet,
+                            color: context.palette.bulb,
+                            backgroundColor: context.palette.velvet,
                           ),
                         ),
                       ),

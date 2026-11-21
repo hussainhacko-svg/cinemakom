@@ -15,7 +15,7 @@ class SettingsGroup extends StatelessWidget {
     final text = MarqueeText.of(context);
     // The heading is tracked caption text. Uppercase and tracking are for
     // Latin only (DESIGN.md §2, Arabic rules).
-    final heading = text.eyebrow.copyWith(color: MarqueeColors.dust);
+    final heading = text.eyebrow.copyWith(color: context.palette.dust);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -33,7 +33,7 @@ class SettingsGroup extends StatelessWidget {
           ),
         ),
         Material(
-          color: MarqueeColors.booth,
+          color: context.palette.booth,
           clipBehavior: Clip.antiAlias,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(MarqueeRadius.card),
@@ -93,14 +93,14 @@ class SettingsRow extends StatelessWidget {
                 Text(
                   value,
                   style: text.label
-                      .copyWith(color: MarqueeColors.dust)
+                      .copyWith(color: context.palette.dust)
                       .withWeight(FontWeight.w400),
                 ),
               ],
               const SizedBox(width: MarqueeSpace.s),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: MarqueeColors.dust,
+                color: context.palette.dust,
                 size: 20,
               ),
             ],

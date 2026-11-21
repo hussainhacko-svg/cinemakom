@@ -535,15 +535,15 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
             inside = const BulbLoader(count: 3, dotSize: 4, gap: 4);
           } else {
             inside = switch (d?.status) {
-              null => const Icon(
+              null => Icon(
                 Icons.download_rounded,
                 size: 22,
-                color: MarqueeColors.cream,
+                color: context.palette.cream,
               ),
-              DownloadStatus.queued => const Icon(
+              DownloadStatus.queued => Icon(
                 Icons.schedule,
                 size: 22,
-                color: MarqueeColors.dust,
+                color: context.palette.dust,
               ),
               DownloadStatus.running || DownloadStatus.paused => Stack(
                 alignment: Alignment.center,
@@ -554,37 +554,37 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
                       value: downloadFraction(d!, progress).clamp(0.02, 1),
                       strokeWidth: 3,
                       color: d.status == DownloadStatus.paused
-                          ? MarqueeColors.dust
-                          : MarqueeColors.bulb,
-                      backgroundColor: MarqueeColors.velvet,
+                          ? context.palette.dust
+                          : context.palette.bulb,
+                      backgroundColor: context.palette.velvet,
                     ),
                   ),
                   if (d.status == DownloadStatus.paused)
-                    const Icon(Icons.pause, size: 18, color: MarqueeColors.dust)
+                    Icon(Icons.pause, size: 18, color: context.palette.dust)
                   else
                     Text(
                       '${(downloadFraction(d, progress) * 100).round()}',
                       style: text.caption.copyWith(
                         fontSize: 13,
-                        color: MarqueeColors.cream,
+                        color: context.palette.cream,
                       ),
                     ),
                 ],
               ),
-              DownloadStatus.failed => const Icon(
+              DownloadStatus.failed => Icon(
                 Icons.error_outline,
                 size: 22,
-                color: MarqueeColors.ember,
+                color: context.palette.ember,
               ),
-              DownloadStatus.complete when missing => const Icon(
+              DownloadStatus.complete when missing => Icon(
                 Icons.error_outline,
                 size: 22,
-                color: MarqueeColors.ember,
+                color: context.palette.ember,
               ),
-              DownloadStatus.complete => const Icon(
+              DownloadStatus.complete => Icon(
                 Icons.check,
                 size: 24,
-                color: MarqueeColors.bulb,
+                color: context.palette.bulb,
               ),
             };
           }
@@ -599,9 +599,9 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: focused
-                    ? MarqueeColors.boothRaised
-                    : MarqueeColors.booth,
-                border: Border.all(color: MarqueeColors.velvet),
+                    ? context.palette.boothRaised
+                    : context.palette.booth,
+                border: Border.all(color: context.palette.velvet),
               ),
               child: inside,
             ),

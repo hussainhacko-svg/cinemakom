@@ -445,6 +445,8 @@ void main() {
     testWidgets('a value panel opens on the current choice', (tester) async {
       final tv = await _openTab(tester, 4);
       await tv.down();
+      expect(tv.focused, startsWith('Theme'));
+      await tv.down();
       expect(tv.focused, startsWith('Default quality'));
       await tv.ok();
       expect(tv.focused, '1080p');

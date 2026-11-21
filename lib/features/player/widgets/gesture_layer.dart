@@ -301,7 +301,7 @@ class _SeekTaps extends StatelessWidget {
         width: 120,
         height: 120,
         decoration: BoxDecoration(
-          color: MarqueeColors.night.withValues(alpha: 0.55),
+          color: context.palette.night.withValues(alpha: 0.55),
           shape: BoxShape.circle,
         ),
         child: Column(
@@ -311,7 +311,7 @@ class _SeekTaps extends StatelessWidget {
             Icon(
               left ? Icons.fast_rewind : Icons.fast_forward,
               size: 32,
-              color: MarqueeColors.cream,
+              color: context.palette.cream,
             ),
             const SizedBox(height: MarqueeSpace.xs),
             Text(
@@ -351,7 +351,7 @@ class _Level extends StatelessWidget {
         value: '${(value * 100).round()}%',
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: MarqueeColors.night.withValues(alpha: 0.7),
+            color: context.palette.night.withValues(alpha: 0.7),
             borderRadius: const BorderRadius.all(Radius.circular(999)),
           ),
           child: Padding(
@@ -366,8 +366,8 @@ class _Level extends StatelessWidget {
                   width: 6,
                   height: 120,
                   child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: MarqueeColors.velvet,
+                    decoration: BoxDecoration(
+                      color: context.palette.velvet,
                       borderRadius: BorderRadius.all(Radius.circular(3)),
                     ),
                     child: Align(
@@ -375,9 +375,9 @@ class _Level extends StatelessWidget {
                       child: FractionallySizedBox(
                         heightFactor: value,
                         widthFactor: 1,
-                        child: const DecoratedBox(
+                        child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: MarqueeColors.bulb,
+                            color: context.palette.bulb,
                             borderRadius: BorderRadius.all(Radius.circular(3)),
                           ),
                         ),
@@ -386,7 +386,7 @@ class _Level extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: MarqueeSpace.s),
-                Icon(icon, size: 20, color: MarqueeColors.cream),
+                Icon(icon, size: 20, color: context.palette.cream),
               ],
             ),
           ),

@@ -14,8 +14,8 @@ class BackPill extends StatelessWidget {
     tooltip: MaterialLocalizations.of(context).backButtonTooltip,
     onPressed: () => context.pop(),
     style: IconButton.styleFrom(
-      backgroundColor: MarqueeColors.booth,
-      side: const BorderSide(color: MarqueeColors.velvet),
+      backgroundColor: context.palette.booth,
+      side: BorderSide(color: context.palette.velvet),
       fixedSize: const Size.square(44),
     ),
     icon: const Icon(Icons.arrow_back, size: 20),

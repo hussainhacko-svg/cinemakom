@@ -14,6 +14,7 @@ import '../features/downloads/download_flow.dart' show buildDownloadNotices;
 import 'l10n/app_localizations.dart';
 import 'router.dart';
 import 'splash_screen.dart';
+import 'theme/marquee_colors.dart';
 import 'theme/marquee_theme.dart';
 
 const _localizationsDelegates = [
@@ -53,6 +54,7 @@ class CinemakomApp extends ConsumerWidget {
     final language = ref.watch(
       settingsProvider.select((s) => s.effectiveLanguage),
     );
+    final theme = ref.watch(settingsProvider.select((s) => s.theme));
     return _BrowseOrientation(
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
@@ -60,8 +62,10 @@ class CinemakomApp extends ConsumerWidget {
         locale: language.locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: _localizationsDelegates,
-        // The one and only theme (docs/DESIGN.md). Arabic only drops tracking.
-        theme: buildMarqueeTheme(arabic: language == AppLanguage.arabic),
+        theme: buildMarqueeTheme(
+          arabic: language == AppLanguage.arabic,
+          palette: MarqueePalette.forProfile(theme),
+        ),
         routerConfig: ref.watch(routerProvider),
         builder: (context, child) => _Downloads(child: child!),
       ),

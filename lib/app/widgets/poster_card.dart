@@ -55,7 +55,7 @@ class _PosterCardState extends State<PosterCard> {
                 decoration: BoxDecoration(
                   borderRadius: _radius,
                   border: _focused
-                      ? Border.all(color: MarqueeColors.bulb, width: 2)
+                      ? Border.all(color: context.palette.bulb, width: 2)
                       : null,
                 ),
                 child: MediaImage(url: item.posterUrl, borderRadius: _radius),

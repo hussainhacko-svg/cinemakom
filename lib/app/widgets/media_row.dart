@@ -134,14 +134,14 @@ class _PosterPlaceholder extends StatelessWidget {
   const _PosterPlaceholder();
 
   @override
-  Widget build(BuildContext context) => const Column(
+  Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       AspectRatio(
         aspectRatio: 2 / 3,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: MarqueeColors.booth,
+            color: context.palette.booth,
             borderRadius: BorderRadius.all(MarqueeRadius.poster),
           ),
         ),

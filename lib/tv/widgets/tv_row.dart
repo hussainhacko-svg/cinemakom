@@ -85,7 +85,7 @@ class TvPosterRow extends StatelessWidget {
             Flexible(
               child: Text(
                 errorMessage(l10n, error!),
-                style: text.body.copyWith(color: MarqueeColors.dust),
+                style: text.body.copyWith(color: context.palette.dust),
               ),
             ),
             const SizedBox(width: 20),

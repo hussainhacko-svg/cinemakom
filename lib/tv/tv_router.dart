@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../core/diagnostics/route_log.dart';
 import '../app/navigation_args.dart';
 import '../app/theme/marquee_colors.dart';
+import '../core/platform/platform_info.dart';
 import '../core/storage/preferences.dart';
 import '../data/models/catalog_models.dart';
 import '../data/models/media_item.dart';
@@ -72,18 +73,19 @@ final tvRouterProvider = Provider<GoRouter>((ref) {
           _branch('/home', const TvHomeScreen()),
           _branch('/search', const TvSearchScreen()),
           _branch('/library', const TvLibraryScreen()),
-          _branch(
-            '/downloads',
-            const TvDownloadsScreen(),
-            routes: [
-              // One series' downloaded episodes.
-              _route(
-                'saved/:id',
-                (state) =>
-                    TvSavedSeriesScreen(titleId: state.pathParameters['id']!),
-              ),
-            ],
-          ),
+          if (supportsDownloads)
+            _branch(
+              '/downloads',
+              const TvDownloadsScreen(),
+              routes: [
+                // One series' downloaded episodes.
+                _route(
+                  'saved/:id',
+                  (state) =>
+                      TvSavedSeriesScreen(titleId: state.pathParameters['id']!),
+                ),
+              ],
+            ),
           _branch(
             '/settings',
             const TvSettingsScreen(),
@@ -113,7 +115,10 @@ GoRoute _route(
   routes: routes,
   pageBuilder: (_, state) => NoTransitionPage(
     key: state.pageKey,
-    child: Material(color: MarqueeColors.night, child: screen(state)),
+    child: Builder(
+      builder: (context) =>
+          Material(color: context.palette.night, child: screen(state)),
+    ),
   ),
 );
 

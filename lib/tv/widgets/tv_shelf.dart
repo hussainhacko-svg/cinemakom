@@ -26,7 +26,7 @@ class TvShelfRow extends StatelessWidget {
     this.posterUrl,
     this.lines = const [],
     this.bar,
-    this.barColor = MarqueeColors.bulb,
+    this.barColor,
     this.trailing,
   });
 
@@ -40,7 +40,7 @@ class TvShelfRow extends StatelessWidget {
   /// `dust`.
   final List<String> lines;
   final double? bar;
-  final Color barColor;
+  final Color? barColor;
   final Widget? trailing;
 
   static const double posterWidth = 56;
@@ -60,7 +60,7 @@ class TvShelfRow extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+            color: focused ? context.palette.boothRaised : context.palette.booth,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -92,8 +92,8 @@ class TvShelfRow extends StatelessWidget {
                           style: text.caption.copyWith(
                             height: 1.2,
                             color: i == 0
-                                ? MarqueeColors.creamSoft
-                                : MarqueeColors.dust,
+                                ? context.palette.creamSoft
+                                : context.palette.dust,
                           ),
                         ),
                         if (i == 0 && bar != null) ...[
@@ -105,8 +105,8 @@ class TvShelfRow extends StatelessWidget {
                               child: LinearProgressIndicator(
                                 value: bar,
                                 minHeight: 4,
-                                color: barColor,
-                                backgroundColor: MarqueeColors.velvet,
+                                color: barColor ?? context.palette.bulb,
+                                backgroundColor: context.palette.velvet,
                               ),
                             ),
                           ),
@@ -158,9 +158,9 @@ class TvTile extends StatelessWidget {
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
           alignment: AlignmentDirectional.centerStart,
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+            color: focused ? context.palette.boothRaised : context.palette.booth,
             border: Border.all(
-              color: focused ? MarqueeColors.boothRaised : MarqueeColors.velvet,
+              color: focused ? context.palette.boothRaised : context.palette.velvet,
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -211,7 +211,7 @@ class TvSegment extends StatelessWidget {
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 22),
           alignment: Alignment.center,
           decoration: ShapeDecoration(
-            color: selected || focused ? MarqueeColors.boothRaised : null,
+            color: selected || focused ? context.palette.boothRaised : null,
             shape: const StadiumBorder(),
           ),
           child: Text(
@@ -219,7 +219,7 @@ class TvSegment extends StatelessWidget {
             style: text.label
                 .withWeight(FontWeight.w500)
                 .copyWith(
-                  color: selected ? MarqueeColors.cream : MarqueeColors.dust,
+                  color: selected ? context.palette.cream : context.palette.dust,
                 ),
           ),
         ),
@@ -239,8 +239,8 @@ class TvSegmentTrack extends StatelessWidget {
     alignment: AlignmentDirectional.centerStart,
     child: Container(
       padding: const EdgeInsets.all(4),
-      decoration: const ShapeDecoration(
-        color: MarqueeColors.booth,
+      decoration: ShapeDecoration(
+        color: context.palette.booth,
         shape: StadiumBorder(),
       ),
       child: Row(
@@ -288,9 +288,9 @@ class TvSettingsRow extends StatelessWidget {
           height: 56,
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+            color: focused ? context.palette.boothRaised : context.palette.booth,
             border: Border.all(
-              color: focused ? MarqueeColors.boothRaised : MarqueeColors.velvet,
+              color: focused ? context.palette.boothRaised : context.palette.velvet,
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -310,20 +310,16 @@ class TvSettingsRow extends StatelessWidget {
                 const SizedBox(width: 14),
                 Text(
                   value,
-                  style: text.label
-                      .withWeight(FontWeight.w500)
-                      .copyWith(
-                        color: focused
-                            ? MarqueeColors.cream
-                            : MarqueeColors.dust,
-                      ),
+                  style: text.label.withWeight(FontWeight.w500).copyWith(
+                    color: focused ? context.palette.cream : context.palette.dust,
+                  ),
                 ),
               ],
               const SizedBox(width: 14),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: MarqueeColors.dust,
+                color: context.palette.dust,
               ),
             ],
           ),
@@ -354,8 +350,9 @@ class TvEmpty extends StatelessWidget {
         Text(
           message,
           textAlign: TextAlign.center,
-          style: MarqueeTvText.of(context).body
-              .copyWith(color: MarqueeColors.dust),
+          style: MarqueeTvText.of(
+            context,
+          ).body.copyWith(color: context.palette.dust),
         ),
         if (action != null) ...[const SizedBox(height: 24), action!],
       ],

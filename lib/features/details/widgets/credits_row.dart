@@ -91,7 +91,7 @@ class _Person extends StatelessWidget {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: text.caption
-                    .copyWith(color: MarqueeColors.cream)
+                    .copyWith(color: context.palette.cream)
                     .withWeight(FontWeight.w600),
               ),
               if (role.isNotEmpty)

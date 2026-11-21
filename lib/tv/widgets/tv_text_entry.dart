@@ -92,19 +92,19 @@ class _TvTextEntryState extends State<TvTextEntry> {
               alignment: AlignmentDirectional.centerStart,
               decoration: ShapeDecoration(
                 color: focused || _editing
-                    ? MarqueeColors.boothRaised
-                    : MarqueeColors.booth,
-                shape: const StadiumBorder(
-                  side: BorderSide(color: MarqueeColors.velvetStrong),
+                    ? context.palette.boothRaised
+                    : context.palette.booth,
+                shape: StadiumBorder(
+                  side: BorderSide(color: context.palette.velvetStrong),
                 ),
               ),
               // While typing, the field is drawn over the text's place.
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.search,
                     size: 22,
-                    color: MarqueeColors.cream,
+                    color: context.palette.cream,
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -117,8 +117,8 @@ class _TvTextEntryState extends State<TvTextEntry> {
                             style: text.body.copyWith(
                               height: 1.2,
                               color: value.isEmpty
-                                  ? MarqueeColors.dust
-                                  : MarqueeColors.cream,
+                                  ? context.palette.dust
+                                  : context.palette.cream,
                             ),
                           ),
                   ),
@@ -127,7 +127,7 @@ class _TvTextEntryState extends State<TvTextEntry> {
                       l10n.tvPressOkToType,
                       style: text.caption
                           .withWeight(FontWeight.w600)
-                          .copyWith(color: MarqueeColors.bulb),
+                          .copyWith(color: context.palette.bulb),
                     ),
                 ],
               ),
@@ -145,8 +145,8 @@ class _TvTextEntryState extends State<TvTextEntry> {
                     focusNode: _field,
                     controller: widget.controller,
                     textInputAction: widget.textInputAction,
-                    style: text.body.copyWith(color: MarqueeColors.cream),
-                    cursorColor: MarqueeColors.bulb,
+                    style: text.body.copyWith(color: context.palette.cream),
+                    cursorColor: context.palette.bulb,
                     // The box is the field's look: none of the theme's
                     // fill or borders (its focused one drew a second ring).
                     decoration: InputDecoration(
@@ -156,7 +156,9 @@ class _TvTextEntryState extends State<TvTextEntry> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       hintText: widget.label,
-                      hintStyle: text.body.copyWith(color: MarqueeColors.dust),
+                      hintStyle: text.body.copyWith(
+                        color: context.palette.dust,
+                      ),
                     ),
                     onChanged: widget.onChanged,
                     onSubmitted: (v) {

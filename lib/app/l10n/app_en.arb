@@ -1140,5 +1140,11 @@
   "activityLogAdb": "From a computer: adb pull {path}",
   "@activityLogAdb": {"description": "Activity log (Android): where the files are, for a developer with adb", "placeholders": {"path": {"type": "String"}}},
   "bugReportAttachLog": "If you can, share the activity log too (Settings → Help → Activity log).",
-  "@bugReportAttachLog": {"description": "Bug report email: asks for the activity log, after the questions"}
+  "@bugReportAttachLog": {"description": "Bug report email: asks for the activity log, after the questions"},
+  "settingsTheme": "Theme",
+  "@settingsTheme": {"description": "Settings row for picking the colour theme profile"},
+  "themeMarquee": "Marquee (Gold)",
+  "@themeMarquee": {"description": "Original cocoa and warm gold theme"},
+  "themeBordeaux": "Bordeaux (Red)",
+  "@themeBordeaux": {"description": "Obsidian black and Bordeaux red theme"}
 }

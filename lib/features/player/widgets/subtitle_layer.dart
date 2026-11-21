@@ -76,7 +76,7 @@ class _Line extends StatelessWidget {
         ..style = PaintingStyle.stroke
         ..strokeWidth = (style.fontSize ?? 20) / 7
         ..strokeJoin = StrokeJoin.round
-        ..color = MarqueeColors.night,
+        ..color = context.palette.night,
     );
     return Stack(
       children: [
@@ -90,7 +90,7 @@ class _Line extends StatelessWidget {
           text,
           textAlign: TextAlign.center,
           textDirection: direction,
-          style: style.copyWith(color: MarqueeColors.cream),
+          style: style.copyWith(color: context.palette.cream),
         ),
       ],
     );

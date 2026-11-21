@@ -258,5 +258,8 @@
   "activityLogSameWifi": "يجب أن يكون هاتفك على شبكة Wi-Fi نفسها التي يتصل بها التلفاز. يعمل الرمز ما دامت هذه النافذة مفتوحة.",
   "activityLogNoNetwork": "صِل التلفاز بشبكة Wi-Fi لفتح السجل على هاتفك.",
   "activityLogAdb": "من الحاسوب: adb pull {path}",
-  "bugReportAttachLog": "إن أمكن، شارك سجل النشاط أيضًا (الإعدادات ← المساعدة ← سجل النشاط)."
+  "bugReportAttachLog": "إن أمكن، شارك سجل النشاط أيضًا (الإعدادات ← المساعدة ← سجل النشاط).",
+  "settingsTheme": "المظهر",
+  "themeMarquee": "ماركيه (ذهبي)",
+  "themeBordeaux": "بوردو (أحمر)"
 }

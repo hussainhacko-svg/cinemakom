@@ -103,7 +103,7 @@ Future<T?> showTvChoicePanel<T>(
           if (footer != null)
             Text(
               footer,
-              style: text.caption.copyWith(color: MarqueeColors.creamSoft),
+              style: text.caption.copyWith(color: context.palette.creamSoft),
             ),
           Text(l10n.tvBackCloses, style: text.caption),
         ],

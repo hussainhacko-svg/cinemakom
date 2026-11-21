@@ -125,7 +125,7 @@ class _TvDownloadsScreenState extends ConsumerState<TvDownloadsScreen> {
                           ? l10n.downloadsUsed(formatBytes(l10n, used))
                           : '',
                       style: text.caption.copyWith(
-                        color: MarqueeColors.creamSoft,
+                        color: context.palette.creamSoft,
                       ),
                     ),
                   ),
@@ -240,8 +240,8 @@ class _ActiveRow extends ConsumerWidget {
             lines: [meta],
             bar: fraction,
             barColor: d.status == DownloadStatus.running
-                ? MarqueeColors.bulb
-                : MarqueeColors.dust,
+                ? context.palette.bulb
+                : context.palette.dust,
             onSelect: () => tvOpenTitle(context, d.item),
           ),
         ),
@@ -314,10 +314,10 @@ class _TitleRow extends ConsumerWidget {
             posterUrl: first.posterUrl,
             lines: [meta],
             trailing: series
-                ? const Icon(
+                ? Icon(
                     Icons.chevron_right_rounded,
                     size: 22,
-                    color: MarqueeColors.dust,
+                    color: context.palette.dust,
                   )
                 : null,
             onSelect: () => series

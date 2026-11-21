@@ -57,7 +57,7 @@ class ErrorView extends ConsumerWidget {
     final message = Text(
       errorMessage(l10n, error, health: health),
       textAlign: compact ? TextAlign.start : TextAlign.center,
-      style: text.body.copyWith(color: MarqueeColors.creamSoft),
+      style: text.body.copyWith(color: context.palette.creamSoft),
     );
     final button = OutlinedButton(
       onPressed: () {

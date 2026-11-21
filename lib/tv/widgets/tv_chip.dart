@@ -53,12 +53,12 @@ class TvChip extends StatelessWidget {
             height: 40,
             padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
             decoration: ShapeDecoration(
-              color: focused || selected ? MarqueeColors.boothRaised : null,
+              color: focused || selected ? context.palette.boothRaised : null,
               shape: StadiumBorder(
                 side: BorderSide(
                   color: strong
-                      ? MarqueeColors.velvetStrong
-                      : MarqueeColors.velvet,
+                      ? context.palette.velvetStrong
+                      : context.palette.velvet,
                 ),
               ),
             ),
@@ -76,16 +76,16 @@ class TvChip extends StatelessWidget {
                       .withWeight(FontWeight.w500)
                       .copyWith(
                         color: picker || selected || focused
-                            ? MarqueeColors.cream
-                            : MarqueeColors.dust,
+                            ? context.palette.cream
+                            : context.palette.dust,
                       ),
                 ),
                 if (picker) ...[
                   const SizedBox(width: 6),
-                  const Icon(
+                  Icon(
                     Icons.expand_more,
                     size: 18,
-                    color: MarqueeColors.cream,
+                    color: context.palette.cream,
                   ),
                 ],
               ],

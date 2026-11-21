@@ -94,7 +94,7 @@ class TvPersonScreen extends ConsumerWidget {
                     Text(
                       message,
                       textAlign: TextAlign.center,
-                      style: text.body.copyWith(color: MarqueeColors.dust),
+                      style: text.body.copyWith(color: context.palette.dust),
                     ),
                     if (staff.hasError) ...[
                       const SizedBox(height: 20),

@@ -33,7 +33,7 @@ class FavoritePill extends ConsumerWidget {
         icon: Icon(
           saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           size: 18,
-          color: saved ? MarqueeColors.bulb : null,
+          color: saved ? context.palette.bulb : null,
         ),
         label: Text(saved ? l10n.inFavorites : l10n.favorite),
       ),
@@ -57,15 +57,15 @@ class FavoriteIconButton extends ConsumerWidget {
       isSelected: saved,
       onPressed: () => _toggle(ref, item, saved: saved),
       style: IconButton.styleFrom(
-        backgroundColor: MarqueeColors.booth,
-        side: const BorderSide(color: MarqueeColors.velvet),
+        backgroundColor: context.palette.booth,
+        side: BorderSide(color: context.palette.velvet),
         fixedSize: const Size.square(44),
       ),
       icon: const Icon(Icons.bookmark_border_rounded, size: 20),
-      selectedIcon: const Icon(
+      selectedIcon: Icon(
         Icons.bookmark_rounded,
         size: 20,
-        color: MarqueeColors.bulb,
+        color: context.palette.bulb,
       ),
     );
   }

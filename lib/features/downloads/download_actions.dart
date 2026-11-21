@@ -415,8 +415,8 @@ class DownloadRing extends StatelessWidget {
           child: CircularProgressIndicator(
             value: fraction.clamp(0.02, 1),
             strokeWidth: 2,
-            color: MarqueeColors.bulb,
-            backgroundColor: MarqueeColors.velvet,
+            color: context.palette.bulb,
+            backgroundColor: context.palette.velvet,
           ),
         ),
         child,
@@ -433,20 +433,26 @@ Widget downloadIcon(
   bool missing = false,
 }) => switch (d?.status) {
   null => Icon(Icons.download_rounded, size: size),
-  DownloadStatus.complete when missing => Icon(
-    Icons.error_outline_rounded,
-    size: size,
-    color: MarqueeColors.ember,
+  DownloadStatus.complete when missing => Builder(
+    builder: (context) => Icon(
+      Icons.error_outline_rounded,
+      size: size,
+      color: context.palette.ember,
+    ),
   ),
-  DownloadStatus.complete => Icon(
-    Icons.download_done_rounded,
-    size: size,
-    color: MarqueeColors.bulb,
+  DownloadStatus.complete => Builder(
+    builder: (context) => Icon(
+      Icons.download_done_rounded,
+      size: size,
+      color: context.palette.bulb,
+    ),
   ),
-  DownloadStatus.failed => Icon(
-    Icons.error_outline_rounded,
-    size: size,
-    color: MarqueeColors.ember,
+  DownloadStatus.failed => Builder(
+    builder: (context) => Icon(
+      Icons.error_outline_rounded,
+      size: size,
+      color: context.palette.ember,
+    ),
   ),
   DownloadStatus.paused => Icon(Icons.pause_rounded, size: size),
   DownloadStatus.queued || DownloadStatus.running => DownloadRing(

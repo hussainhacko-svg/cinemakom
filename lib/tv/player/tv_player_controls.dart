@@ -14,7 +14,8 @@ import '../widgets/tv_focus_look.dart';
 // fill and gets a `cream` ring 3 px out.
 
 /// The controls' see-through fill over the video.
-final Color tvVeil = MarqueeColors.night.withValues(alpha: 0.6);
+Color tvVeilOf(BuildContext context) =>
+    context.palette.night.withValues(alpha: 0.6);
 
 /// A chip of the top bar ("Arabic", "1080p", "1×", "Fit"): [label] is what
 /// it shows, [name] what it reads as ("Subtitles: Arabic").
@@ -132,7 +133,8 @@ class _Pill extends StatelessWidget {
       onKey: onKey,
       autofocus: autofocus,
       builder: (context, focused) {
-        final color = enabled ? MarqueeColors.cream : MarqueeColors.dustDim;
+        final p = context.palette;
+        final color = enabled ? p.cream : p.dustDim;
         final icon = this.icon == null
             ? null
             : Icon(this.icon, size: 18, color: color);
@@ -144,12 +146,10 @@ class _Pill extends StatelessWidget {
             height: height,
             padding: EdgeInsetsDirectional.symmetric(horizontal: padding),
             decoration: ShapeDecoration(
-              color: focused ? MarqueeColors.boothRaised : tvVeil,
+              color: focused ? p.boothRaised : p.night.withValues(alpha: 0.6),
               shape: StadiumBorder(
                 side: BorderSide(
-                  color: outline
-                      ? MarqueeColors.cream
-                      : MarqueeColors.velvetStrong,
+                  color: outline ? p.cream : p.velvetStrong,
                 ),
               ),
             ),
@@ -217,23 +217,24 @@ class TvRoundButton extends StatelessWidget {
       onSelect: onSelect,
       autofocus: autofocus,
       builder: (context, focused) {
-        final color = primary ? MarqueeColors.onBulb : MarqueeColors.cream;
+        final p = context.palette;
+        final color = primary ? p.onBulb : p.cream;
         Widget glyph = Icon(icon, size: primary ? 30 : 26, color: color);
         if (flip) glyph = Transform.flip(flipX: true, child: glyph);
         return TvRing(
           on: focused,
           radius: TvRing.pill,
           gap: primary ? 3 : TvFocusStyle.buttonGap,
-          color: primary ? MarqueeColors.cream : MarqueeColors.bulb,
+          color: primary ? p.cream : p.bulb,
           child: Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: primary
-                  ? MarqueeColors.bulb
+                  ? p.bulbFill
                   : focused
-                  ? MarqueeColors.boothRaised
+                  ? p.boothRaised
                   : null,
             ),
             child: Column(
@@ -273,8 +274,8 @@ class TvPlayerNote extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 560),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: MarqueeColors.booth,
-          border: Border.all(color: MarqueeColors.velvet),
+          color: context.palette.booth,
+          border: Border.all(color: context.palette.velvet),
           borderRadius: const BorderRadius.all(MarqueeRadius.card),
         ),
         child: Text(

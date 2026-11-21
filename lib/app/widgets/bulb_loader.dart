@@ -54,6 +54,7 @@ class _BulbLoaderState extends State<BulbLoader>
   @override
   Widget build(BuildContext context) {
     final w = widget;
+    final p = context.palette;
     final painter = CustomPaint(
       size: Size(w.count * w.dotSize + (w.count - 1) * w.gap, w.dotSize),
       painter: _BulbPainter(
@@ -63,6 +64,8 @@ class _BulbLoaderState extends State<BulbLoader>
         dotSize: w.dotSize,
         gap: w.gap,
         rtl: Directionality.of(context) == TextDirection.rtl,
+        dimColor: p.velvetStrong,
+        litColor: p.bulb,
       ),
     );
     final label = w.semanticLabel;
@@ -80,6 +83,8 @@ class _BulbPainter extends CustomPainter {
     required this.dotSize,
     required this.gap,
     required this.rtl,
+    required this.dimColor,
+    required this.litColor,
   }) : super(repaint: progress);
 
   final Animation<double> progress;
@@ -88,6 +93,8 @@ class _BulbPainter extends CustomPainter {
   final double dotSize;
   final double gap;
   final bool rtl;
+  final Color dimColor;
+  final Color litColor;
 
   static final _paint = Paint();
 
@@ -104,11 +111,7 @@ class _BulbPainter extends CustomPainter {
           : distance >= 0 && distance < 3
           ? 1 - distance / 3
           : 0.0;
-      _paint.color = Color.lerp(
-        MarqueeColors.velvetStrong,
-        MarqueeColors.bulb,
-        glow,
-      )!;
+      _paint.color = Color.lerp(dimColor, litColor, glow)!;
       final slot = rtl ? count - 1 - i : i;
       canvas.drawCircle(Offset(r + slot * (dotSize + gap), r), r, _paint);
     }
@@ -120,5 +123,7 @@ class _BulbPainter extends CustomPainter {
       old.count != count ||
       old.dotSize != dotSize ||
       old.gap != gap ||
-      old.rtl != rtl;
+      old.rtl != rtl ||
+      old.dimColor != dimColor ||
+      old.litColor != litColor;
 }

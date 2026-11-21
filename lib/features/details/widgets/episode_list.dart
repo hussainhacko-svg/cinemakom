@@ -319,10 +319,10 @@ class _EpisodeRow extends StatelessWidget {
                     softWrap: false,
                     style: text.numeral.copyWith(
                       color: started
-                          ? MarqueeColors.bulb
+                          ? context.palette.bulb
                           : finished
-                          ? MarqueeColors.cream
-                          : MarqueeColors.dustDim,
+                          ? context.palette.cream
+                          : context.palette.dustDim,
                     ),
                   ),
                 ),
@@ -338,7 +338,7 @@ class _EpisodeRow extends StatelessWidget {
                               episodeLabel(l10n, numbering),
                               style: current
                                   ? text.label.copyWith(
-                                      color: MarqueeColors.bulb,
+                                      color: context.palette.bulb,
                                     )
                                   : text.label,
                             ),
@@ -367,10 +367,10 @@ class _EpisodeRow extends StatelessWidget {
                   ),
                 ),
                 if (current)
-                  const Icon(
+                  Icon(
                     Icons.play_arrow,
                     size: 22,
-                    color: MarqueeColors.bulb,
+                    color: context.palette.bulb,
                   ),
                 ?trailing,
               ],
@@ -396,14 +396,14 @@ class _Badge extends StatelessWidget {
         vertical: 1,
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: MarqueeColors.velvetStrong),
+        border: Border.all(color: context.palette.velvetStrong),
         borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: Text(
         text.arabic ? label : label.toUpperCase(),
         style: text.caption.copyWith(
           fontSize: 10,
-          color: MarqueeColors.cream,
+          color: context.palette.cream,
           letterSpacing: text.arabic ? 0 : 0.6,
         ),
       ),

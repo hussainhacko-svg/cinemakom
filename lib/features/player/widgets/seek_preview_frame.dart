@@ -99,15 +99,22 @@ class _SeekPreviewFrameState extends ConsumerState<SeekPreviewFrame> {
   @override
   Widget build(BuildContext context) => SizedBox.fromSize(
     size: Size(widget.width, widget.height),
-    child: CustomPaint(painter: _FramePainter(_sheet?.image, widget.frame)),
+    child: CustomPaint(
+      painter: _FramePainter(
+        _sheet?.image,
+        widget.frame,
+        context.palette.booth,
+      ),
+    ),
   );
 }
 
 class _FramePainter extends CustomPainter {
-  _FramePainter(this.sheet, this.frame);
+  _FramePainter(this.sheet, this.frame, this.placeholder);
 
   final ui.Image? sheet;
   final SeekFrame frame;
+  final Color placeholder;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -115,7 +122,7 @@ class _FramePainter extends CustomPainter {
     final shape = RRect.fromRectAndRadius(dst, SeekPreviewFrame.radius);
     final sheet = this.sheet;
     if (sheet == null) {
-      canvas.drawRRect(shape, Paint()..color = MarqueeColors.booth);
+      canvas.drawRRect(shape, Paint()..color = placeholder);
       return;
     }
     final src = Rect.fromLTWH(
@@ -138,5 +145,7 @@ class _FramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FramePainter old) =>
-      old.sheet != sheet || old.frame != frame;
+      old.sheet != sheet ||
+      old.frame != frame ||
+      old.placeholder != placeholder;
 }

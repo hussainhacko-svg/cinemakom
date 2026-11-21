@@ -86,8 +86,8 @@ class TvPosterCard extends StatelessWidget {
                   .copyWith(
                     height: 1.3,
                     color: focused
-                        ? MarqueeColors.cream
-                        : MarqueeColors.creamSoft,
+                        ? context.palette.cream
+                        : context.palette.creamSoft,
                   ),
             ),
             if (meta.isNotEmpty)
@@ -131,23 +131,23 @@ class TvSeeAllCard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: focused
-                    ? MarqueeColors.boothRaised
-                    : MarqueeColors.booth,
+                    ? context.palette.boothRaised
+                    : context.palette.booth,
                 borderRadius: BorderRadius.circular(TvPoster.radius),
-                border: Border.all(color: MarqueeColors.velvet),
+                border: Border.all(color: context.palette.velvet),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.arrow_forward,
                     size: 28,
-                    color: MarqueeColors.bulb,
+                    color: context.palette.bulb,
                   ),
                   const SizedBox(height: 10),
                   Text(
                     l10n.seeAll,
-                    style: text.label.copyWith(color: MarqueeColors.bulb),
+                    style: text.label.copyWith(color: context.palette.bulb),
                   ),
                 ],
               ),
@@ -171,7 +171,7 @@ class TvPosterPlaceholder extends StatelessWidget {
       width: TvPoster.width,
       height: TvPoster.height,
       decoration: BoxDecoration(
-        color: MarqueeColors.booth,
+        color: context.palette.booth,
         borderRadius: BorderRadius.circular(TvPoster.radius),
       ),
     ),

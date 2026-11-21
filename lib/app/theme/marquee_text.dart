@@ -27,24 +27,30 @@ extension MarqueeWeight on TextStyle {
 /// tracking breaks the joins. Media titles never carry tracking because they
 /// can be in either script.
 class MarqueeText {
-  const MarqueeText({required this.arabic});
+  const MarqueeText({
+    required this.arabic,
+    this.palette = MarqueePalette.marquee,
+  });
 
-  /// The scale for the UI language in effect at [context].
-  factory MarqueeText.of(BuildContext context) =>
-      MarqueeText(arabic: Localizations.localeOf(context).languageCode == 'ar');
-
-  final bool arabic;
-
-  static const _display = TextStyle(
-    fontFamily: MarqueeFonts.display,
-    fontFamilyFallback: [MarqueeFonts.displayArabic],
-    color: MarqueeColors.cream,
+  /// The scale for the UI language and theme palette in effect at [context].
+  factory MarqueeText.of(BuildContext context) => MarqueeText(
+    arabic: Localizations.localeOf(context).languageCode == 'ar',
+    palette: MarqueePalette.of(context),
   );
 
-  static const _ui = TextStyle(
+  final bool arabic;
+  final MarqueePalette palette;
+
+  TextStyle get _display => TextStyle(
+    fontFamily: MarqueeFonts.display,
+    fontFamilyFallback: const [MarqueeFonts.displayArabic],
+    color: palette.cream,
+  );
+
+  TextStyle get _ui => TextStyle(
     fontFamily: MarqueeFonts.ui,
-    fontFamilyFallback: [MarqueeFonts.uiArabic],
-    color: MarqueeColors.cream,
+    fontFamilyFallback: const [MarqueeFonts.uiArabic],
+    color: palette.cream,
   );
 
   double _track(double em, double size) => arabic ? 0 : em * size;
@@ -92,7 +98,7 @@ class MarqueeText {
       .copyWith(
         fontSize: 34,
         height: 1.0,
-        color: MarqueeColors.bulb,
+        color: palette.bulb,
         fontFeatures: const [FontFeature.tabularFigures()],
       )
       .withWeight(FontWeight.w900);
@@ -104,7 +110,7 @@ class MarqueeText {
       .copyWith(
         fontSize: 15,
         height: arabic ? 1.6 : 1.5,
-        color: MarqueeColors.creamSoft,
+        color: palette.creamSoft,
       )
       .withWeight(FontWeight.w400);
 
@@ -114,7 +120,7 @@ class MarqueeText {
 
   /// Metadata ("2023 · Drama · 3h").
   TextStyle get caption => _ui
-      .copyWith(fontSize: 12, height: 1.35, color: MarqueeColors.dust)
+      .copyWith(fontSize: 12, height: 1.35, color: palette.dust)
       .withWeight(FontWeight.w400);
 
   /// "NOW SHOWING".
@@ -123,7 +129,7 @@ class MarqueeText {
         fontSize: 12,
         height: 1.2,
         letterSpacing: _track(0.16, 12),
-        color: MarqueeColors.bulb,
+        color: palette.bulb,
       )
       .withWeight(FontWeight.w600);
 
@@ -139,7 +145,7 @@ class MarqueeText {
     titleMedium: title,
     titleSmall: label,
     bodyLarge: body,
-    bodyMedium: body.copyWith(color: MarqueeColors.cream),
+    bodyMedium: body.copyWith(color: palette.cream),
     bodySmall: caption,
     labelLarge: label,
     labelMedium: eyebrow,

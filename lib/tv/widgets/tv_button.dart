@@ -54,17 +54,18 @@ class TvButton extends StatelessWidget {
       autofocus: autofocus,
       onKey: onKey,
       builder: (context, focused) {
+        final p = context.palette;
         final color = primary
-            ? MarqueeColors.onBulb
+            ? p.onBulb
             : enabled
-            ? MarqueeColors.cream
-            : MarqueeColors.dustDim;
+            ? p.cream
+            : p.dustDim;
         final weight = primary ? FontWeight.w600 : FontWeight.w500;
         return TvRing(
           on: focused,
           radius: TvRing.pill,
           gap: TvFocusStyle.buttonGap,
-          color: primary ? MarqueeColors.cream : MarqueeColors.bulb,
+          color: primary ? p.cream : p.bulb,
           child: Container(
             height: TvSpace.minTarget,
             padding: EdgeInsetsDirectional.symmetric(
@@ -72,14 +73,14 @@ class TvButton extends StatelessWidget {
             ),
             decoration: ShapeDecoration(
               color: primary
-                  ? MarqueeColors.bulb
+                  ? p.bulbFill
                   : focused
-                  ? MarqueeColors.boothRaised
+                  ? p.boothRaised
                   : null,
               shape: StadiumBorder(
                 side: primary
                     ? BorderSide.none
-                    : const BorderSide(color: MarqueeColors.velvetStrong),
+                    : BorderSide(color: p.velvetStrong),
               ),
             ),
             child: Row(

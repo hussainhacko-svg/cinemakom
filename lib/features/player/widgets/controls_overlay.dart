@@ -90,8 +90,9 @@ class ControlsOverlay extends StatelessWidget {
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back, size: 24),
           style: withFocusRing(
+            context,
             IconButton.styleFrom(
-              foregroundColor: MarqueeColors.cream,
+              foregroundColor: context.palette.cream,
               fixedSize: const Size.square(44),
             ),
           ),
@@ -167,10 +168,11 @@ class ControlsOverlay extends StatelessWidget {
                     tooltip: state.playing ? l10n.playerPause : l10n.play,
                     onPressed: controller.togglePlay,
                     style: withFocusRing(
+                      context,
                       IconButton.styleFrom(
-                        backgroundColor: MarqueeColors.bulb,
-                        foregroundColor: MarqueeColors.onBulb,
-                        hoverColor: MarqueeColors.bulbBright,
+                        backgroundColor: context.palette.bulbFill,
+                        foregroundColor: context.palette.onBulb,
+                        hoverColor: context.palette.bulbBright,
                         fixedSize: const Size.square(76),
                       ),
                     ),
@@ -194,7 +196,7 @@ class ControlsOverlay extends StatelessWidget {
       ),
     );
 
-    final clockStyle = text.label.copyWith(color: MarqueeColors.cream);
+    final clockStyle = text.label.copyWith(color: context.palette.cream);
     final bottomBar = Row(
       children: [
         Expanded(
@@ -225,7 +227,7 @@ class ControlsOverlay extends StatelessWidget {
                   position: controller.position,
                   duration: state.duration,
                   remaining: true,
-                  style: clockStyle.copyWith(color: MarqueeColors.dust),
+                  style: clockStyle.copyWith(color: context.palette.dust),
                 ),
               ],
             ),
@@ -238,8 +240,9 @@ class ControlsOverlay extends StatelessWidget {
             icon: const Icon(Icons.video_library_outlined, size: 22),
             label: Text(l10n.episodesHeading),
             style: withFocusRing(
+              context,
               TextButton.styleFrom(
-                foregroundColor: MarqueeColors.cream,
+                foregroundColor: context.palette.cream,
                 minimumSize: const Size(44, 44),
               ),
             ),
@@ -253,8 +256,9 @@ class ControlsOverlay extends StatelessWidget {
             iconAlignment: IconAlignment.end,
             label: Text(l10n.nextEpisode),
             style: withFocusRing(
+              context,
               TextButton.styleFrom(
-                foregroundColor: MarqueeColors.cream,
+                foregroundColor: context.palette.cream,
                 minimumSize: const Size(44, 44),
               ),
             ),
@@ -264,7 +268,7 @@ class ControlsOverlay extends StatelessWidget {
     );
 
     return ColoredBox(
-      color: MarqueeColors.night.withValues(alpha: 0.6),
+      color: context.palette.night.withValues(alpha: 0.6),
       child: SafeArea(
         child: Padding(
           padding: EdgeInsetsDirectional.fromSTEB(
@@ -298,11 +302,12 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = withFocusRing(
+      context,
       TextButton.styleFrom(
-        backgroundColor: MarqueeColors.booth,
-        foregroundColor: MarqueeColors.cream,
-        disabledForegroundColor: MarqueeColors.dust,
-        side: const BorderSide(color: MarqueeColors.velvet),
+        backgroundColor: context.palette.booth,
+        foregroundColor: context.palette.cream,
+        disabledForegroundColor: context.palette.dust,
+        side: BorderSide(color: context.palette.velvet),
         shape: const StadiumBorder(),
         minimumSize: const Size(44, 44),
         padding: EdgeInsetsDirectional.symmetric(
@@ -365,8 +370,9 @@ class _SeekButton extends StatelessWidget {
     onPressed: onPressed,
     icon: Icon(icon, size: 36),
     style: withFocusRing(
+      context,
       IconButton.styleFrom(
-        foregroundColor: MarqueeColors.cream,
+        foregroundColor: context.palette.cream,
         fixedSize: const Size.square(56),
       ),
     ),
@@ -375,12 +381,13 @@ class _SeekButton extends StatelessWidget {
 
 /// A 2 px `bulb` ring while the button has keyboard focus (DESIGN.md §5),
 /// over the button's own border otherwise.
-ButtonStyle withFocusRing(ButtonStyle style) {
+ButtonStyle withFocusRing(BuildContext context, ButtonStyle style) {
+  final focusColor = context.palette.bulb;
   final rest = style.side;
   return style.copyWith(
     side: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.focused)
-          ? const BorderSide(color: MarqueeColors.bulb, width: 2)
+          ? BorderSide(color: focusColor, width: 2)
           : rest?.resolve(states),
     ),
   );

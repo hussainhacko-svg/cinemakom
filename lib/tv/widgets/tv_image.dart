@@ -97,7 +97,7 @@ class _TvImageState extends ConsumerState<TvImage> {
     final radius = BorderRadius.circular(widget.radius);
     final placeholder = DecoratedBox(
       decoration: BoxDecoration(
-        color: MarqueeColors.booth,
+        color: context.palette.booth,
         borderRadius: radius,
       ),
     );

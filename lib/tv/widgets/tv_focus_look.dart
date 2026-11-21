@@ -65,7 +65,7 @@ class TvRing extends StatelessWidget {
     required this.on,
     required this.radius,
     this.gap = 0,
-    this.color = MarqueeColors.bulb,
+    this.color,
     required this.child,
   });
 
@@ -75,12 +75,14 @@ class TvRing extends StatelessWidget {
   final bool on;
   final double radius;
   final double gap;
-  final Color color;
+  final Color? color;
   final Widget child;
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-    foregroundPainter: on ? _RingPainter(radius, gap, color) : null,
+    foregroundPainter: on
+        ? _RingPainter(radius, gap, color ?? context.palette.bulb)
+        : null,
     child: child,
   );
 }

@@ -109,6 +109,19 @@ class TvSettingsScreen extends ConsumerWidget {
                         notifier.setLanguage,
                       ),
                     ),
+                    settingsRow(
+                      l10n.settingsTheme,
+                      themeLabel(l10n, settings.theme),
+                      () => pick(
+                        l10n.settingsTheme,
+                        [
+                          for (final t in AppThemeProfile.values)
+                            TvChoice(t, themeLabel(l10n, t)),
+                        ],
+                        settings.theme,
+                        notifier.setTheme,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     _Heading(l10n.settingsPlayback),
                     settingsRow(
@@ -398,7 +411,7 @@ class _ScrollingText extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: MarqueeColors.night,
+          color: context.palette.night,
           borderRadius: BorderRadius.circular(12),
         ),
         child: SingleChildScrollView(
@@ -406,7 +419,7 @@ class _ScrollingText extends StatelessWidget {
           child: Text(
             body,
             style: MarqueeTvText.of(context).caption
-                .copyWith(color: MarqueeColors.creamSoft, height: 1.5),
+                .copyWith(color: context.palette.creamSoft, height: 1.5),
           ),
         ),
       ),

@@ -30,10 +30,10 @@ class PersonPhoto extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: MarqueeColors.booth,
-        border: Border.fromBorderSide(BorderSide(color: MarqueeColors.velvet)),
+        color: context.palette.booth,
+        border: Border.fromBorderSide(BorderSide(color: context.palette.velvet)),
       ),
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
@@ -41,7 +41,7 @@ class PersonPhoto extends StatelessWidget {
           ? Text(
               initials,
               style: text.label.copyWith(
-                color: MarqueeColors.dust,
+                color: context.palette.dust,
                 fontSize: size * 0.22,
               ),
             )

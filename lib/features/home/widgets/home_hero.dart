@@ -310,9 +310,9 @@ class _Carousel extends StatelessWidget {
         padding: EdgeInsetsDirectional.only(end: gap),
         child: SizedBox(
           height: height,
-          child: const DecoratedBox(
+          child: DecoratedBox(
             decoration: BoxDecoration(
-              color: MarqueeColors.boothRaised,
+              color: context.palette.boothRaised,
               borderRadius: _radius,
             ),
           ),
@@ -428,8 +428,8 @@ class _BulbPager extends StatelessWidget {
                         height: size,
                         decoration: BoxDecoration(
                           color: i == index
-                              ? MarqueeColors.bulb
-                              : MarqueeColors.velvetStrong,
+                              ? context.palette.bulb
+                              : context.palette.velvetStrong,
                           shape: BoxShape.circle,
                         ),
                       ),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cinemakom/app/theme/marquee_colors.dart';
 import 'package:cinemakom/app/theme/marquee_text.dart';
 import 'package:cinemakom/app/theme/marquee_theme.dart';
+import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/main.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,34 +17,44 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
-  const surfaces = {
-    'night': MarqueeColors.night,
-    'booth': MarqueeColors.booth,
-    'boothRaised': MarqueeColors.boothRaised,
-    'navBar': MarqueeColors.navBar,
-  };
-  const texts = {
-    'cream': MarqueeColors.cream,
-    'creamSoft': MarqueeColors.creamSoft,
-    'dust': MarqueeColors.dust,
-    'bulb': MarqueeColors.bulb,
-    'ember': MarqueeColors.ember,
-  };
+  for (final profile in AppThemeProfile.values) {
+    final palette = MarqueePalette.forProfile(profile);
+    final surfaces = {
+      'night': palette.night,
+      'booth': palette.booth,
+      'boothRaised': palette.boothRaised,
+      'navBar': palette.navBar,
+    };
+    final texts = {
+      'cream': palette.cream,
+      'creamSoft': palette.creamSoft,
+      'dust': palette.dust,
+      'bulb': palette.bulb,
+      'ember': palette.ember,
+    };
 
-  for (final s in surfaces.entries) {
-    for (final t in texts.entries) {
-      test('${t.key} on ${s.key} is readable (>= 4.5:1)', () {
-        expect(contrast(t.value, s.value), greaterThanOrEqualTo(4.5));
-      });
+    for (final s in surfaces.entries) {
+      for (final t in texts.entries) {
+        test('[${profile.name}] ${t.key} on ${s.key} is readable (>= 4.5:1)', () {
+          expect(contrast(t.value, s.value), greaterThanOrEqualTo(4.5));
+        });
+      }
     }
-  }
 
-  test('onBulb on bulb is readable', () {
-    expect(
-      contrast(MarqueeColors.onBulb, MarqueeColors.bulb),
-      greaterThanOrEqualTo(4.5),
-    );
-  });
+    test('[${profile.name}] onBulb on bulbFill is readable (>= 4.5:1)', () {
+      expect(
+        contrast(palette.onBulb, palette.bulbFill),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('[${profile.name}] onBulb on bulbBright is readable (>= 4.5:1)', () {
+      expect(
+        contrast(palette.onBulb, palette.bulbBright),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+  }
 
   test('one dark theme; Arabic only drops letter-spacing', () {
     final en = buildMarqueeTheme(arabic: false);

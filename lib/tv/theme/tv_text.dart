@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
 import '../../app/theme/marquee_theme.dart';
 
@@ -7,10 +8,11 @@ import '../../app/theme/marquee_theme.dart';
 /// (docs/TV.md §6.2). Same fonts, weights and Arabic rules as [MarqueeText];
 /// only the sizes (and the tracking that follows them) change.
 class MarqueeTvText extends MarqueeText {
-  const MarqueeTvText({required super.arabic});
+  const MarqueeTvText({required super.arabic, super.palette});
 
   factory MarqueeTvText.of(BuildContext context) => MarqueeTvText(
     arabic: Localizations.localeOf(context).languageCode == 'ar',
+    palette: MarqueePalette.of(context),
   );
 
   double _track(double em, double size) => arabic ? 0 : em * size;
@@ -52,8 +54,12 @@ class MarqueeTvText extends MarqueeText {
       displayLarge.copyWith(fontSize: 32, height: arabic ? 1.35 : 1.05);
 }
 
-/// The one Marquee theme with the TV's type sizes.
-ThemeData buildMarqueeTvTheme({required bool arabic}) => buildMarqueeTheme(
+/// Builds the active theme with the TV's type sizes.
+ThemeData buildMarqueeTvTheme({
+  required bool arabic,
+  MarqueePalette palette = MarqueePalette.marquee,
+}) => buildMarqueeTheme(
   arabic: arabic,
-  text: MarqueeTvText(arabic: arabic),
+  palette: palette,
+  text: MarqueeTvText(arabic: arabic, palette: palette),
 );

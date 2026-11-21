@@ -52,9 +52,9 @@ Future<Episode?> showEpisodesPanel(
         width: math.min(420, width * 0.45),
         height: double.infinity,
         child: Material(
-          color: MarqueeColors.booth,
-          shape: const BorderDirectional(
-            start: BorderSide(color: MarqueeColors.velvet),
+          color: context.palette.booth,
+          shape: BorderDirectional(
+            start: BorderSide(color: context.palette.velvet),
           ),
           child: SafeArea(child: list(context)),
         ),
