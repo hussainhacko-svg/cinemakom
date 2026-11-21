@@ -6,14 +6,14 @@ import '../focus/tv_focusable.dart';
 import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
-import 'tv_steady_text.dart';
 
 /// A TV pill button, item [index] of its zone (the TV system sheet; docs/
 /// TV.md §6.3). 48 tall.
 /// - [primary]: the `bulb` button (one per screen). Focused, it keeps its
 ///   fill and gets a `cream` ring, so the ring shows against it.
 /// - Otherwise outlined (`velvetStrong`), label at 500. Focused: a
-///   `boothRaised` fill, the label at 600 and a `bulb` ring.
+///   `boothRaised` fill and a `bulb` ring; the label never changes weight
+///   (owner, 2026-11-22).
 /// The ring sits 2 px out. Disabled ones stay visible in `dustDim`; the zone
 /// skips them.
 class TvButton extends StatelessWidget {
@@ -59,7 +59,7 @@ class TvButton extends StatelessWidget {
             : enabled
             ? MarqueeColors.cream
             : MarqueeColors.dustDim;
-        final weight = primary || focused ? FontWeight.w600 : FontWeight.w500;
+        final weight = primary ? FontWeight.w600 : FontWeight.w500;
         return TvRing(
           on: focused,
           radius: TvRing.pill,
@@ -90,8 +90,9 @@ class TvButton extends StatelessWidget {
                   const SizedBox(width: 10),
                 ],
                 Flexible(
-                  child: TvSteadyText(
+                  child: Text(
                     label,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: text.label.withWeight(weight).copyWith(color: color),
                   ),

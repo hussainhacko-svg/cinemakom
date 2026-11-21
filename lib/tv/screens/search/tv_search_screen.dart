@@ -271,7 +271,7 @@ class _RecentRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.body
-                      .withWeight(focused ? FontWeight.w600 : FontWeight.w400)
+                      .withWeight(FontWeight.w400)
                       .copyWith(height: 1.2, color: MarqueeColors.cream),
                 ),
               ),

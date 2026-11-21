@@ -3,10 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/theme/marquee_text.dart';
 
 /// A one-line label that is always as wide as its boldest look ([widest]),
-/// with the text centred in it. Focused and selected labels turn 600; with a
-/// plain [Text] the bolder label is wider, so the button grew and pushed
-/// its neighbours (seen on TV Details, 2026-11-22). Focus never resizes or
-/// moves anything (docs/TV.md §6.3).
+/// with the text centred in it. Selected labels (the current tab, chip or
+/// segment) turn 600; with a plain [Text] the bolder label is wider and
+/// pushed its neighbours (seen on TV Details, 2026-11-22). Focus never
+/// changes a weight at all (docs/TV.md §6.3).
 class TvSteadyText extends StatelessWidget {
   const TvSteadyText(
     this.text, {

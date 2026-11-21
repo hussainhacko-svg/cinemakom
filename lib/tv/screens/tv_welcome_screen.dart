@@ -133,7 +133,7 @@ class _LanguageButton extends StatelessWidget {
                   fontSize: 22,
                   fontFamily: arabicText ? MarqueeFonts.uiArabic : null,
                 )
-                .withWeight(focused ? FontWeight.w600 : FontWeight.w500),
+                .withWeight(FontWeight.w500),
           ),
         ),
       ),

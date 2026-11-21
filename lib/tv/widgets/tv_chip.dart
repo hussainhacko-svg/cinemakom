@@ -74,9 +74,7 @@ class TvChip extends StatelessWidget {
                   label,
                   style: text.label
                       .copyWith(fontSize: 15)
-                      .withWeight(
-                        selected || focused ? FontWeight.w600 : FontWeight.w500,
-                      )
+                      .withWeight(selected ? FontWeight.w600 : FontWeight.w500)
                       .copyWith(
                         color: picker || selected || focused
                             ? MarqueeColors.cream

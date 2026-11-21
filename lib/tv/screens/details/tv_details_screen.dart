@@ -432,7 +432,7 @@ class TvPersonCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: text.label
-                  .withWeight(focused ? FontWeight.w600 : FontWeight.w500)
+                  .withWeight(FontWeight.w500)
                   .copyWith(
                     height: 1.3,
                     color: focused

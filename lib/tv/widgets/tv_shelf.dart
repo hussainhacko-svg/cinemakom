@@ -303,7 +303,7 @@ class TvSettingsRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.body
-                      .withWeight(focused ? FontWeight.w600 : FontWeight.w500)
+                      .withWeight(FontWeight.w500)
                       .copyWith(height: 1.2),
                 ),
               ),

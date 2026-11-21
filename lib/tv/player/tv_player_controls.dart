@@ -6,7 +6,6 @@ import '../focus/tv_focusable.dart';
 import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import '../widgets/tv_focus_look.dart';
-import '../widgets/tv_steady_text.dart';
 
 // The TV player's controls, from the Controls design: 40-tall chips at the
 // top, 44-tall pills and round buttons at the bottom, all over the video's
@@ -161,12 +160,11 @@ class _Pill extends StatelessWidget {
                   icon,
                   const SizedBox(width: 8),
                 ],
-                TvSteadyText(
+                Text(
                   label,
+                  maxLines: 1,
                   style: text.label
-                      .withWeight(
-                        outline || focused ? FontWeight.w600 : FontWeight.w500,
-                      )
+                      .withWeight(outline ? FontWeight.w600 : FontWeight.w500)
                       .copyWith(color: color, height: 1.2),
                 ),
                 if (icon != null && iconAtEnd) ...[
