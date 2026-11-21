@@ -28,6 +28,11 @@ abstract final class TvFocusStyle {
   /// A focused card grows to this size, around its centre.
   static const double cardScale = 1.08;
 
+  /// Wide cards (Continue watching, 300 wide) grow less: 8% would push them
+  /// 12 px out on each side, under the next card. 4% is about a poster's
+  /// growth in pixels.
+  static const double wideCardScale = 1.04;
+
   /// The `bulb` ring around anything focused.
   static const double ring = 3;
 

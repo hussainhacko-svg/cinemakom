@@ -14,19 +14,33 @@ class TvCardFocus extends StatelessWidget {
     super.key,
     required this.focused,
     required this.radius,
+    this.scale = TvFocusStyle.cardScale,
     required this.child,
   });
 
   final bool focused;
   final double radius;
+
+  /// How much it grows: [TvFocusStyle.wideCardScale] for wide cards.
+  final double scale;
   final Widget child;
+
+  /// How far a focused card of [size], growing by [scale], reaches past its
+  /// sides and its top, ring included: the room its row must leave.
+  static ({double side, double top}) reach(Size size, double scale) {
+    const ring = TvFocusStyle.cardGap + TvFocusStyle.ring;
+    return (
+      side: size.width * (scale - 1) / 2 + ring,
+      top: size.height * (scale - 1) + ring,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
     return RepaintBoundary(
       child: AnimatedScale(
-        scale: focused && !still ? TvFocusStyle.cardScale : 1,
+        scale: focused && !still ? scale : 1,
         alignment: Alignment.bottomCenter,
         duration: still ? Duration.zero : TvFocusStyle.duration,
         curve: TvFocusStyle.curve,

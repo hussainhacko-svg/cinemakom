@@ -185,7 +185,7 @@ The phone sizes are too small at 3 m. Starting values, to tune on the TV in TV-2
 The fonts and the Arabic rules (no tracking, no uppercase, taller line heights) are the same as DESIGN.md §2. Focusable items are at least 48 dp tall.
 
 ### 6.3 Focus look
-- **Cards** (posters, wide cards, cast): scale to **1.08** over 150 ms ease-out, with a **3 px `bulb` ring** at the card's radius. Each card has its own `RepaintBoundary`, so growing one doesn't repaint the row. Rows leave enough padding that a grown card isn't clipped.
+- **Cards** (posters, wide cards, cast): scale to **1.08** over 150 ms ease-out, with a **3 px `bulb` ring** at the card's radius. **Wide cards** (Continue watching, 300 wide) scale to **1.04** (`TvFocusStyle.wideCardScale`): at 1.08 they reached 18 px past their sides, under the next card, and their top was cut (seen on the TCL, 2026-11-21). Each card has its own `RepaintBoundary`, so growing one doesn't repaint the row. Rows leave enough room between and above cards for the grown card and its ring (`TvCardFocus.reach`, checked in `test/tv/card_room_test.dart`).
 - **Buttons, chips, list rows, tabs:** a `boothRaised` fill and a 3 px `bulb` ring. The primary (`bulb`) button gets a `cream` ring, so it shows against its own fill.
 - Nothing else is dimmed (no opacity over images, DESIGN.md §6). Selected and focused look different: a selected chip has the phone's selected style; focus adds the ring.
 - `disableAnimations`: no grow animation (the ring and fill still show).

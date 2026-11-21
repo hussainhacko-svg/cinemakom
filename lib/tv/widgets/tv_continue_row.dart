@@ -30,6 +30,11 @@ class TvContinueRow extends ConsumerWidget {
   static const double cardWidth = 300;
   static const double cardHeight = 117;
 
+  /// Between cards, and above them: room for a focused card's growth and
+  /// ring (TvCardFocus.reach), or it slides under its neighbour or is cut.
+  static const double gap = 16;
+  static const double topRoom = TvPoster.growRoom - 8;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entries = ref.watch(continueEntriesProvider).value ?? const [];
@@ -40,18 +45,18 @@ class TvContinueRow extends ConsumerWidget {
       children: [
         TvSectionTitle(l10n.rowContinueWatching),
         SizedBox(
-          height: TvPoster.growRoom - 8 + cardHeight + 16,
+          height: topRoom + cardHeight + gap,
           child: TvZone.row(
             order: order,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsetsDirectional.fromSTEB(
                 TvSpace.safeH,
-                TvPoster.growRoom - 8,
+                topRoom,
                 TvSpace.safeH,
                 0,
               ),
-              itemExtent: cardWidth + 16,
+              itemExtent: cardWidth + gap,
               itemCount: entries.length,
               itemBuilder: (context, i) => Align(
                 alignment: AlignmentDirectional.topStart,
@@ -114,6 +119,7 @@ class _ContinueCard extends StatelessWidget {
         child: TvCardFocus(
           focused: focused,
           radius: 12,
+          scale: TvFocusStyle.wideCardScale,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
