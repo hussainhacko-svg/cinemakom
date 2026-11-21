@@ -11,6 +11,7 @@ import android.os.StatFs
 import android.view.Display
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 /**
@@ -30,6 +31,16 @@ open class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         requestHighestRefreshRate()
     }
+
+    // TVs draw with Skia, not Impeller: on the TCL (MediaTek MT5896) Impeller
+    // on Vulkan showed a 4K video frame too long every 1-2 s, Skia almost
+    // never; 1080p was smooth on both (docs/TV.md §9, 2026-11-21). Flutter
+    // plans to remove this opt-out: re-measure with tool/tv_cadence.sh when
+    // upgrading Flutter. Phones keep Impeller.
+    override fun getFlutterShellArgs(): FlutterShellArgs =
+        super.getFlutterShellArgs().apply {
+            if (isTv) add(FlutterShellArgs.ARG_DISABLE_IMPELLER)
+        }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

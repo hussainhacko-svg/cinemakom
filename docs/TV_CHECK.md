@@ -64,7 +64,7 @@ Start a movie from Details (Play), and an episode from a series.
 - [ ] A **1080p** and a **4K** title play smoothly (4K looks like 1080p: expected, `TV.md` §9.1).
 - [ ] The controls fade in and out without stutter over 4K.
 - [ ] **Subtitles are readable from the sofa** at Medium; Small and Large (Settings) change them. They move up when the controls show.
-- [ ] Not measured yet: frame times and memory with 4K (`TV.md` TV-4). Say if anything feels slow.
+- [ ] Measured 2026-11-21 (`TV.md` §9): TVs now draw with Skia, which removed most 4K hitches. Say if anything still feels slow, or if something stutters the first time it appears.
 - [ ] Each subtitle line shows **once**. (On Linux, in the live screenshot run, one Arabic line was drawn twice; it may be the subtitle file or mpv, but check on the TV.)
 
 ## 8. Search (TV-5)
