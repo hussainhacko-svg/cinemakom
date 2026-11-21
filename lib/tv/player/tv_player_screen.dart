@@ -493,7 +493,15 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
             phase == PlayerPhase.recovering ||
             (_showBuffering && state.buffering));
     final next = state.nextEpisode;
-    final upNext = next != null && state.upNext != UpNext.none && !failed;
+    // On TV the card waits for the countdown (the last 10 s, or the end of
+    // the file), so it doesn't cover the credits' last minutes; the earlier
+    // "card" stage shows nothing here (owner's call, 2026-11-21). Next
+    // episode in the controls still works.
+    final upNext =
+        next != null &&
+        (state.upNext == UpNext.countdown ||
+            state.upNext == UpNext.stillWatching) &&
+        !failed;
     final intro = state.intro != null && phase == PlayerPhase.ready && !upNext;
     final resumed = state.resumedFrom != null && phase == PlayerPhase.ready;
     final watching = !_visible && !failed;
@@ -992,8 +1000,8 @@ class _UpNextCard extends StatelessWidget {
       ],
     );
     final card = Container(
-      constraints: const BoxConstraints(maxWidth: 540),
-      padding: const EdgeInsets.all(14),
+      constraints: const BoxConstraints(maxWidth: 480),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: MarqueeColors.booth,
         border: Border.all(color: MarqueeColors.velvet),
@@ -1003,14 +1011,14 @@ class _UpNextCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 112,
-            height: 63,
+            width: 88,
+            height: 50,
             child: MediaImage(
               url: next.imageUrl,
               borderRadius: const BorderRadius.all(Radius.circular(6)),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1030,12 +1038,12 @@ class _UpNextCard extends StatelessWidget {
                   '${episodeLabel(l10n, next.numbering)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: asking ? text.caption : text.title,
+                  style: asking ? text.caption : text.label,
                 ),
                 if (upNext == UpNext.countdown) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   SizedBox(
-                    width: 200,
+                    width: 160,
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: 1),
                       duration: still ? Duration.zero : upNextCountdown,
@@ -1051,7 +1059,7 @@ class _UpNextCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 buttons,
               ],
             ),

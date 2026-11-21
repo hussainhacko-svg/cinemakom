@@ -317,7 +317,7 @@ Differences from the artboards, for the TV check:
 - The subtitles panel lists Off first (PLAYER.md §7.2's order); the artboard has it last. Sync is below the tracks (owner's choice).
 - **No artboard yet**, built from the system sheet's pieces:
   - the focused seek bar (the thumb grows to 20 with a `cream` ring, like the `bulb` button's);
-  - the Up next card (`booth`, a 112 × 63 image, Play now and Hide, a `bulb` line that fills during the countdown; it says "Still watching?" when asking);
+  - the Up next card (`booth`, at most 480 wide, an 88 × 50 image, Play now and Hide, a `bulb` line that fills during the countdown; it says "Still watching?" when asking). *On TV it shows only for the countdown, the last 10 s (or once the file ended), not from the "watched" point like the phone, so it doesn't cover the credits (owner, 2026-11-21); Next episode in the controls works before that;*
   - "Resuming from 14:32" and Start over (a pill above the bar);
   - the failure screen (the message, then Try again focused and Back; Back alone when there are no streams);
   - the notes for a lowered quality or failed subtitles (a `booth` pill at the top for 4 s; the phone uses a snack bar).

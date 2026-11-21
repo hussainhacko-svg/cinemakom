@@ -12,36 +12,36 @@ Do the whole list in English, then switch to Arabic in Settings and repeat the p
 
 Start a movie from Details (Play), and an episode from a series.
 
-- [ ] It opens with the controls up and **Play/Pause focused** (a `cream` ring around the `bulb` circle).
-- [ ] The top shows the title (and "Season 2 · Episode 5" for an episode) at the start, and the chips at the end: subtitles, quality, speed, fit.
-- [ ] **Up** from Play/Pause → the seek bar (the thumb grows, with a `cream` ring) → Up again → the chips. **Down** comes back the same way.
-- [ ] **Left/Right** along the bottom: −10, Play/Pause, +10, then Episodes and Next episode (series only). At the ends nothing happens.
-- [ ] −10 and +10 jump back and forward 10 s.
-- [ ] The controls **hide after 5 s** without a key while playing, and stay while paused.
-- [ ] **Back** with the controls up hides them; a second Back leaves the player. Back in Details shows Resume at the right time.
+- [x] It opens with the controls up and **Play/Pause focused** (a `cream` ring around the `bulb` circle).
+- [x] The top shows the title (and "Season 2 · Episode 5" for an episode) at the start, and the chips at the end: subtitles, quality, speed, fit.
+- [x] **Up** from Play/Pause → the seek bar (the thumb grows, with a `cream` ring) → Up again → the chips. **Down** comes back the same way.
+- [x] **Left/Right** along the bottom: −10, Play/Pause, +10, then Episodes and Next episode (series only). At the ends nothing happens.
+- [x] −10 and +10 jump back and forward 10 s.
+- [x] The controls **hide after 5 s** without a key while playing, and stay while paused.
+- [x] **Back** with the controls up hides them; a second Back leaves the player. Back in Details shows Resume at the right time.
 - [ ] **(AR)** The chips and the Episodes/Next buttons swap sides; the seek bar, the times and −10 · ▶ · +10 keep their places (Right is always forward).
 
 ## 2. Player: seeking
 
-- [ ] With the controls hidden, **Right** once: a `bulb` "+0:10" pill and the frame over the bar (if the title has previews), "18:52 · was 18:42" under it, and the video jumps there about half a second after you let go.
-- [ ] **Hold Right**: steps of 10 s, then 30 s after 2 s, then 60 s after 5 s. It stays smooth, with no backlog after you let go.
-- [ ] While seeking, **Back** cancels (the video stays where it was); **OK** jumps at once.
-- [ ] The preview frame has the **video's shape** (try a wide film, e.g. Avengers: Endgame: not squashed).
-- [ ] On the **seek bar** (controls up): Left/Right scrub, OK jumps, Up/Down leave without seeking.
-- [ ] OK on the seek bar with nothing pending plays/pauses (an extra: say if it surprises you).
+- [x] With the controls hidden, **Right** once: a `bulb` "+0:10" pill and the frame over the bar (if the title has previews), "18:52 · was 18:42" under it, and the video jumps there about half a second after you let go.
+- [x] **Hold Right**: steps of 10 s, then 30 s after 2 s, then 60 s after 5 s. It stays smooth, with no backlog after you let go.
+- [-] While seeking, **Back** cancels (the video stays where it was); **OK** jumps at once.
+- [x] The preview frame has the **video's shape** (try a wide film, e.g. Avengers: Endgame: not squashed).
+- [x] On the **seek bar** (controls up): Left/Right scrub, OK jumps, Up/Down leave without seeking.
+- [x] OK on the seek bar with nothing pending plays/pauses (an extra: say if it surprises you).
 
 ## 3. Player: OK, Up/Down, media keys
 
-- [ ] Controls hidden: **OK** pauses and shows the controls (Play focused). **Up or Down** shows them without pausing.
-- [ ] The remote's **play/pause** key works with the controls up, hidden, and with a panel open. Rewind/fast forward (if the remote has them) step 10 s; Next plays the next episode.
-- [ ] The TV's **volume** keys change the TV's volume (the app doesn't touch them).
+- [x] Controls hidden: **OK** pauses and shows the controls (Play focused). **Up or Down** shows them without pausing.
+- [x] The remote's **play/pause** key works with the controls up, hidden, and with a panel open. Rewind/fast forward (if the remote has them) step 10 s; Next plays the next episode.
+- [x] The TV's **volume** keys change the TV's volume (the app doesn't touch them).
 
 ## 4. Player: panels
 
-- [ ] **Subtitles** chip: a panel at the end edge over the still-playing video, opened on the current track (✓). Rows: Off, Arabic, English (Off is first; the artboard had it last: say which you prefer).
-- [ ] With a track on: **Sync** −, the value, +, Reset. Each press moves 0.5 s and the panel stays open; Reset is skipped at 0. Picking a track closes the panel.
-- [ ] **Quality**, **Speed**, **Fit** panels open on the current choice; picking one applies it (quality keeps the position) and focus returns to that chip, which shows the new value.
-- [ ] **Back** closes any panel, focus back on its chip.
+- [x] **Subtitles** chip: a panel at the end edge over the still-playing video, opened on the current track (✓). Rows: Off, Arabic, English (Off is first; the artboard had it last: say which you prefer).
+- [x] With a track on: **Sync** −, the value, +, Reset. Each press moves 0.5 s and the panel stays open; Reset is skipped at 0. Picking a track closes the panel.
+- [x] **Quality**, **Speed**, **Fit** panels open on the current choice; picking one applies it (quality keeps the position) and focus returns to that chip, which shows the new value.
+- [x] **Back** closes any panel, focus back on its chip.
 - [ ] **(AR)** The panels come from the left, and the text reads right to left.
 
 ## 5. Player: series
@@ -49,7 +49,7 @@ Start a movie from Details (Play), and an episode from a series.
 - [ ] **Episodes**: a wide panel with seasons beside episodes, opened on the episode playing (`boothRaised`, "Playing" in `bulb`). Left to the seasons; moving onto a season shows its episodes; OK on an episode plays it in place (quality, subtitles and speed kept).
 - [ ] A long series (One Piece): the blocks of 50 are in the seasons column, and it opens on the right block.
 - [ ] **Next episode** plays the next one; it's skipped on the last episode.
-- [ ] Near the end, the **Up next** card (no artboard: judge the look): with the controls hidden it **takes the focus** (OK plays now, Right → Hide, Up/Down show the controls). In the last 10 s a `bulb` line fills and the next episode starts.
+- [ ] The **Up next** card appears only in the **last 10 s** (smaller since 2026-11-21: judge the look): with the controls hidden it **takes the focus** (OK plays now, Right → Hide, Up/Down show the controls). A `bulb` line fills and the next episode starts.
 - [ ] After 3 automatic episodes: "Still watching?" with Play now focused.
 
 ## 6. Player: Skip intro, resume, errors

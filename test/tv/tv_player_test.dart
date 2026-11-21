@@ -315,7 +315,7 @@ void main() {
     expect(find.text('Season 3 · Episode 1'), findsOneWidget);
   });
 
-  testWidgets('Up next takes the focus over the video; OK plays it', (
+  testWidgets('Up next waits for the last 10 s, then takes the focus', (
     tester,
   ) async {
     final engine = FakeEngine();
@@ -326,21 +326,52 @@ void main() {
       duration: const Duration(minutes: 22),
       at: const Duration(minutes: 20, seconds: 30),
     );
+    // Watched (95%), but not the countdown yet: nothing on TV.
+    expect(find.text('Up next'), findsNothing);
+    expect(tv.focused, 'Pause');
+
+    engine.emitPosition(const Duration(minutes: 21, seconds: 51));
+    await tester.pump();
     expect(find.text('Up next'), findsOneWidget);
     expect(find.text('Season 3 · Episode 1'), findsOneWidget);
-    // With the controls up, Play/Pause keeps the focus.
+    // With the controls up, Play/Pause keeps the focus; hidden, the card
+    // takes it. (The countdown animates: no pumpAndSettle, so keys by hand.)
     expect(tv.focused, 'Pause');
     await tester.pump(TvPlayerScreen.hideAfter);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(tv.focused, 'Play now');
-    // Right reaches Hide; Down shows the controls.
-    await tv.right();
-    expect(tv.focused, 'Hide');
-    await tv.down();
-    expect(tv.focused, 'Pause');
-    await tester.pump(TvPlayerScreen.hideAfter);
-    await tester.pumpAndSettle();
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyEvent(key);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
 
+    // Right reaches Hide; Down shows the controls.
+    await press(LogicalKeyboardKey.arrowRight);
+    expect(tv.focused, 'Hide');
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(tv.focused, 'Pause');
+    // The countdown ends: the next episode plays.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(engine.opened, hasLength(2));
+  });
+
+  testWidgets('OK on Up next plays the next episode', (tester) async {
+    final engine = FakeEngine();
+    final tv = await _open(
+      tester,
+      engine,
+      request: _episode,
+      duration: const Duration(minutes: 22),
+      at: const Duration(minutes: 20, seconds: 30),
+    );
+    engine.emitPosition(const Duration(minutes: 21, seconds: 52));
+    await tester.pump();
+    expect(find.text('Up next'), findsOneWidget);
+    await tester.pump(TvPlayerScreen.hideAfter);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tv.focused, 'Play now');
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump(const Duration(milliseconds: 500));
     expect(engine.opened, hasLength(2));
