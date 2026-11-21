@@ -110,14 +110,14 @@ class _ContinueList extends ConsumerWidget {
                   tooltip: l10n.play,
                   onPressed: () => playContinue(context, entry),
                   style: IconButton.styleFrom(
-                    backgroundColor: MarqueeColors.boothRaised,
-                    side: const BorderSide(color: MarqueeColors.velvetStrong),
+                    backgroundColor: context.palette.boothRaised,
+                    side: BorderSide(color: context.palette.velvetStrong),
                     fixedSize: const Size.square(44),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.play_arrow_rounded,
                     size: 22,
-                    color: MarqueeColors.bulb,
+                    color: context.palette.bulb,
                   ),
                 ),
               );

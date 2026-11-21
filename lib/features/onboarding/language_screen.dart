@@ -138,7 +138,7 @@ class _LanguageOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = selected ? MarqueeColors.bulb : MarqueeColors.velvetStrong;
+    final accent = selected ? context.palette.bulb : context.palette.velvetStrong;
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
@@ -146,11 +146,11 @@ class _LanguageOption extends StatelessWidget {
       excludeSemantics: true,
       label: label,
       child: Material(
-        color: MarqueeColors.booth,
+        color: context.palette.booth,
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.all(MarqueeRadius.panel),
           side: BorderSide(
-            color: selected ? MarqueeColors.bulb : MarqueeColors.velvet,
+            color: selected ? context.palette.bulb : context.palette.velvet,
             width: 2,
           ),
         ),
@@ -174,9 +174,9 @@ class _LanguageOption extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: selected
-                        ? const DecoratedBox(
+                        ? DecoratedBox(
                             decoration: BoxDecoration(
-                              color: MarqueeColors.bulb,
+                              color: context.palette.bulb,
                               shape: BoxShape.circle,
                             ),
                             child: SizedBox.square(dimension: 10),

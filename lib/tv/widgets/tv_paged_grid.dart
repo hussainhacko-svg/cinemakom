@@ -79,7 +79,7 @@ class TvPagedGrid extends ConsumerWidget {
           Flexible(
             child: Text(
               errorMessage(l10n, paged.error!),
-              style: text.body.copyWith(color: MarqueeColors.dust),
+              style: text.body.copyWith(color: context.palette.dust),
             ),
           ),
           const SizedBox(width: 20),
@@ -126,7 +126,7 @@ class TvPagedGrid extends ConsumerWidget {
           child: Center(
             child: Text(
               emptyMessage ?? l10n.listEmpty,
-              style: text.body.copyWith(color: MarqueeColors.dust),
+              style: text.body.copyWith(color: context.palette.dust),
             ),
           ),
         ),

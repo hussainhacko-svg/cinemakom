@@ -152,6 +152,7 @@ class TvSeekTrack extends StatelessWidget {
           scrub: scrub,
           focused: focused,
           overVideo: overVideo,
+          palette: context.palette,
         ),
       ),
     ),
@@ -167,6 +168,7 @@ class _TrackPainter extends CustomPainter {
     required this.scrub,
     required this.focused,
     required this.overVideo,
+    required this.palette,
   }) : super(repaint: repaint);
 
   final ValueListenable<Duration> position;
@@ -175,6 +177,7 @@ class _TrackPainter extends CustomPainter {
   final TvScrub scrub;
   final bool focused;
   final bool overVideo;
+  final MarqueePalette palette;
 
   double _at(Duration d) {
     final total = duration.inMilliseconds;
@@ -201,14 +204,14 @@ class _TrackPainter extends CustomPainter {
         bar(1),
         paint
           ..color = overVideo
-              ? MarqueeColors.night.withValues(alpha: 0.6)
-              : MarqueeColors.velvet,
+              ? palette.night.withValues(alpha: 0.6)
+              : palette.velvet,
       )
       ..drawRRect(
         bar(_at(buffered.value)),
-        paint..color = MarqueeColors.velvetStrong,
+        paint..color = palette.velvetStrong,
       )
-      ..drawRRect(bar(_at(shown)), paint..color = MarqueeColors.bulb);
+      ..drawRRect(bar(_at(shown)), paint..color = palette.bulb);
     if (scrub.active) {
       final x = w * _at(scrub.from);
       canvas.drawRRect(
@@ -219,13 +222,13 @@ class _TrackPainter extends CustomPainter {
           y + 6,
           const Radius.circular(2),
         ),
-        paint..color = MarqueeColors.cream,
+        paint..color = palette.cream,
       );
     }
     final big = focused || overVideo || scrub.active;
     final r = big ? 10.0 : 8.0;
     final centre = Offset(w * _at(shown), y);
-    canvas.drawCircle(centre, r, paint..color = MarqueeColors.bulb);
+    canvas.drawCircle(centre, r, paint..color = palette.bulb);
     if (focused) {
       canvas.drawCircle(
         centre,
@@ -233,7 +236,7 @@ class _TrackPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3
-          ..color = MarqueeColors.cream,
+          ..color = palette.cream,
       );
     }
   }
@@ -244,7 +247,8 @@ class _TrackPainter extends CustomPainter {
       old.focused != focused ||
       old.overVideo != overVideo ||
       old.position != position ||
-      old.scrub != scrub;
+      old.scrub != scrub ||
+      old.palette != palette;
 }
 
 /// Above the seek target (the Watching design): "+5:00" in a `bulb` pill,
@@ -272,6 +276,7 @@ class TvSeekBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final text = MarqueeTvText.of(context);
     final frame = this.frame;
     return Column(
@@ -281,23 +286,23 @@ class TvSeekBubble extends StatelessWidget {
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
-          decoration: const ShapeDecoration(
-            color: MarqueeColors.bulb,
-            shape: StadiumBorder(),
+          decoration: ShapeDecoration(
+            color: p.bulbFill,
+            shape: const StadiumBorder(),
           ),
           child: Text(
             seekDelta(delta),
             textDirection: TextDirection.ltr,
             style: text.caption
                 .withWeight(FontWeight.w600)
-                .copyWith(color: MarqueeColors.onBulb, height: 1),
+                .copyWith(color: p.onBulb, height: 1),
           ),
         ),
         if (frame != null) ...[
           const SizedBox(height: 8),
           DecoratedBox(
             decoration: BoxDecoration(
-              border: Border.all(color: MarqueeColors.cream, width: 2),
+              border: Border.all(color: p.cream, width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
@@ -403,9 +408,10 @@ class TvSeekTimes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final p = context.palette;
     final text = MarqueeTvText.of(context);
     final style = text.caption
-        .copyWith(fontSize: 15, color: MarqueeColors.cream)
+        .copyWith(fontSize: 15, color: p.cream)
         .withWeight(FontWeight.w500);
     return ListenableBuilder(
       listenable: scrub,
@@ -418,12 +424,12 @@ class TvSeekTimes extends StatelessWidget {
               Text(formatClock(target), style: style),
               Text(
                 ' · ${l10n.tvPlayerWas(formatClock(scrub.from))}',
-                style: style.copyWith(color: MarqueeColors.creamSoft),
+                style: style.copyWith(color: p.creamSoft),
               ),
               const Spacer(),
               Text(
                 formatClock(duration),
-                style: style.copyWith(color: MarqueeColors.creamSoft),
+                style: style.copyWith(color: p.creamSoft),
               ),
             ],
           ),

@@ -32,7 +32,7 @@ class MediaImage extends ConsumerWidget {
     final url = this.url;
     final placeholder = DecoratedBox(
       decoration: BoxDecoration(
-        color: MarqueeColors.booth,
+        color: context.palette.booth,
         borderRadius: borderRadius,
       ),
     );

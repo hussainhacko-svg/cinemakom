@@ -117,7 +117,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(bottom: MarqueeSpace.s),
     child: Material(
-      color: MarqueeColors.booth,
+      color: context.palette.booth,
       borderRadius: const BorderRadius.all(MarqueeRadius.card),
       child: InkWell(
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
@@ -243,7 +243,7 @@ class _ActiveRow extends ConsumerWidget {
           width: double.infinity,
           child: ProgressLine(
             value: fraction,
-            track: MarqueeColors.velvetStrong,
+            track: context.palette.velvetStrong,
           ),
         ),
         const SizedBox(height: MarqueeSpace.xs),
@@ -252,7 +252,7 @@ class _ActiveRow extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: d.status == DownloadStatus.failed
-              ? text.caption.copyWith(color: MarqueeColors.ember)
+              ? text.caption.copyWith(color: context.palette.ember)
               : text.caption,
         ),
         if (pace.isNotEmpty)
@@ -302,19 +302,19 @@ class _TitleRow extends ConsumerWidget {
           : () => showDownloadMenu(context, ref, first),
       trailing: [
         if (series)
-          const Padding(
+          Padding(
             padding: EdgeInsetsDirectional.only(end: MarqueeSpace.s),
             // Mirrors in RTL (the icon matches the text direction).
-            child: Icon(Icons.chevron_right_rounded, color: MarqueeColors.dust),
+            child: Icon(Icons.chevron_right_rounded, color: context.palette.dust),
           )
         else
           IconButton(
             tooltip: l10n.play,
             onPressed: () => openPlayer(context, first.request),
-            icon: const Icon(
+            icon: Icon(
               Icons.play_arrow_rounded,
               size: 22,
-              color: MarqueeColors.bulb,
+              color: context.palette.bulb,
             ),
           ),
       ],

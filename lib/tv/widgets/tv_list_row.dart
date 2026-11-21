@@ -49,7 +49,7 @@ class TvListRow extends StatelessWidget {
           height: height,
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : null,
+            color: focused ? context.palette.boothRaised : null,
             borderRadius: BorderRadius.circular(radius),
           ),
           child: Row(
@@ -64,8 +64,8 @@ class TvListRow extends StatelessWidget {
                       .copyWith(
                         height: 1.2,
                         color: enabled
-                            ? MarqueeColors.cream
-                            : MarqueeColors.dustDim,
+                            ? context.palette.cream
+                            : context.palette.dustDim,
                       ),
                 ),
               ),
@@ -84,7 +84,7 @@ class TvListRow extends StatelessWidget {
               ],
               if (selected) ...[
                 const SizedBox(width: 12),
-                const Icon(Icons.check, size: 20, color: MarqueeColors.bulb),
+                Icon(Icons.check, size: 20, color: context.palette.bulb),
               ],
             ],
           ),

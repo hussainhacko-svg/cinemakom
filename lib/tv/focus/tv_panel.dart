@@ -25,7 +25,14 @@ Future<T?> showTvSidePanel<T>(
   final result = await Navigator.of(
     context,
     rootNavigator: true,
-  ).push<T>(_TvPanelRoute<T>(builder: builder, width: width, scrim: scrim));
+  ).push<T>(
+    _TvPanelRoute<T>(
+      builder: builder,
+      width: width,
+      scrim: scrim,
+      night: context.palette.night,
+    ),
+  );
   if (opener != null && opener.context != null && opener.canRequestFocus) {
     opener.requestFocus();
   }
@@ -37,14 +44,16 @@ class _TvPanelRoute<T> extends PopupRoute<T> {
     required this.builder,
     required this.width,
     required this.scrim,
+    required this.night,
   });
 
   final Widget Function(BuildContext, ScrollController) builder;
   final double width;
   final double scrim;
+  final Color night;
 
   @override
-  Color? get barrierColor => MarqueeColors.night.withValues(alpha: scrim);
+  Color? get barrierColor => night.withValues(alpha: scrim);
 
   @override
   bool get barrierDismissible => false;
@@ -72,10 +81,10 @@ class _TvPanelRoute<T> extends PopupRoute<T> {
           TvSpace.safeH,
           TvSpace.safeV,
         ),
-        decoration: const BoxDecoration(
-          color: MarqueeColors.booth,
+        decoration: BoxDecoration(
+          color: context.palette.booth,
           border: BorderDirectional(
-            start: BorderSide(color: MarqueeColors.velvet),
+            start: BorderSide(color: context.palette.velvet),
           ),
         ),
         child: Material(

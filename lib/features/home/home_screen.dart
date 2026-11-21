@@ -80,8 +80,8 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: MarqueeColors.bulb,
-          backgroundColor: MarqueeColors.booth,
+          color: context.palette.bulb,
+          backgroundColor: context.palette.booth,
           onRefresh: () async {
             refreshHome(ref);
             // Keep the spinner until the hero is back (or has failed).

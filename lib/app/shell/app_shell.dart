@@ -61,8 +61,8 @@ class AppShell extends StatelessWidget {
       return Scaffold(
         body: navigationShell,
         bottomNavigationBar: DecoratedBox(
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: MarqueeColors.boothRaised)),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: context.palette.boothRaised)),
           ),
           child: NavigationBar(
             selectedIndex: index,
@@ -83,9 +83,9 @@ class AppShell extends StatelessWidget {
       body: Row(
         children: [
           DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: BorderDirectional(
-                end: BorderSide(color: MarqueeColors.boothRaised),
+                end: BorderSide(color: context.palette.boothRaised),
               ),
             ),
             child: NavigationRail(
@@ -97,11 +97,11 @@ class AppShell extends StatelessWidget {
                   ? NavigationRailLabelType.none
                   : NavigationRailLabelType.all,
               selectedLabelTextStyle: extended
-                  ? sideLabel.copyWith(color: MarqueeColors.bulb)
+                  ? sideLabel.copyWith(color: context.palette.bulb)
                   : null,
               unselectedLabelTextStyle: extended
                   ? sideLabel
-                        .copyWith(color: MarqueeColors.dust)
+                        .copyWith(color: context.palette.dust)
                         .withWeight(FontWeight.w500)
                   : null,
               leading: Padding(

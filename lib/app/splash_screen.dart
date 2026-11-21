@@ -32,7 +32,7 @@ class SplashScreen extends StatelessWidget {
             else ...[
               Text(
                 l10n.startupFailed,
-                style: text.title.copyWith(color: MarqueeColors.cream),
+                style: text.title.copyWith(color: context.palette.cream),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: MarqueeSpace.l),

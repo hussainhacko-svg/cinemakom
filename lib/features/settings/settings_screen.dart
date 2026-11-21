@@ -51,12 +51,12 @@ class SettingsScreen extends ConsumerWidget {
       Choice(
         AppLanguage.english,
         l10n.languageEnglish,
-        labelStyle: const MarqueeText(arabic: false).title,
+        labelStyle: MarqueeText(arabic: false, palette: context.palette).title,
       ),
       Choice(
         AppLanguage.arabic,
         l10n.languageArabic,
-        labelStyle: const MarqueeText(arabic: true).title,
+        labelStyle: MarqueeText(arabic: true, palette: context.palette).title,
       ),
     ];
     final qualities = [
@@ -72,6 +72,9 @@ class SettingsScreen extends ConsumerWidget {
     final sizes = [
       for (final s in SubtitleSize.values)
         Choice(s, subtitleSizeLabel(l10n, s)),
+    ];
+    final themes = [
+      for (final t in AppThemeProfile.values) Choice(t, themeLabel(l10n, t)),
     ];
 
     return TabPage(
@@ -101,6 +104,16 @@ class SettingsScreen extends ConsumerWidget {
                       languages,
                       settings.effectiveLanguage,
                       notifier.setLanguage,
+                    ),
+                  ),
+                  SettingsRow(
+                    label: l10n.settingsTheme,
+                    value: themeLabel(l10n, settings.theme),
+                    onTap: () => pick(
+                      l10n.settingsTheme,
+                      themes,
+                      settings.theme,
+                      notifier.setTheme,
                     ),
                   ),
                   if (isTouchMobile)

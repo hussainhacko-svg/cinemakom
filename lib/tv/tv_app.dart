@@ -14,6 +14,7 @@ import '../app/widgets/bulb_loader.dart';
 import '../app/widgets/error_view.dart';
 import '../app/widgets/media_image.dart';
 import '../core/downloads/downloader.dart';
+import '../core/platform/platform_info.dart';
 import '../core/storage/preferences.dart';
 import '../data/repositories/downloads_repository.dart';
 import 'focus/tv_back.dart';
@@ -64,7 +65,7 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    SystemNavigator.setFrameworkHandlesBack(true);
+    if (!isAppleTv) SystemNavigator.setFrameworkHandlesBack(true);
   }
 
   @override
@@ -75,12 +76,12 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
 
   @override
   Future<bool> didPopRoute() async {
-    tvHandleBack();
-    return true;
+    final handled = tvHandleBack();
+    return isAppleTv ? handled : true;
   }
 
   bool _handlesBack(NavigationNotification _) {
-    SystemNavigator.setFrameworkHandlesBack(true);
+    if (!isAppleTv) SystemNavigator.setFrameworkHandlesBack(true);
     return true;
   }
 
@@ -107,6 +108,7 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
     final language = ref.watch(
       settingsProvider.select((s) => s.effectiveLanguage),
     );
+    final theme = ref.watch(settingsProvider.select((s) => s.theme));
     final images = ref.watch(networkImagesProvider);
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
@@ -114,17 +116,25 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
       locale: language.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: _localizationsDelegates,
-      theme: buildMarqueeTvTheme(arabic: language == AppLanguage.arabic),
+      theme: buildMarqueeTvTheme(
+        arabic: language == AppLanguage.arabic,
+        palette: MarqueePalette.forProfile(theme),
+      ),
       shortcuts: tvShortcuts,
       actions: _actions,
       onNavigationNotification: _handlesBack,
       routerConfig: ref.watch(tvRouterProvider),
       builder: (context, child) {
-        TvArtwork.sizeCache(MediaQuery.devicePixelRatioOf(context));
-        return NotificationListener<ScrollNotification>(
-          onNotification: images ? TvArtwork.onScroll : null,
-          child: _Downloads(child: TvFocusWatchdog(child: child!)),
+        final content = Builder(
+          builder: (context) {
+            TvArtwork.sizeCache(MediaQuery.devicePixelRatioOf(context));
+            return NotificationListener<ScrollNotification>(
+              onNotification: images ? TvArtwork.onScroll : null,
+              child: _Downloads(child: TvFocusWatchdog(child: child!)),
+            );
+          },
         );
+        return isAppleTv ? _AppleTvViewport(child: content) : content;
       },
     );
   }
@@ -141,15 +151,15 @@ class _Splash extends StatelessWidget {
   Widget build(BuildContext context) {
     final error = this.error;
     if (error == null) {
-      return const ColoredBox(
-        color: MarqueeColors.night,
+      return ColoredBox(
+        color: context.palette.night,
         child: Center(child: BulbLoader()),
       );
     }
     final l10n = AppLocalizations.of(context);
     final text = MarqueeTvText.of(context);
     return Material(
-      color: MarqueeColors.night,
+      color: context.palette.night,
       child: TvScreen(
         builder: (context, scroll) => Padding(
           padding: TvSpace.safe,
@@ -197,6 +207,7 @@ class _DownloadsState extends ConsumerState<_Downloads> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!supportsDownloads) return;
     final locale = Localizations.localeOf(context);
     if (locale == _locale) return;
     final first = _locale == null;
@@ -214,4 +225,43 @@ class _DownloadsState extends ConsumerState<_Downloads> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Maps Apple TV's 1920 × 1080 pt canvas to Cinemakom's 960 × 540 dp TV
+/// design space while multiplying `devicePixelRatio` by the scale factor
+/// (so Apple TV 4K renders posters at crisp 4× physical density).
+class _AppleTvViewport extends StatelessWidget {
+  const _AppleTvViewport({required this.child});
+
+  final Widget child;
+
+  static const double _designWidth = 960;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    if (mq.size.width <= 1280 || mq.size.height <= 0) return child;
+    final scale = mq.size.width / _designWidth;
+    final scaledSize = Size(mq.size.width / scale, mq.size.height / scale);
+    return ColoredBox(
+      color: context.palette.night,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: scaledSize.width,
+          height: scaledSize.height,
+          child: MediaQuery(
+            data: mq.copyWith(
+              size: scaledSize,
+              devicePixelRatio: mq.devicePixelRatio * scale,
+              padding: mq.padding / scale,
+              viewPadding: mq.viewPadding / scale,
+              viewInsets: mq.viewInsets / scale,
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
 }

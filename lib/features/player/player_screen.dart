@@ -618,7 +618,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         if (!didPop) _unlock();
       },
       child: Scaffold(
-        backgroundColor: MarqueeColors.screen,
+        backgroundColor: context.palette.screen,
         body: CallbackShortcuts(
           bindings: _shortcuts,
           child: Focus(
@@ -796,10 +796,11 @@ class _ChipIcon extends StatelessWidget {
       onPressed: onPressed,
       icon: Icon(icon, size: 20),
       style: withFocusRing(
+        context,
         IconButton.styleFrom(
-          backgroundColor: MarqueeColors.booth,
-          foregroundColor: MarqueeColors.cream,
-          side: const BorderSide(color: MarqueeColors.velvet),
+          backgroundColor: context.palette.booth,
+          foregroundColor: context.palette.cream,
+          side: BorderSide(color: context.palette.velvet),
           fixedSize: const Size.square(44),
         ),
       ),
@@ -830,10 +831,11 @@ class _Unlock extends StatelessWidget {
             icon: const Icon(Icons.lock_open_outlined, size: 20),
             label: Text(AppLocalizations.of(context).playerUnlock),
             style: withFocusRing(
+              context,
               TextButton.styleFrom(
-                backgroundColor: MarqueeColors.booth,
-                foregroundColor: MarqueeColors.cream,
-                side: const BorderSide(color: MarqueeColors.velvet),
+                backgroundColor: context.palette.booth,
+                foregroundColor: context.palette.cream,
+                side: BorderSide(color: context.palette.velvet),
                 shape: const StadiumBorder(),
                 minimumSize: const Size(44, 44),
                 padding: const EdgeInsetsDirectional.symmetric(
@@ -903,8 +905,8 @@ class _Resumed extends StatelessWidget {
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: MarqueeColors.booth,
-              border: Border.all(color: MarqueeColors.velvet),
+              color: context.palette.booth,
+              border: Border.all(color: context.palette.velvet),
               borderRadius: const BorderRadius.all(Radius.circular(999)),
             ),
             child: Padding(
@@ -920,8 +922,9 @@ class _Resumed extends StatelessWidget {
                   TextButton(
                     onPressed: onStartOver,
                     style: withFocusRing(
+                      context,
                       TextButton.styleFrom(
-                        foregroundColor: MarqueeColors.bulb,
+                        foregroundColor: context.palette.bulb,
                         minimumSize: const Size(44, 44),
                       ),
                     ),
@@ -949,8 +952,8 @@ class _Toast extends StatelessWidget {
     alignment: const Alignment(0, -0.45),
     child: DecoratedBox(
       decoration: BoxDecoration(
-        color: MarqueeColors.booth,
-        border: Border.all(color: MarqueeColors.velvet),
+        color: context.palette.booth,
+        border: Border.all(color: context.palette.velvet),
         borderRadius: const BorderRadius.all(Radius.circular(999)),
       ),
       child: Padding(
@@ -961,7 +964,7 @@ class _Toast extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: MarqueeColors.cream),
+            Icon(icon, size: 18, color: context.palette.cream),
             const SizedBox(width: MarqueeSpace.s),
             Text(label, style: MarqueeText.of(context).label),
           ],
@@ -1000,7 +1003,7 @@ class _Failure extends StatelessWidget {
                 unavailable ? l10n.playerUnavailable : l10n.playerFailed,
                 textAlign: TextAlign.center,
                 style: MarqueeText.of(context).body
-                    .copyWith(color: MarqueeColors.creamSoft),
+                    .copyWith(color: context.palette.creamSoft),
               ),
               const SizedBox(height: MarqueeSpace.l),
               unavailable

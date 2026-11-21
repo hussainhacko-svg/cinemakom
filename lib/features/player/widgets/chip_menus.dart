@@ -91,8 +91,8 @@ class _PopoverRoute<T> extends PopupRoute<T> {
       type: MaterialType.transparency,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: MarqueeColors.booth,
-          border: Border.all(color: MarqueeColors.velvet),
+          color: context.palette.booth,
+          border: Border.all(color: context.palette.velvet),
           borderRadius: const BorderRadius.all(MarqueeRadius.card),
         ),
         child: Padding(
@@ -256,8 +256,8 @@ class MenuRow extends StatelessWidget {
                             .withWeight(FontWeight.w500)
                             .copyWith(
                               color: selected
-                                  ? MarqueeColors.bulb
-                                  : MarqueeColors.cream,
+                                  ? context.palette.bulb
+                                  : context.palette.cream,
                             ),
                       ),
                       if (caption != null) Text(caption, style: text.caption),
@@ -267,7 +267,7 @@ class MenuRow extends StatelessWidget {
                 if (trailing != null)
                   Text(trailing, style: text.label)
                 else if (selected)
-                  const Icon(Icons.check, color: MarqueeColors.bulb, size: 20),
+                  Icon(Icons.check, color: context.palette.bulb, size: 20),
               ],
             ),
           ),
@@ -352,7 +352,7 @@ class SubtitleMenu extends ConsumerWidget {
         MarqueeSpace.xl,
         MarqueeSpace.s,
       ),
-      child: Text(label, style: text.label.copyWith(color: MarqueeColors.dust)),
+      child: Text(label, style: text.label.copyWith(color: context.palette.dust)),
     );
 
     final tracks = [
@@ -418,8 +418,8 @@ class SubtitleMenu extends ConsumerWidget {
                             textDirection: direction,
                             style: text.label.copyWith(
                               color: delay == Duration.zero
-                                  ? MarqueeColors.cream
-                                  : MarqueeColors.bulb,
+                                  ? context.palette.cream
+                                  : context.palette.bulb,
                             ),
                           ),
                         ),
@@ -438,8 +438,8 @@ class SubtitleMenu extends ConsumerWidget {
                         ? null
                         : () => controller.setSubtitleDelay(Duration.zero),
                     style: TextButton.styleFrom(
-                      foregroundColor: MarqueeColors.bulb,
-                      disabledForegroundColor: MarqueeColors.dustDim,
+                      foregroundColor: context.palette.bulb,
+                      disabledForegroundColor: context.palette.dustDim,
                       minimumSize: const Size(44, 44),
                     ),
                     child: Text(l10n.playerSyncReset),
@@ -497,10 +497,10 @@ class _Pill extends StatelessWidget {
     child: TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        backgroundColor: selected ? MarqueeColors.boothRaised : null,
-        foregroundColor: selected ? MarqueeColors.cream : MarqueeColors.dust,
+        backgroundColor: selected ? context.palette.boothRaised : null,
+        foregroundColor: selected ? context.palette.cream : context.palette.dust,
         side: BorderSide(
-          color: selected ? MarqueeColors.velvetStrong : MarqueeColors.velvet,
+          color: selected ? context.palette.velvetStrong : context.palette.velvet,
         ),
         shape: const StadiumBorder(),
         minimumSize: const Size(44, 36),
@@ -531,9 +531,9 @@ class _StepButton extends StatelessWidget {
     onPressed: onPressed,
     icon: Icon(icon, size: 20),
     style: IconButton.styleFrom(
-      backgroundColor: MarqueeColors.boothRaised,
-      foregroundColor: MarqueeColors.cream,
-      side: const BorderSide(color: MarqueeColors.velvet),
+      backgroundColor: context.palette.boothRaised,
+      foregroundColor: context.palette.cream,
+      side: BorderSide(color: context.palette.velvet),
       fixedSize: const Size.square(44),
     ),
   );

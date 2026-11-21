@@ -47,7 +47,7 @@ class TvWelcomeScreen extends ConsumerWidget {
                   style: text.title.copyWith(
                     fontSize: 22,
                     fontFamily: MarqueeFonts.uiArabic,
-                    color: MarqueeColors.creamSoft,
+                    color: context.palette.creamSoft,
                   ),
                 ),
                 const SizedBox(height: 34),
@@ -117,12 +117,12 @@ class _LanguageButton extends StatelessWidget {
           height: 88,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
+            color: focused ? context.palette.boothRaised : context.palette.booth,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: focused
-                  ? MarqueeColors.velvetStrong
-                  : MarqueeColors.velvet,
+                  ? context.palette.velvetStrong
+                  : context.palette.velvet,
             ),
           ),
           child: Text(

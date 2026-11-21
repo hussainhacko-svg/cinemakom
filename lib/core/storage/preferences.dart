@@ -62,11 +62,30 @@ enum SubtitleSize {
 /// device's own auto-rotate setting decides. The player is always landscape.
 enum ScreenRotation { portrait, auto }
 
+/// The selectable dark cinema colour profiles. [marquee] (cocoa & warm gold)
+/// is the default; [bordeaux] is the obsidian-black & Bordeaux red profile.
+enum AppThemeProfile {
+  marquee('marquee'),
+  bordeaux('bordeaux');
+
+  const AppThemeProfile(this.code);
+
+  final String code;
+
+  static AppThemeProfile? fromCode(String? code) {
+    for (final t in values) {
+      if (t.code == code) return t;
+    }
+    return null;
+  }
+}
+
 /// The user's settings. [language] is null until the first-launch picker
 /// has been answered.
 class AppSettings {
   const AppSettings({
     this.language,
+    this.theme = AppThemeProfile.marquee,
     this.defaultQuality = PreferredQuality.p1080,
     this.defaultSubtitle = SubtitlePreference.arabic,
     this.subtitleSize = SubtitleSize.medium,
@@ -75,6 +94,7 @@ class AppSettings {
   });
 
   final AppLanguage? language;
+  final AppThemeProfile theme;
   final PreferredQuality defaultQuality;
   final SubtitlePreference defaultSubtitle;
   final SubtitleSize subtitleSize;
@@ -91,6 +111,7 @@ class AppSettings {
 
   AppSettings copyWith({
     AppLanguage? language,
+    AppThemeProfile? theme,
     PreferredQuality? defaultQuality,
     SubtitlePreference? defaultSubtitle,
     SubtitleSize? subtitleSize,
@@ -98,6 +119,7 @@ class AppSettings {
     String? downloadFolder,
   }) => AppSettings(
     language: language ?? this.language,
+    theme: theme ?? this.theme,
     defaultQuality: defaultQuality ?? this.defaultQuality,
     defaultSubtitle: defaultSubtitle ?? this.defaultSubtitle,
     subtitleSize: subtitleSize ?? this.subtitleSize,
@@ -109,6 +131,7 @@ class AppSettings {
   bool operator ==(Object other) =>
       other is AppSettings &&
       other.language == language &&
+      other.theme == theme &&
       other.defaultQuality == defaultQuality &&
       other.defaultSubtitle == defaultSubtitle &&
       other.subtitleSize == subtitleSize &&
@@ -118,6 +141,7 @@ class AppSettings {
   @override
   int get hashCode => Object.hash(
     language,
+    theme,
     defaultQuality,
     defaultSubtitle,
     subtitleSize,
@@ -191,6 +215,7 @@ class MemoryPreferenceStore implements PreferenceStore {
 
 abstract final class PreferenceKeys {
   static const language = 'language';
+  static const theme = 'theme';
   static const defaultQuality = 'defaultQuality';
   static const defaultSubtitle = 'defaultSubtitle';
   static const subtitleSize = 'subtitleSize';
@@ -208,6 +233,7 @@ abstract final class PreferenceKeys {
 
   static const all = {
     language,
+    theme,
     defaultQuality,
     defaultSubtitle,
     subtitleSize,
@@ -225,6 +251,9 @@ AppSettings readSettings(PreferenceStore store) {
   final subtitle = store.getString(PreferenceKeys.defaultSubtitle);
   return AppSettings(
     language: AppLanguage.fromCode(store.getString(PreferenceKeys.language)),
+    theme:
+        AppThemeProfile.fromCode(store.getString(PreferenceKeys.theme)) ??
+        defaults.theme,
     defaultQuality:
         PreferredQuality.fromHeight(
           store.getInt(PreferenceKeys.defaultQuality),
@@ -276,6 +305,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
   Future<void> setLanguage(AppLanguage language) async {
     state = state.copyWith(language: language);
     await _store.setString(PreferenceKeys.language, language.code);
+  }
+
+  Future<void> setTheme(AppThemeProfile theme) async {
+    state = state.copyWith(theme: theme);
+    await _store.setString(PreferenceKeys.theme, theme.code);
   }
 
   Future<void> setDefaultQuality(PreferredQuality quality) async {

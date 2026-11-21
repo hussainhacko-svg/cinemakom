@@ -971,5 +971,11 @@
   "tvDelete": "Delete",
   "@tvDelete": {"description": "TV Downloads: deletes a finished download (asks first)"},
   "tvMovie": "Movie",
-  "@tvMovie": {"description": "TV Downloads: a downloaded movie's row, e.g. 'Movie · 1080p · 2.9 GB'"}
+  "@tvMovie": {"description": "TV Downloads: a downloaded movie's row, e.g. 'Movie · 1080p · 2.9 GB'"},
+  "settingsTheme": "Theme",
+  "@settingsTheme": {"description": "Settings row for picking the colour theme profile"},
+  "themeMarquee": "Marquee (Gold)",
+  "@themeMarquee": {"description": "Original cocoa and warm gold theme"},
+  "themeBordeaux": "Bordeaux (Red)",
+  "@themeBordeaux": {"description": "Obsidian black and Bordeaux red theme"}
 }

@@ -117,12 +117,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       onChanged: _onChanged,
                       onSubmitted: _remember,
                       textInputAction: TextInputAction.search,
-                      style: text.body.copyWith(color: MarqueeColors.cream),
+                      style: text.body.copyWith(color: context.palette.cream),
                       decoration: InputDecoration(
                         hintText: l10n.searchHint,
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search,
-                          color: MarqueeColors.dust,
+                          color: context.palette.dust,
                           size: 20,
                         ),
                         suffixIcon: _field.text.isEmpty
@@ -130,9 +130,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             : IconButton(
                                 tooltip: l10n.clearSearch,
                                 onPressed: _clear,
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.close,
-                                  color: MarqueeColors.dust,
+                                  color: context.palette.dust,
                                 ),
                               ),
                       ),
@@ -222,10 +222,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   padding: const EdgeInsetsDirectional.only(start: 4),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.history,
                         size: 20,
-                        color: MarqueeColors.dust,
+                        color: context.palette.dust,
                       ),
                       const SizedBox(width: MarqueeSpace.m),
                       Expanded(
@@ -233,16 +233,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           query,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: text.body.copyWith(color: MarqueeColors.cream),
+                          style: text.body.copyWith(color: context.palette.cream),
                         ),
                       ),
                       IconButton(
                         tooltip: l10n.removeSearch(query),
                         onPressed: () => notifier.remove(query),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close,
                           size: 18,
-                          color: MarqueeColors.dust,
+                          color: context.palette.dust,
                         ),
                       ),
                     ],
@@ -297,7 +297,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             itemCount: list.length,
             itemBuilder: (context, i) => Material(
-              color: MarqueeColors.booth,
+              color: context.palette.booth,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(MarqueeRadius.card),
               ),
@@ -310,9 +310,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                   child: Row(
                     children: [
-                      const DecoratedBox(
+                      DecoratedBox(
                         decoration: BoxDecoration(
-                          color: MarqueeColors.velvetStrong,
+                          color: context.palette.velvetStrong,
                           shape: BoxShape.circle,
                         ),
                         child: SizedBox.square(dimension: 6),

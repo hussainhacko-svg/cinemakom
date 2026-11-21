@@ -23,8 +23,8 @@ class Segmented<T> extends StatelessWidget {
     return Container(
       height: 40,
       padding: const EdgeInsets.all(4),
-      decoration: const ShapeDecoration(
-        color: MarqueeColors.booth,
+      decoration: ShapeDecoration(
+        color: context.palette.booth,
         shape: StadiumBorder(),
       ),
       child: Row(
@@ -37,7 +37,7 @@ class Segmented<T> extends StatelessWidget {
               button: true,
               child: Material(
                 color: value == selected
-                    ? MarqueeColors.boothRaised
+                    ? context.palette.boothRaised
                     : Colors.transparent,
                 shape: const StadiumBorder(),
                 clipBehavior: Clip.antiAlias,
@@ -56,7 +56,7 @@ class Segmented<T> extends StatelessWidget {
                             : text.label
                                   .copyWith(
                                     fontSize: 13,
-                                    color: MarqueeColors.dust,
+                                    color: context.palette.dust,
                                   )
                                   .withWeight(FontWeight.w500),
                       ),
@@ -93,10 +93,10 @@ class FilterPill extends StatelessWidget {
       excludeSemantics: true,
       label: label,
       child: Material(
-        color: selected ? MarqueeColors.boothRaised : Colors.transparent,
+        color: selected ? context.palette.boothRaised : Colors.transparent,
         shape: StadiumBorder(
           side: BorderSide(
-            color: selected ? MarqueeColors.velvetStrong : MarqueeColors.velvet,
+            color: selected ? context.palette.velvetStrong : context.palette.velvet,
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -113,7 +113,7 @@ class FilterPill extends StatelessWidget {
                 style: selected
                     ? text.label.copyWith(fontSize: 13)
                     : text.label
-                          .copyWith(fontSize: 13, color: MarqueeColors.dust)
+                          .copyWith(fontSize: 13, color: context.palette.dust)
                           .withWeight(FontWeight.w500),
               ),
             ),

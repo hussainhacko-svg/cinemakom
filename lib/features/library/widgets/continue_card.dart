@@ -70,7 +70,7 @@ class ContinueCard extends ConsumerWidget {
           children: [
             TextSpan(
               text: l10n.playerUpNext,
-              style: const TextStyle(color: MarqueeColors.bulb),
+              style: TextStyle(color: context.palette.bulb),
             ),
             TextSpan(
               text:
@@ -107,7 +107,7 @@ class ContinueCard extends ConsumerWidget {
         CustomSemanticsAction(label: l10n.removeFromContinue): offerRemove,
       },
       child: Material(
-        color: MarqueeColors.booth,
+        color: context.palette.booth,
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
         child: InkWell(
           borderRadius: const BorderRadius.all(MarqueeRadius.card),

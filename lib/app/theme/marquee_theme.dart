@@ -3,46 +3,50 @@ import 'package:material_ui/material_ui.dart';
 import 'marquee_colors.dart';
 import 'marquee_text.dart';
 
-/// The app's single theme (DESIGN.md). [arabic] only changes letter-spacing
-/// (see [MarqueeText]); colours and shapes are identical in both languages.
-/// [text] swaps in another size table of the same type scale (the TV's,
-/// docs/TV.md §6.2); it must match [arabic].
-ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
-  text ??= MarqueeText(arabic: arabic);
-  const c = MarqueeColors.night;
+/// Builds Cinemakom's dark theme for [palette] (default: [MarqueePalette.marquee]).
+/// [arabic] only changes letter-spacing (see [MarqueeText]); colours and shapes
+/// are identical in both languages. [text] swaps in another size table of the
+/// same type scale (the TV's, docs/TV.md §6.2); it must match [arabic].
+ThemeData buildMarqueeTheme({
+  required bool arabic,
+  MarqueePalette palette = MarqueePalette.marquee,
+  MarqueeText? text,
+}) {
+  text ??= MarqueeText(arabic: arabic, palette: palette);
+  final c = palette.night;
 
   WidgetStateProperty<T> selected<T>(T on, T off) =>
       WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected) ? on : off,
       );
 
-  const scheme = ColorScheme(
+  final scheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: MarqueeColors.bulb,
-    onPrimary: MarqueeColors.onBulb,
-    primaryContainer: MarqueeColors.boothRaised,
-    onPrimaryContainer: MarqueeColors.cream,
-    secondary: MarqueeColors.creamSoft,
+    primary: palette.bulbFill,
+    onPrimary: palette.onBulb,
+    primaryContainer: palette.boothRaised,
+    onPrimaryContainer: palette.cream,
+    secondary: palette.creamSoft,
     onSecondary: c,
-    tertiary: MarqueeColors.bulbBright,
-    onTertiary: MarqueeColors.onBulb,
-    error: MarqueeColors.ember,
+    tertiary: palette.bulbBright,
+    onTertiary: palette.onBulb,
+    error: palette.ember,
     onError: c,
     surface: c,
-    onSurface: MarqueeColors.cream,
-    onSurfaceVariant: MarqueeColors.dust,
+    onSurface: palette.cream,
+    onSurfaceVariant: palette.dust,
     surfaceContainerLowest: c,
-    surfaceContainerLow: MarqueeColors.navBar,
-    surfaceContainer: MarqueeColors.booth,
-    surfaceContainerHigh: MarqueeColors.boothRaised,
-    surfaceContainerHighest: MarqueeColors.velvet,
-    outline: MarqueeColors.velvetStrong,
-    outlineVariant: MarqueeColors.velvet,
-    inverseSurface: MarqueeColors.cream,
+    surfaceContainerLow: palette.navBar,
+    surfaceContainer: palette.booth,
+    surfaceContainerHigh: palette.boothRaised,
+    surfaceContainerHighest: palette.velvet,
+    outline: palette.velvetStrong,
+    outlineVariant: palette.velvet,
+    inverseSurface: palette.cream,
     onInverseSurface: c,
-    inversePrimary: MarqueeColors.onBulb,
+    inversePrimary: palette.onBulb,
     shadow: Colors.transparent,
-    scrim: Color(0xCC000000),
+    scrim: const Color(0xCC000000),
     surfaceTint: Colors.transparent,
   );
 
@@ -54,6 +58,7 @@ ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    extensions: [palette],
     scaffoldBackgroundColor: c,
     canvasColor: c,
     textTheme: text.textTheme,
@@ -61,58 +66,50 @@ ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
     splashFactory: InkRipple.splashFactory,
     appBarTheme: AppBarTheme(
       backgroundColor: c,
-      foregroundColor: MarqueeColors.cream,
+      foregroundColor: palette.cream,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: text.sectionTitle,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: MarqueeColors.navBar,
+      backgroundColor: palette.navBar,
       height: 72,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       // The active tab sits on a boothRaised pill (DESIGN.md §5).
-      indicatorColor: MarqueeColors.boothRaised,
+      indicatorColor: palette.boothRaised,
       indicatorShape: pill,
       iconTheme: selected(
-        const IconThemeData(color: MarqueeColors.bulb, size: 22),
-        const IconThemeData(color: MarqueeColors.dust, size: 22),
+        IconThemeData(color: palette.bulb, size: 22),
+        IconThemeData(color: palette.dust, size: 22),
       ),
       labelTextStyle: selected(
         text.navLabel
-            .copyWith(color: MarqueeColors.bulb)
+            .copyWith(color: palette.bulb)
             .withWeight(FontWeight.w600),
-        text.navLabel.copyWith(color: MarqueeColors.dust),
+        text.navLabel.copyWith(color: palette.dust),
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: MarqueeColors.navBar,
+      backgroundColor: palette.navBar,
       elevation: 0,
-      indicatorColor: MarqueeColors.boothRaised,
+      indicatorColor: palette.boothRaised,
       indicatorShape: pill,
       useIndicator: true,
-      selectedIconTheme: const IconThemeData(
-        color: MarqueeColors.bulb,
-        size: 22,
-      ),
-      unselectedIconTheme: const IconThemeData(
-        color: MarqueeColors.dust,
-        size: 22,
-      ),
+      selectedIconTheme: IconThemeData(color: palette.bulb, size: 22),
+      unselectedIconTheme: IconThemeData(color: palette.dust, size: 22),
       selectedLabelTextStyle: text.navLabel
-          .copyWith(color: MarqueeColors.bulb)
+          .copyWith(color: palette.bulb)
           .withWeight(FontWeight.w600),
-      unselectedLabelTextStyle: text.navLabel.copyWith(
-        color: MarqueeColors.dust,
-      ),
+      unselectedLabelTextStyle: text.navLabel.copyWith(color: palette.dust),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: MarqueeColors.bulb,
-        foregroundColor: MarqueeColors.onBulb,
-        disabledBackgroundColor: MarqueeColors.velvet,
-        disabledForegroundColor: MarqueeColors.dustDim,
+        backgroundColor: palette.bulbFill,
+        foregroundColor: palette.onBulb,
+        disabledBackgroundColor: palette.velvet,
+        disabledForegroundColor: palette.dustDim,
         minimumSize: const Size(64, 48),
         padding: const EdgeInsetsDirectional.symmetric(horizontal: 20),
         shape: pill,
@@ -121,8 +118,8 @@ ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: MarqueeColors.cream,
-        side: const BorderSide(color: MarqueeColors.velvetStrong),
+        foregroundColor: palette.cream,
+        side: BorderSide(color: palette.velvetStrong),
         minimumSize: const Size(64, 44),
         padding: const EdgeInsetsDirectional.symmetric(horizontal: 18),
         shape: pill,
@@ -131,55 +128,55 @@ ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: MarqueeColors.bulb,
+        foregroundColor: palette.bulb,
         minimumSize: const Size(44, 44),
         textStyle: text.label.withWeight(FontWeight.w500),
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        foregroundColor: MarqueeColors.cream,
+        foregroundColor: palette.cream,
         minimumSize: const Size(44, 44),
         iconSize: 18,
       ),
     ),
-    iconTheme: const IconThemeData(color: MarqueeColors.cream, size: 22),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: MarqueeColors.bulb,
-      linearTrackColor: MarqueeColors.velvet,
+    iconTheme: IconThemeData(color: palette.cream, size: 22),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: palette.bulb,
+      linearTrackColor: palette.velvet,
       linearMinHeight: 3,
     ),
-    dividerTheme: const DividerThemeData(
-      color: MarqueeColors.velvet,
+    dividerTheme: DividerThemeData(
+      color: palette.velvet,
       thickness: 1,
       space: 1,
     ),
-    cardTheme: const CardThemeData(
-      color: MarqueeColors.booth,
+    cardTheme: CardThemeData(
+      color: palette.booth,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(MarqueeRadius.card),
       ),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: MarqueeColors.booth,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: palette.booth,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: MarqueeRadius.panel),
       ),
     ),
-    dialogTheme: const DialogThemeData(
-      backgroundColor: MarqueeColors.booth,
+    dialogTheme: DialogThemeData(
+      backgroundColor: palette.booth,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: panelShape,
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: MarqueeColors.boothRaised,
-      contentTextStyle: text.body.copyWith(color: MarqueeColors.cream),
-      actionTextColor: MarqueeColors.bulb,
+      backgroundColor: palette.boothRaised,
+      contentTextStyle: text.body.copyWith(color: palette.cream),
+      actionTextColor: palette.bulb,
       behavior: SnackBarBehavior.floating,
       elevation: 0,
       shape: const RoundedRectangleBorder(
@@ -187,53 +184,53 @@ ThemeData buildMarqueeTheme({required bool arabic, MarqueeText? text}) {
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: MarqueeColors.booth,
-      selectedColor: MarqueeColors.bulb,
-      side: const BorderSide(color: MarqueeColors.velvet),
+      backgroundColor: palette.booth,
+      selectedColor: palette.bulbFill,
+      side: BorderSide(color: palette.velvet),
       labelStyle: text.label.withWeight(FontWeight.w500),
-      secondaryLabelStyle: text.label.copyWith(color: MarqueeColors.onBulb),
+      secondaryLabelStyle: text.label.copyWith(color: palette.onBulb),
       shape: pill,
       showCheckmark: false,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: MarqueeColors.booth,
-      hintStyle: text.body.copyWith(color: MarqueeColors.dust),
+      fillColor: palette.booth,
+      hintStyle: text.body.copyWith(color: palette.dust),
       contentPadding: const EdgeInsetsDirectional.symmetric(
         horizontal: 18,
         vertical: 12,
       ),
-      border: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(22)),
-        borderSide: BorderSide(color: MarqueeColors.velvet),
+      border: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(22)),
+        borderSide: BorderSide(color: palette.velvet),
       ),
-      enabledBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(22)),
-        borderSide: BorderSide(color: MarqueeColors.velvet),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(22)),
+        borderSide: BorderSide(color: palette.velvet),
       ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(22)),
-        borderSide: BorderSide(color: MarqueeColors.bulb, width: 1.5),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(22)),
+        borderSide: BorderSide(color: palette.bulb, width: 1.5),
       ),
     ),
-    textSelectionTheme: const TextSelectionThemeData(
-      cursorColor: MarqueeColors.bulb,
-      selectionColor: Color(0x59F4B740),
-      selectionHandleColor: MarqueeColors.bulb,
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: palette.bulb,
+      selectionColor: palette.bulb.withValues(alpha: 0.35),
+      selectionHandleColor: palette.bulb,
     ),
     scrollbarTheme: ScrollbarThemeData(
-      thumbColor: WidgetStateProperty.all(MarqueeColors.velvetStrong),
+      thumbColor: WidgetStateProperty.all(palette.velvetStrong),
       radius: const Radius.circular(4),
     ),
     tooltipTheme: TooltipThemeData(
-      decoration: const BoxDecoration(
-        color: MarqueeColors.boothRaised,
-        borderRadius: BorderRadius.all(MarqueeRadius.thumb),
+      decoration: BoxDecoration(
+        color: palette.boothRaised,
+        borderRadius: const BorderRadius.all(MarqueeRadius.thumb),
       ),
-      textStyle: text.caption.copyWith(color: MarqueeColors.cream),
+      textStyle: text.caption.copyWith(color: palette.cream),
     ),
-    focusColor: const Color(0x33F4B740),
-    hoverColor: const Color(0x14F4EAD7),
+    focusColor: palette.bulb.withValues(alpha: 0.2),
+    hoverColor: palette.cream.withValues(alpha: 0.08),
     highlightColor: Colors.transparent,
   );
 }

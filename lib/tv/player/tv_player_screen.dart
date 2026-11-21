@@ -505,7 +505,7 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
       builder: (context, scroll) => TvBack(
         onBack: _back,
         child: ColoredBox(
-          color: MarqueeColors.screen,
+          color: context.palette.screen,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -659,10 +659,10 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
     final series = widget.request.isSeries;
     final next = state.nextEpisode;
     final timeStyle = text.caption
-        .copyWith(fontSize: 15, color: MarqueeColors.cream)
+        .copyWith(fontSize: 15, color: context.palette.cream)
         .withWeight(FontWeight.w500);
     return ColoredBox(
-      color: MarqueeColors.night.withValues(alpha: 0.62),
+      color: context.palette.night.withValues(alpha: 0.62),
       child: Padding(
         padding: TvSpace.safe,
         child: Column(
@@ -690,7 +690,7 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
                           '${episodeLabel(l10n, episode.numbering)}',
                           style: text.caption.copyWith(
                             fontSize: 15,
-                            color: MarqueeColors.creamSoft,
+                            color: context.palette.creamSoft,
                           ),
                         ),
                       ],
@@ -803,7 +803,7 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
                     position: controller.position,
                     scrub: _scrub,
                     remainingOf: state.duration,
-                    style: timeStyle.copyWith(color: MarqueeColors.creamSoft),
+                    style: timeStyle.copyWith(color: context.palette.creamSoft),
                   ),
                 ],
               ),
@@ -995,8 +995,8 @@ class _UpNextCard extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 540),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: MarqueeColors.booth,
-        border: Border.all(color: MarqueeColors.velvet),
+        color: context.palette.booth,
+        border: Border.all(color: context.palette.velvet),
         borderRadius: const BorderRadius.all(MarqueeRadius.card),
       ),
       child: Row(
@@ -1044,8 +1044,8 @@ class _UpNextCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: value,
                           minHeight: 3,
-                          color: MarqueeColors.bulb,
-                          backgroundColor: MarqueeColors.velvet,
+                          color: context.palette.bulb,
+                          backgroundColor: context.palette.velvet,
                         ),
                       ),
                     ),
@@ -1089,7 +1089,7 @@ class _ResumedNote extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18),
           alignment: Alignment.center,
           decoration: ShapeDecoration(
-            color: tvVeil,
+            color: tvVeilOf(context),
             shape: const StadiumBorder(),
           ),
           child: Text(
@@ -1157,7 +1157,7 @@ class _Failure extends StatelessWidget {
         ? l10n.playerUnavailable
         : l10n.playerFailed;
     return ColoredBox(
-      color: MarqueeColors.night.withValues(alpha: 0.72),
+      color: context.palette.night.withValues(alpha: 0.72),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
@@ -1168,7 +1168,7 @@ class _Failure extends StatelessWidget {
                 message,
                 textAlign: TextAlign.center,
                 style: MarqueeTvText.of(context).body
-                    .copyWith(color: MarqueeColors.creamSoft),
+                    .copyWith(color: context.palette.creamSoft),
               ),
               const SizedBox(height: 24),
               TvZone.row(
@@ -1205,8 +1205,12 @@ class _Failure extends StatelessWidget {
 }
 
 /// Keeps the screen on while playing. A missing plugin (tests, Linux) just
-/// means no wakelock.
+/// means no wakelock. On Apple TV this uses UIKit's `isIdleTimerDisabled`.
 Future<void> _wakelock({required bool on}) async {
+  if (isAppleTv) {
+    await setAppleTvWakelock(on: on);
+    return;
+  }
   try {
     await (on ? WakelockPlus.enable() : WakelockPlus.disable());
   } on Object {

@@ -252,12 +252,12 @@ class _RecentRow extends StatelessWidget {
           height: 48,
           padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: focused ? MarqueeColors.boothRaised : null,
+            color: focused ? context.palette.boothRaised : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Icon(Icons.history, size: 20, color: MarqueeColors.dust),
+              Icon(Icons.history, size: 20, color: context.palette.dust),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -266,7 +266,7 @@ class _RecentRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: text.body
                       .withWeight(focused ? FontWeight.w600 : FontWeight.w400)
-                      .copyWith(height: 1.2, color: MarqueeColors.cream),
+                      .copyWith(height: 1.2, color: context.palette.cream),
                 ),
               ),
             ],
@@ -303,13 +303,13 @@ class _RemoveButton extends StatelessWidget {
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: focused ? MarqueeColors.boothRaised : MarqueeColors.booth,
-          border: Border.all(color: MarqueeColors.velvet),
+          color: focused ? context.palette.boothRaised : context.palette.booth,
+          border: Border.all(color: context.palette.velvet),
         ),
         child: Icon(
           Icons.close,
           size: 18,
-          color: focused ? MarqueeColors.cream : MarqueeColors.dust,
+          color: focused ? context.palette.cream : context.palette.dust,
         ),
       ),
     ),
@@ -341,7 +341,7 @@ class _TextButton extends StatelessWidget {
         height: 44,
         padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
         decoration: ShapeDecoration(
-          color: focused ? MarqueeColors.boothRaised : null,
+          color: focused ? context.palette.boothRaised : null,
           shape: const StadiumBorder(),
         ),
         child: Center(
@@ -349,7 +349,7 @@ class _TextButton extends StatelessWidget {
           child: Text(
             label,
             style: MarqueeTvText.of(context).label
-                .copyWith(color: MarqueeColors.bulb),
+                .copyWith(color: context.palette.bulb),
           ),
         ),
       ),

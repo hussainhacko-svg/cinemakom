@@ -212,5 +212,8 @@
   "tvPercent": "{percent}٪",
   "tvCancel": "إلغاء",
   "tvDelete": "حذف",
-  "tvMovie": "فيلم"
+  "tvMovie": "فيلم",
+  "settingsTheme": "المظهر",
+  "themeMarquee": "ماركيه (ذهبي)",
+  "themeBordeaux": "بوردو (أحمر)"
 }

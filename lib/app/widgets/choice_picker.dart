@@ -101,7 +101,7 @@ class _ChoiceRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = MarqueeText.of(context);
     final style = (choice.labelStyle ?? text.title.withWeight(FontWeight.w500))
-        .copyWith(color: selected ? MarqueeColors.bulb : MarqueeColors.cream);
+        .copyWith(color: selected ? context.palette.bulb : context.palette.cream);
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
@@ -120,7 +120,7 @@ class _ChoiceRow<T> extends StatelessWidget {
               children: [
                 Expanded(child: Text(choice.label, style: style)),
                 if (selected)
-                  const Icon(Icons.check, color: MarqueeColors.bulb, size: 20),
+                  Icon(Icons.check, color: context.palette.bulb, size: 20),
               ],
             ),
           ),

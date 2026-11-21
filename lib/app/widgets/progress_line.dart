@@ -8,28 +8,29 @@ class ProgressLine extends StatelessWidget {
   const ProgressLine({
     super.key,
     required this.value,
-    this.track = MarqueeColors.velvet,
+    this.track,
   });
 
   final double value;
 
-  /// The unfilled part; `velvetStrong` where it sits on a `booth` row.
-  final Color track;
+  /// The unfilled part; defaults to `velvet`, use `velvetStrong` on a `booth`
+  /// row.
+  final Color? track;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 3,
     child: DecoratedBox(
       decoration: BoxDecoration(
-        color: track,
+        color: track ?? context.palette.velvet,
         borderRadius: const BorderRadius.all(Radius.circular(2)),
       ),
       child: FractionallySizedBox(
         alignment: AlignmentDirectional.centerStart,
         widthFactor: value.clamp(0.0, 1.0),
-        child: const DecoratedBox(
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: MarqueeColors.bulb,
+            color: context.palette.bulb,
             borderRadius: BorderRadius.all(Radius.circular(2)),
           ),
         ),

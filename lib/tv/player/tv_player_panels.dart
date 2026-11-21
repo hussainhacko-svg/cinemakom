@@ -127,8 +127,8 @@ class _SubtitlePanel extends ConsumerWidget {
                       textDirection: Directionality.of(context),
                       style: text.label.copyWith(
                         color: delay == Duration.zero
-                            ? MarqueeColors.cream
-                            : MarqueeColors.bulb,
+                            ? context.palette.cream
+                            : context.palette.bulb,
                       ),
                     ),
                   ),
@@ -198,12 +198,12 @@ class _StepButton extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: MarqueeColors.boothRaised,
+          color: context.palette.boothRaised,
           border: Border.all(
-            color: focused ? MarqueeColors.velvetStrong : MarqueeColors.velvet,
+            color: focused ? context.palette.velvetStrong : context.palette.velvet,
           ),
         ),
-        child: Icon(icon, size: 22, color: MarqueeColors.cream),
+        child: Icon(icon, size: 22, color: context.palette.cream),
       ),
     ),
   );
@@ -238,7 +238,7 @@ class _TextButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
-          color: focused ? MarqueeColors.boothRaised : null,
+          color: focused ? context.palette.boothRaised : null,
           shape: const StadiumBorder(),
         ),
         child: Text(
@@ -246,7 +246,7 @@ class _TextButton extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: MarqueeTvText.of(context).label.copyWith(
-            color: enabled ? MarqueeColors.bulb : MarqueeColors.dustDim,
+            color: enabled ? context.palette.bulb : context.palette.dustDim,
           ),
         ),
       ),

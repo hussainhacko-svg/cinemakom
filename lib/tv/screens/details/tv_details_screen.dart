@@ -9,6 +9,7 @@ import '../../../app/theme/marquee_text.dart';
 import '../../../app/widgets/bulb_loader.dart';
 import '../../../app/widgets/error_view.dart';
 import '../../../app/widgets/media_text.dart';
+import '../../../core/platform/platform_info.dart';
 import '../../../data/models/media_details.dart';
 import '../../../data/models/media_item.dart';
 import '../../../data/models/playback_models.dart';
@@ -140,7 +141,7 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
                 ),
                 child: Text(
                   errorMessage(l10n, details.error!),
-                  style: text.body.copyWith(color: MarqueeColors.dust),
+                  style: text.body.copyWith(color: context.palette.dust),
                 ),
               ),
             if (view != null) ...[
@@ -151,6 +152,7 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
                 all: all,
                 view: view,
                 watched: watched,
+                downloads: supportsDownloads,
                 onSelect: (season, block) {
                   if (season == view.season && block == view.block) return;
                   setState(() {
@@ -308,7 +310,8 @@ class _Actions extends ConsumerWidget {
             onSelect: () => tvOpenPlayer(context, target.request),
           ),
           // A series downloads a season from the episodes pane.
-          if (!item.isSeries) TvMovieDownloadButton(index: 1, item: item),
+          if (!item.isSeries && supportsDownloads)
+            TvMovieDownloadButton(index: 1, item: item),
           TvButton(
             index: 2,
             icon: saved ? Icons.bookmark : Icons.bookmark_border,
@@ -436,8 +439,8 @@ class TvPersonCard extends StatelessWidget {
                   .copyWith(
                     height: 1.3,
                     color: focused
-                        ? MarqueeColors.cream
-                        : MarqueeColors.creamSoft,
+                        ? context.palette.cream
+                        : context.palette.creamSoft,
                   ),
             ),
             if (role.isNotEmpty)
@@ -492,8 +495,8 @@ class TvPersonPhoto extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: MarqueeColors.booth,
+      decoration: BoxDecoration(
+        color: context.palette.booth,
         shape: BoxShape.circle,
       ),
       child: Text(

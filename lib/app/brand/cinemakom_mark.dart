@@ -13,14 +13,14 @@ class CinemakomMark extends StatelessWidget {
   const CinemakomMark({
     super.key,
     this.size = 48,
-    this.color = MarqueeColors.bulb,
+    this.color,
     this.detail,
     this.semanticLabel = 'Cinemakom',
   });
 
   /// Width and height of the square box the 100×100 design is scaled into.
   final double size;
-  final Color color;
+  final Color? color;
   final MarkDetail? detail;
   final String? semanticLabel;
 
@@ -34,7 +34,10 @@ class CinemakomMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final painter = CustomPaint(
       size: Size.square(size),
-      painter: _MarkPainter(detail ?? detailFor(size), color),
+      painter: _MarkPainter(
+        detail ?? detailFor(size),
+        color ?? context.palette.bulb,
+      ),
     );
     return semanticLabel == null
         ? painter
@@ -113,8 +116,9 @@ class CinemakomLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final arabic = Localizations.localeOf(context).languageCode == 'ar';
-    final text = MarqueeText(arabic: arabic);
+    final text = MarqueeText(arabic: arabic, palette: p);
     TextStyle latin(double size, Color color) => text.sectionTitle.copyWith(
       fontSize: size,
       height: 1.0,
@@ -129,23 +133,23 @@ class CinemakomLogo extends StatelessWidget {
         ? [
             Text(
               'سينماكم',
-              style: arabicName(markSize * 0.5, MarqueeColors.cream),
+              style: arabicName(markSize * 0.5, p.cream),
             ),
             Text(
               'CINEMAKOM',
               textDirection: TextDirection.ltr,
-              style: latin(markSize * 0.32, MarqueeColors.bulb),
+              style: latin(markSize * 0.32, p.bulb),
             ),
           ]
         : [
             Text(
               'CINEMAKOM',
-              style: latin(markSize * 0.62, MarqueeColors.cream),
+              style: latin(markSize * 0.62, p.cream),
             ),
             Text(
               'سينماكم',
               textDirection: TextDirection.rtl,
-              style: arabicName(markSize * 0.36, MarqueeColors.bulb),
+              style: arabicName(markSize * 0.36, p.bulb),
             ),
           ];
     return Semantics(

@@ -96,7 +96,7 @@ class _SeekBarState extends State<SeekBar> {
             onExit: (_) {
               if (_hover != null) setState(() => _hover = null);
             },
-            child: _bar(enabled, width),
+            child: _bar(context, enabled, width),
           );
           // Always a Stack: wrapping the bar only while dragging would
           // rebuild its gesture detector and drop the drag.
@@ -120,7 +120,7 @@ class _SeekBarState extends State<SeekBar> {
     );
   }
 
-  Widget _bar(bool enabled, double width) => Semantics(
+  Widget _bar(BuildContext context, bool enabled, double width) => Semantics(
     label: widget.semanticLabel,
     slider: true,
     child: GestureDetector(
@@ -149,6 +149,7 @@ class _SeekBarState extends State<SeekBar> {
               buffered: widget.buffered,
               duration: widget.duration,
               drag: _drag,
+              palette: context.palette,
             ),
           ),
         ),
@@ -206,20 +207,20 @@ class _Bubble extends StatelessWidget {
           children: [
             if (frame != null) ...[
               DecoratedBox(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border.fromBorderSide(
-                    BorderSide(color: MarqueeColors.velvet),
+                    BorderSide(color: context.palette.velvet),
                   ),
-                  borderRadius: BorderRadius.all(SeekPreviewFrame.radius),
+                  borderRadius: const BorderRadius.all(SeekPreviewFrame.radius),
                 ),
                 child: view,
               ),
               const SizedBox(height: MarqueeSpace.xs),
             ],
             DecoratedBox(
-              decoration: const BoxDecoration(
-                color: MarqueeColors.booth,
-                borderRadius: BorderRadius.all(Radius.circular(999)),
+              decoration: BoxDecoration(
+                color: context.palette.booth,
+                borderRadius: const BorderRadius.all(Radius.circular(999)),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -229,7 +230,7 @@ class _Bubble extends StatelessWidget {
                 child: Text(
                   formatClock(at),
                   style: MarqueeText.of(context).label.copyWith(
-                    color: MarqueeColors.cream,
+                    color: context.palette.cream,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
@@ -248,12 +249,14 @@ class _SeekBarPainter extends CustomPainter {
     required this.buffered,
     required this.duration,
     required this.drag,
+    required this.palette,
   }) : super(repaint: Listenable.merge([position, buffered]));
 
   final ValueListenable<Duration> position;
   final ValueListenable<Duration> buffered;
   final Duration duration;
   final double? drag;
+  final MarqueePalette palette;
 
   static const _track = 4.0;
   static const _thumb = 7.0;
@@ -286,13 +289,13 @@ class _SeekBarPainter extends CustomPainter {
       );
     }
 
-    line(0, 1, MarqueeColors.velvet);
-    line(0, loaded, MarqueeColors.velvetStrong);
-    line(0, played, MarqueeColors.bulb);
+    line(0, 1, palette.velvet);
+    line(0, loaded, palette.velvetStrong);
+    line(0, played, palette.bulb);
     canvas.drawCircle(
       Offset(left + width * played, y),
       drag == null ? _thumb : _thumb + 2,
-      Paint()..color = MarqueeColors.bulb,
+      Paint()..color = palette.bulb,
     );
   }
 
@@ -301,7 +304,8 @@ class _SeekBarPainter extends CustomPainter {
       old.drag != drag ||
       old.duration != duration ||
       old.position != position ||
-      old.buffered != buffered;
+      old.buffered != buffered ||
+      old.palette != palette;
 }
 
 /// Elapsed or remaining time, rebuilt only when the shown second changes.

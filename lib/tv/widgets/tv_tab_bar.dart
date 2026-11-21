@@ -4,6 +4,7 @@ import '../../app/brand/cinemakom_mark.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
+import '../../core/platform/platform_info.dart';
 import '../focus/tv_focusable.dart';
 import '../focus/tv_zone.dart';
 import '../theme/tv_text.dart';
@@ -31,7 +32,7 @@ class TvTabBar extends StatelessWidget {
       l10n.navHome,
       l10n.navSearch,
       l10n.navLibrary,
-      l10n.navDownloads,
+      if (supportsDownloads) l10n.navDownloads,
       l10n.navSettings,
     ];
     return SizedBox(
@@ -68,7 +69,7 @@ class TvTabBar extends StatelessWidget {
                             horizontal: 18,
                           ),
                           decoration: BoxDecoration(
-                            color: on ? MarqueeColors.boothRaised : null,
+                            color: on ? context.palette.boothRaised : null,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -79,8 +80,8 @@ class TvTabBar extends StatelessWidget {
                                 )
                                 .copyWith(
                                   color: on
-                                      ? MarqueeColors.bulb
-                                      : MarqueeColors.dust,
+                                      ? context.palette.bulb
+                                      : context.palette.dust,
                                 ),
                           ),
                         ),

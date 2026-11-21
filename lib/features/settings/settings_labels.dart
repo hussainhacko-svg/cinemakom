@@ -26,3 +26,8 @@ String rotationLabel(AppLocalizations l10n, ScreenRotation r) => switch (r) {
   ScreenRotation.portrait => l10n.rotationPortrait,
   ScreenRotation.auto => l10n.rotationAuto,
 };
+
+String themeLabel(AppLocalizations l10n, AppThemeProfile t) => switch (t) {
+  AppThemeProfile.marquee => l10n.themeMarquee,
+  AppThemeProfile.bordeaux => l10n.themeBordeaux,
+};

@@ -61,6 +61,11 @@ dependencies:
   drift_flutter: ^0.3.1
   audio_session: ^0.2.4
   file_selector: ^1.0.3
+  # Apple TV (tvOS) federated implementations (no-op on other platforms).
+  path_provider_tvos: ^0.0.3
+  shared_preferences_tvos: ^0.0.2
+  video_player_tvos: ^0.0.1
+  sqflite_tvos: ^0.0.2
 
 dev_dependencies:
   flutter_test:

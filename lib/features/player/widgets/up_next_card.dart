@@ -52,8 +52,8 @@ class UpNextCard extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 380),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: MarqueeColors.booth,
-                border: Border.all(color: MarqueeColors.velvet),
+                color: context.palette.booth,
+                border: Border.all(color: context.palette.velvet),
                 borderRadius: const BorderRadius.all(MarqueeRadius.card),
               ),
               child: Padding(
@@ -84,7 +84,7 @@ class UpNextCard extends StatelessWidget {
                             style: asking
                                 ? text.label
                                 : text.caption.copyWith(
-                                    color: MarqueeColors.dust,
+                                    color: context.palette.dust,
                                   ),
                           ),
                           Text(
@@ -104,6 +104,7 @@ class UpNextCard extends StatelessWidget {
                                     : const Icon(Icons.play_arrow, size: 20),
                                 label: Text(l10n.playerPlayNow),
                                 style: withFocusRing(
+                                  context,
                                   FilledButton.styleFrom(
                                     minimumSize: const Size(44, 40),
                                   ),
@@ -112,8 +113,9 @@ class UpNextCard extends StatelessWidget {
                               TextButton(
                                 onPressed: onHide,
                                 style: withFocusRing(
+                                  context,
                                   TextButton.styleFrom(
-                                    foregroundColor: MarqueeColors.cream,
+                                    foregroundColor: context.palette.cream,
                                     minimumSize: const Size(44, 40),
                                   ),
                                 ),
@@ -159,7 +161,7 @@ class _CountdownRingState extends State<_CountdownRing>
 
   @override
   Widget build(BuildContext context) {
-    final color = IconTheme.of(context).color ?? MarqueeColors.onBulb;
+    final color = IconTheme.of(context).color ?? context.palette.onBulb;
     return SizedBox.square(
       dimension: 22,
       child: CustomPaint(

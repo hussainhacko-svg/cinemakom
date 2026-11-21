@@ -380,8 +380,8 @@ class _GenreChips extends ConsumerWidget {
           for (final (name, genre) in chips)
             Material(
               color: Colors.transparent,
-              shape: const StadiumBorder(
-                side: BorderSide(color: MarqueeColors.velvet),
+              shape: StadiumBorder(
+                side: BorderSide(color: context.palette.velvet),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(

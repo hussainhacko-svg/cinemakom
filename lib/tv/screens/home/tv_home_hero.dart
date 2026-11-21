@@ -123,7 +123,7 @@ class _TvHomeHeroState extends ConsumerState<TvHomeHero> {
                         Text(
                           errorMessage(AppLocalizations.of(context), error),
                           style: MarqueeTvText.of(context).body
-                              .copyWith(color: MarqueeColors.creamSoft),
+                              .copyWith(color: context.palette.creamSoft),
                         ),
                         const SizedBox(height: 18),
                         TvZone.row(
@@ -147,7 +147,7 @@ class _TvHomeHeroState extends ConsumerState<TvHomeHero> {
                   aspectRatio: 2.7,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: MarqueeColors.booth,
+                      color: context.palette.booth,
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
@@ -322,8 +322,8 @@ class _Bulbs extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: i == current
-                  ? MarqueeColors.bulb
-                  : MarqueeColors.velvetStrong,
+                  ? context.palette.bulb
+                  : context.palette.velvetStrong,
             ),
           ),
         ],
