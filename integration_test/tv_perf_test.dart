@@ -44,6 +44,23 @@ final ok = Platform.isAndroid
     ? LogicalKeyboardKey.select
     : LogicalKeyboardKey.enter;
 
+/// The physical key for [key]. Profile builds drop the keys' debug names,
+/// which `simulateKeyDownEvent` uses to find it by itself.
+PhysicalKeyboardKey physical(LogicalKeyboardKey key) => switch (key) {
+  LogicalKeyboardKey.arrowUp => PhysicalKeyboardKey.arrowUp,
+  LogicalKeyboardKey.arrowDown => PhysicalKeyboardKey.arrowDown,
+  LogicalKeyboardKey.arrowLeft => PhysicalKeyboardKey.arrowLeft,
+  LogicalKeyboardKey.arrowRight => PhysicalKeyboardKey.arrowRight,
+  LogicalKeyboardKey.select => PhysicalKeyboardKey.select,
+  LogicalKeyboardKey.enter => PhysicalKeyboardKey.enter,
+  LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
+  _ => throw ArgumentError('No physical key for $key'),
+};
+
+/// The stream quality to play: 2160 (the worst case), or 1080 to compare
+/// (`--dart-define=PERF_QUALITY=1080`).
+const quality = int.fromEnvironment('PERF_QUALITY', defaultValue: 2160);
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
@@ -53,21 +70,21 @@ void main() {
 
   Future<void> press(LogicalKeyboardKey key, {int times = 1}) async {
     for (var i = 0; i < times; i++) {
-      await simulateKeyDownEvent(key);
-      await simulateKeyUpEvent(key);
+      await simulateKeyDownEvent(key, physicalKey: physical(key));
+      await simulateKeyUpEvent(key, physicalKey: physical(key));
       await wait(350);
     }
   }
 
   /// A held arrow: the key repeats every 50 ms, as on a remote.
   Future<void> hold(LogicalKeyboardKey key, {int repeats = 40}) async {
-    await simulateKeyDownEvent(key);
+    await simulateKeyDownEvent(key, physicalKey: physical(key));
     await wait(400);
     for (var i = 0; i < repeats; i++) {
-      await simulateKeyRepeatEvent(key);
+      await simulateKeyRepeatEvent(key, physicalKey: physical(key));
       await wait(50);
     }
-    await simulateKeyUpEvent(key);
+    await simulateKeyUpEvent(key, physicalKey: physical(key));
     await wait(600);
   }
 
@@ -86,7 +103,7 @@ void main() {
           preferenceStoreProvider.overrideWith(
             (ref) => MemoryPreferenceStore({
               PreferenceKeys.language: 'en',
-              PreferenceKeys.defaultQuality: 2160,
+              PreferenceKeys.defaultQuality: quality,
             }),
           ),
           libraryRepositoryProvider.overrideWithValue(
@@ -125,7 +142,7 @@ void main() {
     }
     // Let the buffer fill and the first previews load.
     await wait(8000);
-    final quality = state().quality?.label;
+    final playing = state().quality?.label;
 
     // The controls are up at first (Play/Pause focused), clock ticking.
     await press(LogicalKeyboardKey.arrowUp);
@@ -167,8 +184,10 @@ void main() {
     await wait(10000);
     binding.reportData = {
       ...?binding.reportData,
+      // TVs run at 60 Hz; the driver can't see the app's --dart-define.
+      'frame_hz': 60,
       'memory': {
-        'quality': quality,
+        'quality': playing,
         'rss_mb': ProcessInfo.currentRss ~/ (1024 * 1024),
         'max_rss_mb': ProcessInfo.maxRss ~/ (1024 * 1024),
       },

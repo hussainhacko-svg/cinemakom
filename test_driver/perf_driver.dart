@@ -13,12 +13,16 @@ const _hz = int.fromEnvironment('PERF_HZ', defaultValue: 120);
 Future<void> main() => integrationDriver(
   responseDataCallback: (data) async {
     if (data == null) return;
-    final budgetUs = 1e6 / _hz;
+    // A test can name its display's rate (the TV test does): `flutter drive`
+    // passes --dart-define to the app, not to this driver.
+    final hz = (data['frame_hz'] as num?)?.toInt() ?? _hz;
+    final budgetUs = 1e6 / hz;
     stdout.writeln(
       'Frame budget ${(budgetUs / 1000).toStringAsFixed(2)} ms '
-      '($_hz Hz)',
+      '($hz Hz)',
     );
     for (final MapEntry(:key, :value) in data.entries) {
+      if (key == 'frame_hz') continue;
       final summary = value as Map<String, dynamic>;
       // Plain numbers (the player test's memory), not a frame timeline.
       if (!summary.containsKey('frame_build_times')) {
