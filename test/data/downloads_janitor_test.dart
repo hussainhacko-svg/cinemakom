@@ -236,4 +236,43 @@ void main() {
       expect(report.reclaimedBytes, 400 + 40 + 250 + 20);
     },
   );
+
+  test('never queries canResume on queued/running tasks and never deletes in-progress videos', () async {
+    final queried = <String>[];
+    final ep2Video = _write(p.join(dlRoot.path, 'Show', 'ep2.mp4'), 2048);
+    final rows = [
+      _row(
+        'q1',
+        dir: p.join(dlRoot.path, 'Show'),
+        fileName: 'q1.mp4',
+        status: DownloadStatus.queued,
+      ),
+      _row(
+        'ep2',
+        dir: p.join(dlRoot.path, 'Show'),
+        fileName: 'ep2.mp4',
+        status: DownloadStatus.running,
+      ),
+      _row(
+        'p1',
+        dir: p.join(dlRoot.path, 'Show'),
+        fileName: 'p1.mp4',
+        status: DownloadStatus.paused,
+      ),
+    ];
+    final janitor = DownloadsJanitor(clock: () => now);
+    final report = await janitor.sweep(
+      rows: rows,
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      canResume: (id) async {
+        queried.add(id);
+        return true;
+      },
+    );
+    expect(queried, ['p1']);
+    expect(ep2Video.existsSync(), isTrue);
+    expect(report.removedVideos, 0);
+  });
 }

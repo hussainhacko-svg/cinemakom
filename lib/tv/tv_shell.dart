@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../data/repositories/downloads_repository.dart';
 import 'focus/tv_nav.dart';
 import 'focus/tv_scopes.dart';
 import 'focus/tv_screen.dart';
@@ -18,17 +22,17 @@ import 'widgets/tv_tab_bar.dart';
 ///
 /// Back (R4) here: from a tab's page, to its tab (scrolling the page back to
 /// the top); from the tab bar, to Home; from Home's tab, out of the app.
-class TvShell extends StatefulWidget {
+class TvShell extends ConsumerStatefulWidget {
   const TvShell({super.key, required this.shell, required this.atRoot});
 
   final StatefulNavigationShell shell;
   final bool atRoot;
 
   @override
-  State<TvShell> createState() => _TvShellState();
+  ConsumerState<TvShell> createState() => _TvShellState();
 }
 
-class _TvShellState extends State<TvShell> {
+class _TvShellState extends ConsumerState<TvShell> {
   TvNavGroup? _group;
   bool _barShown = true;
 
@@ -113,7 +117,16 @@ class _TvShellState extends State<TvShell> {
                         ),
                         child: TvTabBar(
                           current: widget.shell.currentIndex,
-                          onTab: (i) => widget.shell.goBranch(i),
+                          onTab: (i) {
+                            if (i == 3) {
+                              unawaited(
+                                ref
+                                    .read(downloadsRepositoryProvider)
+                                    .reconcile(),
+                              );
+                            }
+                            widget.shell.goBranch(i);
+                          },
                         ),
                       ),
                     ),

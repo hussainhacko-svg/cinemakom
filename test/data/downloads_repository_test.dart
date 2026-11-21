@@ -1045,6 +1045,51 @@ void main() {
       expect(notice.pausedBody, 'Paused · {progress}');
       expect(notice.completeBody, contains('3 GB'));
     });
+
+    test('completing episode 1 while episode 2 already wrote to disk and episode 3 is queued never deadlocks or deletes ep2', () async {
+      await env.start();
+      await env.repo.download(
+        series,
+        episode: ep('e1', 1, 1),
+        source: const VideoSource(url: 'https://x/1', resolution: '720p'),
+        bytes: 1000,
+      );
+      await env.repo.download(
+        series,
+        episode: ep('e2', 1, 2),
+        source: const VideoSource(url: 'https://x/2', resolution: '720p'),
+        bytes: 1000,
+      );
+      await env.repo.download(
+        series,
+        episode: ep('e3', 1, 3),
+        source: const VideoSource(url: 'https://x/3', resolution: '720p'),
+        bytes: 1000,
+      );
+
+      final job1 = env.downloader.enqueued[0];
+      final job2 = env.downloader.enqueued[1];
+      // Native engine already wrote ep2.mp4 to disk right before ep1's complete
+      // event triggers janitor sweep (race condition regression test).
+      final ep2Path = await env.downloader.pathOf(job2.spot);
+      File(ep2Path)
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(List.filled(1000, 0));
+
+      await env.downloader.finish(job1, bytes: 1000);
+      await env.settle();
+      // Janitor must NOT have deleted ep2's finished file!
+      expect(File(ep2Path).existsSync(), isTrue);
+
+      await env.downloader.finish(job2, bytes: 1000);
+      await env.settle();
+      await env.repo.reconcile(force: true);
+
+      expect((await env.store.get('e1'))!.status, DownloadStatus.complete);
+      expect((await env.store.get('e2'))!.status, DownloadStatus.complete);
+      expect((await env.store.get('e3'))!.status, DownloadStatus.queued);
+      expect(await env.repo.playable('e2'), isNotNull);
+    });
   });
 
   group('DriftDownloadStore', () {

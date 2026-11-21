@@ -222,7 +222,14 @@ class BackgroundFileDownloader implements Downloader {
   @override
   Future<bool> canResume(String taskId) async {
     final task = await _known(taskId);
-    return task != null && await _fd.taskCanResume(task);
+    if (task == null) return false;
+    // background_downloader's `taskCanResume` returns `true` immediately when
+    // stored ResumeData exists, but otherwise awaits an uncompleted Completer
+    // until a task receives HTTP headers (which hangs forever for tasks still
+    // waiting in the holding queue). Bound the check so it can never deadlock.
+    return _fd
+        .taskCanResume(task)
+        .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
   }
 
   @override

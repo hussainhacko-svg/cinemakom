@@ -103,12 +103,18 @@ class DownloadsJanitor {
 
     // Build expected paths from rows.
     final completeVideos = <String, int?>{};
+    final inProgressVideos = <String>{};
     final rowVideoPaths = <String, String>{};
     for (final d in rows) {
       final videoPath = _norm(await pathOf(d));
       rowVideoPaths[d.videoId] = videoPath;
       if (d.status == DownloadStatus.complete) {
         completeVideos[videoPath] = d.totalBytes;
+      } else if (d.status != DownloadStatus.failed) {
+        // A queued/running/paused row may have just finished moving its video
+        // on the native side moments before its `complete` event runs in Dart:
+        // never delete it as an orphan!
+        inProgressVideos.add(videoPath);
       }
     }
 
@@ -149,6 +155,10 @@ class DownloadsJanitor {
         final ext = p.extension(file.path).toLowerCase();
         if (!_videoExts.contains(ext)) continue;
         final norm = _norm(file.path);
+        if (inProgressVideos.contains(norm)) {
+          survivingVideos.add(norm);
+          continue;
+        }
         final knownComplete = completeVideos.containsKey(norm);
         final expectedSize = completeVideos[norm];
         int actualSize;
@@ -240,7 +250,13 @@ class DownloadsJanitor {
         .length;
     var resumableOtherCount = 0;
     for (final d in activeRows) {
-      if (d.status == DownloadStatus.running) continue;
+      // Only paused or failed rows can have stored resume data. Never query
+      // `canResume` on queued holding-queue tasks (background_downloader's
+      // `taskCanResume` blocks on an uncompleted Completer until a task starts).
+      if (d.status != DownloadStatus.paused &&
+          d.status != DownloadStatus.failed) {
+        continue;
+      }
       if (await canResume(d.videoId)) {
         resumableOtherCount++;
       }

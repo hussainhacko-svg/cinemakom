@@ -514,6 +514,21 @@ class DownloadsRepository {
         continue;
       }
 
+      // Safety net if a task finished while backgrounded and its status event
+      // wasn't delivered before reconcile: the destination file is only moved
+      // into place once the download completes.
+      if (state != DownloaderState.running) {
+        final videoPath = await _downloader.pathOf(_spot(row));
+        final videoFile = File(videoPath);
+        if (videoFile.existsSync()) {
+          final size = videoFile.lengthSync();
+          if (size > 0 && (row.totalBytes == null || size == row.totalBytes)) {
+            await _complete(row);
+            continue;
+          }
+        }
+      }
+
       if (row.status == DownloadStatus.failed) {
         // Engine recovered it while we were away.
         if (state == DownloaderState.running) {
@@ -871,8 +886,13 @@ class DownloadsRepository {
           t,
     ];
     if (wanted.isEmpty) return const [];
-    final dir = p.dirname(await _downloader.pathOf(spot));
-    await Directory(dir).create(recursive: true);
+    final String dir;
+    try {
+      dir = p.dirname(await _downloader.pathOf(spot));
+      await Directory(dir).create(recursive: true);
+    } on Object {
+      return const [];
+    }
     final saved = <DownloadedSubtitle>[];
     for (final t in wanted) {
       final name =
