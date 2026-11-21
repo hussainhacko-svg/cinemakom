@@ -12,6 +12,7 @@ The original Kotlin/Jetpack Compose Android app is at `../cinematy`. It is low-q
 - `docs/DESIGN.md`: the "Marquee" design system (colours, type, spacing, components, performance rules). **Follow it for every screen.**
 - `docs/PLAYER.md`: the detailed player plan (Phase 4): targets, architecture, features and milestones. **Read it before touching `lib/features/player` or `lib/core/player`.**
 - `docs/TV.md`: the Android TV plan: a separate remote-driven UI in `lib/tv` and its focus rules. **Read it before any TV work.**
+- `docs/DOWNLOADS.md`: the downloads reliability plan (2026-11-21): what broke on the phone, the rules every download must follow, and milestones D0–D7. **Read it before touching downloads.**
 - `docs/PLAN.md`: architecture, tech stack, feature list and build phases. Check which phase we're in before starting work, and tick items off in §4 as they're finished.
 
 ## Commands

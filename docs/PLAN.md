@@ -274,6 +274,8 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - **To check on the phone** (release APK installed over the current app, so its database is upgraded): existing Continue watching entries are still there; finishing an episode shows "Up next" on Home and in the Library; Favorite works from Details and the hero; a long press removes a card; everything survives a force-stop and relaunch.
 
 ### Phase 6: Downloads *(built 2026-11-19, to check on the phone)*
+> **2026-11-21:** downloads fail on the phone (stuck "Paused", false "no connection", Retry can't continue, 11.5 GB of stray partial files). The fix is planned in [`DOWNLOADS.md`](DOWNLOADS.md) (milestones D0–D7), which replaces the phone check below.
+
 - background_downloader for video plus subtitle, with the headers.
 - Progress, speed, pause/resume/cancel, notifications on mobile.
 - Storage location per platform:
