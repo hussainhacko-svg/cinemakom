@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,15 +19,26 @@ import '../../data/repositories/downloads_repository.dart';
 import 'download_actions.dart';
 import 'download_flow.dart';
 
-/// The Downloads tab (DESIGN.md §8): the space used, then **Downloading**
-/// (progress, size, speed, time left, pause or resume, cancel) and **On
-/// this device** (movies, and each series as one row with its episode
+/// The Downloads tab (DESIGN.md §8, DOWNLOADS.md §5.10): the space used, then
+/// **Downloading** (saved progress, speed, time left, pause or resume, cancel)
+/// and **On this device** (movies, and each series as one row with its episode
 /// count). Everything here plays offline.
-class DownloadsScreen extends ConsumerWidget {
+class DownloadsScreen extends ConsumerStatefulWidget {
   const DownloadsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DownloadsScreen> createState() => _DownloadsScreenState();
+}
+
+class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ref.read(downloadsRepositoryProvider).reconcile());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final gutter = MarqueeSpace.gutter(MediaQuery.sizeOf(context).width);
     final all = ref.watch(downloadsProvider).value;
@@ -57,16 +70,27 @@ class _Lists extends ConsumerWidget {
     for (final d in done) {
       (titles[d.titleId] ??= []).add(d);
     }
-    // Finished files, and what unfinished ones have on disk so far.
+    // Finished files, and what unfinished ones have saved on disk so far
+    // (plus any engine temp files on disk, §5.7).
     final progress =
         ref.watch(downloadProgressProvider).value ??
         const <String, DownloadProgress>{};
-    var used = done.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
-    for (final d in active) {
-      final p = progress[d.videoId];
-      final total = p?.expectedBytes ?? d.totalBytes;
-      if (p != null && total != null) used += (total * p.fraction).round();
-    }
+    final storage = ref.watch(downloadStorageInfoProvider).value;
+    final rowUsed = downloadUsedBytes(all, progress);
+    final finishedBytes = done.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
+    final diskPartial = storage?.tempBytes ?? 0;
+    final used = rowUsed > finishedBytes + diskPartial
+        ? rowUsed
+        : finishedBytes + diskPartial;
+    final free = storage?.freeBytes;
+    final storageLine = free != null
+        ? l10n.downloadsStorageLine(
+            formatBytes(l10n, used),
+            formatBytes(l10n, free),
+          )
+        : used > 0
+        ? l10n.downloadsUsed(formatBytes(l10n, used))
+        : null;
     return ListView(
       padding: EdgeInsetsDirectional.fromSTEB(
         gutter,
@@ -75,11 +99,7 @@ class _Lists extends ConsumerWidget {
         MarqueeSpace.huge,
       ),
       children: [
-        if (used > 0)
-          Text(
-            l10n.downloadsUsed(formatBytes(l10n, used)),
-            style: text.caption,
-          ),
+        if (storageLine != null) Text(storageLine, style: text.caption),
         if (active.isNotEmpty) ...[
           const SizedBox(height: MarqueeSpace.l),
           SectionHeader(title: l10n.downloadsDownloading),
@@ -169,20 +189,29 @@ class _ActiveRow extends ConsumerWidget {
     final d = download;
     final progress = ref.watch(progressOfProvider(d.videoId));
     final repo = ref.read(downloadsRepositoryProvider);
-    final total = progress?.expectedBytes ?? d.totalBytes;
-    final fraction = progress?.fraction ?? 0;
-    final sizes = total == null
-        ? null
-        : l10n.downloadOf(
-            formatBytes(l10n, (total * fraction).round()),
-            formatBytes(l10n, total),
-          );
-    // Two caption lines: what's done, then how fast and how long.
+    final fraction = downloadFraction(d, progress);
+    final sizes = downloadSizesLabel(l10n, d, progress);
+    // Two caption lines: state + saved bytes, then live speed and time left.
     final status = switch (d.status) {
-      DownloadStatus.running => sizes ?? '',
-      DownloadStatus.queued => l10n.downloadQueued,
-      DownloadStatus.paused => context.joinMeta([l10n.downloadPaused, ?sizes]),
-      DownloadStatus.failed => problemText(l10n, d.problem),
+      DownloadStatus.running => context.joinMeta([
+        if (d.startedOver) l10n.downloadStartedOver,
+        ?sizes,
+        if (sizes == null && !d.startedOver) l10n.downloadingStatus,
+      ]),
+      DownloadStatus.queued => context.joinMeta([
+        if (d.startedOver) l10n.downloadStartedOver else l10n.downloadQueued,
+        ?sizes,
+      ]),
+      DownloadStatus.paused => context.joinMeta([
+        d.isWaitingForConnection
+            ? l10n.downloadWaitingConnection
+            : l10n.downloadPaused,
+        ?sizes,
+      ]),
+      DownloadStatus.failed => context.joinMeta([
+        problemText(l10n, d.problem),
+        ?sizes,
+      ]),
       DownloadStatus.complete => '',
     };
     final pace = d.status == DownloadStatus.running
@@ -207,7 +236,7 @@ class _ActiveRow extends ConsumerWidget {
               ? l10n.retry
               : l10n.downloadResume,
           onPressed: () =>
-              running ? repo.pause(d.videoId) : repo.resume(d.videoId),
+              running ? repo.pause(d.videoId) : resumeDownload(context, ref, d),
           icon: Icon(
             running
                 ? Icons.pause_rounded
@@ -238,12 +267,15 @@ class _ActiveRow extends ConsumerWidget {
             style: text.caption,
           ),
         const SizedBox(height: MarqueeSpace.s),
-        // Full width, so the track shows how much is left.
+        // Full width, showing saved progress in every state (dimmed when idle).
         SizedBox(
           width: double.infinity,
           child: ProgressLine(
             value: fraction,
             track: MarqueeColors.velvetStrong,
+            color: d.status == DownloadStatus.running
+                ? MarqueeColors.bulb
+                : MarqueeColors.dust,
           ),
         ),
         const SizedBox(height: MarqueeSpace.xs),
@@ -280,17 +312,23 @@ class _TitleRow extends ConsumerWidget {
     final first = downloads.first;
     final bytes = downloads.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
     final series = first.isEpisode;
-    final meta = context.joinMeta([
-      if (series)
-        l10n.downloadEpisodeCount(downloads.length)
-      else
-        first.quality,
-      if (bytes > 0) formatBytes(l10n, bytes),
-    ]);
+    final missingMovie =
+        !series && ref.watch(isDownloadMissingProvider(first.videoId));
+    final meta = missingMovie
+        ? l10n.downloadFileRemoved
+        : context.joinMeta([
+            if (series)
+              l10n.downloadEpisodeCount(downloads.length)
+            else
+              first.quality,
+            if (bytes > 0) formatBytes(l10n, bytes),
+          ]);
     return _Row(
       posterUrl: first.posterUrl,
       onTap: () => series
           ? context.push('/downloads/saved/${first.titleId}')
+          : missingMovie
+          ? showDownloadMenu(context, ref, first)
           : openPlayer(context, first.request),
       onMenu: series
           ? () => confirmDeleteTitle(
@@ -306,6 +344,17 @@ class _TitleRow extends ConsumerWidget {
             padding: EdgeInsetsDirectional.only(end: MarqueeSpace.s),
             // Mirrors in RTL (the icon matches the text direction).
             child: Icon(Icons.chevron_right_rounded, color: MarqueeColors.dust),
+          )
+        else if (missingMovie)
+          IconButton(
+            tooltip: l10n.downloadAgain,
+            onPressed: () =>
+                ref.read(downloadsRepositoryProvider).redownload(first.videoId),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 22,
+              color: MarqueeColors.ember,
+            ),
           )
         else
           IconButton(
@@ -326,7 +375,12 @@ class _TitleRow extends ConsumerWidget {
           style: text.label,
         ),
         const SizedBox(height: 2),
-        Text(meta, style: text.caption),
+        Text(
+          meta,
+          style: missingMovie
+              ? text.caption.copyWith(color: MarqueeColors.ember)
+              : text.caption,
+        ),
       ],
     );
   }
@@ -376,29 +430,46 @@ class SavedSeriesScreen extends ConsumerWidget {
                 sliver: SliverList.list(
                   children: [
                     for (final d in episodes)
-                      _Row(
-                        posterUrl: d.posterUrl,
-                        onTap: () => openPlayer(context, d.request),
-                        onMenu: () => showDownloadMenu(context, ref, d),
-                        trailing: [
-                          IconButton(
-                            tooltip: l10n.downloadDelete,
-                            onPressed: () => showDownloadMenu(context, ref, d),
-                            icon: const Icon(Icons.more_horiz_rounded),
-                          ),
-                        ],
-                        children: [
-                          Text(_where(l10n, d), style: text.label),
-                          const SizedBox(height: 2),
-                          Text(
-                            context.joinMeta([
-                              d.quality,
-                              if (d.totalBytes case final b? when b > 0)
-                                formatBytes(l10n, b),
-                            ]),
-                            style: text.caption,
-                          ),
-                        ],
+                      Builder(
+                        builder: (context) {
+                          final missing = ref.watch(
+                            isDownloadMissingProvider(d.videoId),
+                          );
+                          return _Row(
+                            posterUrl: d.posterUrl,
+                            onTap: () => missing
+                                ? showDownloadMenu(context, ref, d)
+                                : openPlayer(context, d.request),
+                            onMenu: () => showDownloadMenu(context, ref, d),
+                            trailing: [
+                              IconButton(
+                                tooltip: l10n.downloadDelete,
+                                onPressed: () =>
+                                    showDownloadMenu(context, ref, d),
+                                icon: const Icon(Icons.more_horiz_rounded),
+                              ),
+                            ],
+                            children: [
+                              Text(_where(l10n, d), style: text.label),
+                              const SizedBox(height: 2),
+                              Text(
+                                missing
+                                    ? l10n.downloadFileRemoved
+                                    : context.joinMeta([
+                                        d.quality,
+                                        if (d.totalBytes case final b?
+                                            when b > 0)
+                                          formatBytes(l10n, b),
+                                      ]),
+                                style: missing
+                                    ? text.caption.copyWith(
+                                        color: MarqueeColors.ember,
+                                      )
+                                    : text.caption,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                   ],
                 ),

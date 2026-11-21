@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../app/navigation.dart';
 import '../../app/theme/marquee_colors.dart';
+import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/choice_picker.dart';
 import '../../app/widgets/error_view.dart';
 import '../../app/widgets/media_text.dart';
+import '../../core/platform/platform_info.dart';
 import '../../data/models/download.dart';
 import '../../data/models/media_item.dart';
 import '../../data/models/playback_models.dart';
@@ -60,6 +64,13 @@ Future<void> startDownload(
     ],
   );
   if (picked == null || !context.mounted) return;
+  final free = await ref.read(downloadFreeSpaceProvider)();
+  if (!context.mounted) return;
+  final deficit = downloadSpaceDeficit(picked.bytes, free);
+  if (deficit > 0) {
+    _say(context, l10n.downloadSpaceNeeded(formatBytes(l10n, deficit)));
+    return;
+  }
   try {
     await queueDownload(ref, item, picked, episode: episode);
     if (context.mounted) _say(context, l10n.downloadAdded);
@@ -108,10 +119,32 @@ Future<void> startSeasonDownload(
   if (context.mounted) _say(context, l10n.downloadSeasonQueued(queued));
 }
 
-enum _Action { play, pause, resume, cancel, delete }
+enum _Action {
+  play,
+  redownload,
+  pause,
+  resume,
+  showInFolder,
+  details,
+  cancel,
+  delete,
+  remove,
+}
 
-/// What can be done with [d]: play or delete a finished one; pause,
-/// resume or try again, and cancel an unfinished one.
+/// Opens the folder containing [filePath] in the desktop file manager
+/// (docs/DOWNLOADS.md §5.6, §5.10).
+Future<void> showInFolder(String filePath) async {
+  try {
+    await launchUrl(Uri.directory(p.dirname(filePath)));
+  } on Object {
+    // Best effort on desktop.
+  }
+}
+
+/// What can be done with [d]: play, show in folder (desktop), details or
+/// delete a finished one; Download again or Remove when its file was removed
+/// outside the app; pause, resume or try again, details, and cancel an
+/// unfinished one.
 Future<void> showDownloadMenu(
   BuildContext context,
   WidgetRef ref,
@@ -119,6 +152,7 @@ Future<void> showDownloadMenu(
 ) async {
   final l10n = AppLocalizations.of(context);
   final repo = ref.read(downloadsRepositoryProvider);
+  final missing = ref.read(isDownloadMissingProvider(d.videoId));
   final action = await showChoicePicker<_Action?>(
     context,
     title: d.isEpisode
@@ -127,8 +161,14 @@ Future<void> showDownloadMenu(
         : context.titleOf(d.item),
     selected: null,
     choices: [
-      if (d.status == DownloadStatus.complete) ...[
+      if (d.status == DownloadStatus.complete && missing) ...[
+        Choice(_Action.redownload, l10n.downloadAgain),
+        Choice(_Action.details, l10n.downloadDetails),
+        Choice(_Action.remove, l10n.downloadRemove),
+      ] else if (d.status == DownloadStatus.complete) ...[
         Choice(_Action.play, l10n.play),
+        if (isDesktop) Choice(_Action.showInFolder, l10n.downloadShowInFolder),
+        Choice(_Action.details, l10n.downloadDetails),
         Choice(_Action.delete, l10n.downloadDelete),
       ] else ...[
         if (d.status == DownloadStatus.running ||
@@ -141,6 +181,7 @@ Future<void> showDownloadMenu(
                 ? l10n.retry
                 : l10n.downloadResume,
           ),
+        Choice(_Action.details, l10n.downloadDetails),
         Choice(_Action.cancel, l10n.downloadCancel),
       ],
     ],
@@ -149,16 +190,126 @@ Future<void> showDownloadMenu(
   switch (action) {
     case _Action.play:
       openPlayer(context, d.request);
+    case _Action.redownload:
+      await repo.redownload(d.videoId);
     case _Action.pause:
       await repo.pause(d.videoId);
     case _Action.resume:
-      await repo.resume(d.videoId);
+      await resumeDownload(context, ref, d);
+    case _Action.showInFolder:
+      await showInFolder(await repo.filePath(d));
+    case _Action.details:
+      await showDownloadDetails(context, ref, d);
     case _Action.cancel:
-    case _Action.delete:
+    case _Action.remove:
       await repo.delete(d.videoId);
+    case _Action.delete:
+      final sure = await showChoicePicker<bool>(
+        context,
+        title: l10n.downloadDeleteConfirm,
+        selected: false,
+        choices: [Choice(true, l10n.downloadDelete)],
+      );
+      if (sure == true) await repo.delete(d.videoId);
     case null:
       break;
   }
+}
+
+/// Resumes or retries [d]. If the stored quality is no longer offered by the
+/// server, asks the user before switching quality and starting over
+/// (docs/DOWNLOADS.md §5.5).
+Future<void> resumeDownload(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final repo = ref.read(downloadsRepositoryProvider);
+  final outcome = await repo.resume(d.videoId);
+  if (!context.mounted) return;
+  switch (outcome) {
+    case ResumeQualityGone(:final previousQuality, :final fallback):
+      final sure = await showChoicePicker<bool>(
+        context,
+        title: l10n.downloadQualityGoneTitle(previousQuality),
+        selected: false,
+        choices: [
+          Choice(true, l10n.downloadSwitchQuality(qualityChipLabel(fallback))),
+        ],
+      );
+      if (sure == true && context.mounted) {
+        await repo.resume(d.videoId, switchTo: fallback);
+      }
+    case ResumeStarted(startedOver: true):
+      _say(context, l10n.downloadStartedOver);
+    case ResumeStarted() || ResumeFailed():
+      break;
+  }
+}
+
+/// Shows a download's reason, engine message, saved progress and file path
+/// (docs/DOWNLOADS.md §5.10).
+Future<void> showDownloadDetails(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final text = MarqueeText.of(context);
+  final repo = ref.read(downloadsRepositoryProvider);
+  final progress = ref.read(progressOfProvider(d.videoId));
+  final path = await repo.filePath(d);
+  if (!context.mounted) return;
+  final sizes = downloadSizesLabel(l10n, d, progress);
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: MarqueeColors.booth,
+      title: Text(l10n.downloadDetails, style: text.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (d.status == DownloadStatus.failed) ...[
+            Text(l10n.downloadDetailReason, style: text.caption),
+            const SizedBox(height: 2),
+            Text(
+              problemText(l10n, d.problem),
+              style: text.body.copyWith(color: MarqueeColors.ember),
+            ),
+            const SizedBox(height: MarqueeSpace.m),
+          ],
+          if (d.problemDetail case final detail? when detail.isNotEmpty) ...[
+            Text(l10n.downloadDetailEngine, style: text.caption),
+            const SizedBox(height: 2),
+            Text(detail, style: text.caption),
+            const SizedBox(height: MarqueeSpace.m),
+          ],
+          if (sizes != null) ...[
+            Text(l10n.downloadDetailProgress, style: text.caption),
+            const SizedBox(height: 2),
+            Text(sizes, style: text.body),
+            const SizedBox(height: MarqueeSpace.m),
+          ],
+          Text(l10n.downloadDetailPath, style: text.caption),
+          const SizedBox(height: 2),
+          SelectableText(path, style: text.caption),
+        ],
+      ),
+      actions: [
+        if (isDesktop && d.status == DownloadStatus.complete)
+          TextButton(
+            onPressed: () => showInFolder(path),
+            child: Text(l10n.downloadShowInFolder),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.downloadClose),
+        ),
+      ],
+    ),
+  );
 }
 
 /// A determinate ring for a running download (not a loading spinner:
@@ -214,7 +365,7 @@ Widget downloadIcon(
   ),
   DownloadStatus.paused => Icon(Icons.pause_rounded, size: size),
   DownloadStatus.queued || DownloadStatus.running => DownloadRing(
-    fraction: progress?.fraction ?? 0,
+    fraction: downloadFraction(d!, progress),
     size: size + 2,
     child: Icon(Icons.arrow_downward_rounded, size: size * 0.6),
   ),
@@ -236,13 +387,17 @@ class DownloadPill extends ConsumerWidget {
     final label = switch (d?.status) {
       null => l10n.download,
       DownloadStatus.complete => l10n.downloaded,
-      DownloadStatus.paused => l10n.downloadPaused,
+      DownloadStatus.paused =>
+        d!.isWaitingForConnection
+            ? l10n.downloadWaitingConnection
+            : l10n.downloadPaused,
       DownloadStatus.failed => problemText(l10n, d!.problem),
       DownloadStatus.queued => l10n.downloadQueued,
       DownloadStatus.running =>
-        progress == null
+        progress == null && d!.downloadedBytes == 0
             ? l10n.downloadingStatus
-            : '${l10n.downloadingStatus} · ${(progress.fraction * 100).floor()}%',
+            : '${l10n.downloadingStatus} · '
+                  '${(downloadFraction(d!, progress) * 100).floor()}%',
     };
     return OutlinedButton.icon(
       onPressed: () => d == null

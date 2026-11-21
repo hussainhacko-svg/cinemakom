@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,23 +25,7 @@ final _freeSpaceProvider = FutureProvider.autoDispose<int?>((ref) {
   return ref.read(downloadFreeSpaceProvider)();
 });
 
-/// What downloads take: finished files, and what unfinished ones have so
-/// far (as on the phone).
-int _usedBytes(List<Download> all, Map<String, DownloadProgress> progress) {
-  var used = 0;
-  for (final d in all) {
-    if (!d.status.isActive) {
-      used += d.totalBytes ?? 0;
-      continue;
-    }
-    final p = progress[d.videoId];
-    final total = p?.expectedBytes ?? d.totalBytes;
-    if (p != null && total != null) used += (total * p.fraction).round();
-  }
-  return used;
-}
-
-/// Downloads on TV (docs/TV.md §7.7, the TV Downloads design): what they
+/// Downloads on TV (docs/TV.md §7.7, docs/DOWNLOADS.md §5.10): what they
 /// take and what's free (not focusable), then one list (zone 0), each row a
 /// row of cells:
 /// - downloading: the title (OK opens its Details) · Pause, Resume or Try
@@ -49,11 +35,22 @@ int _usedBytes(List<Download> all, Map<String, DownloadProgress> progress) {
 /// Cancel and Delete ask first, opening on the safe answer. Empty: what
 /// goes here, and Browse Home. (The design's storage bar is left out, as on
 /// the phone: the TV says how much is free instead.)
-class TvDownloadsScreen extends ConsumerWidget {
+class TvDownloadsScreen extends ConsumerStatefulWidget {
   const TvDownloadsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TvDownloadsScreen> createState() => _TvDownloadsScreenState();
+}
+
+class _TvDownloadsScreenState extends ConsumerState<TvDownloadsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ref.read(downloadsRepositoryProvider).reconcile());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final text = MarqueeTvText.of(context);
     final all = ref.watch(downloadsProvider).value;
@@ -97,7 +94,7 @@ class TvDownloadsScreen extends ConsumerWidget {
       for (final group in titles.values)
         (i) => _TitleRow(index: i, downloads: group),
     ];
-    final used = _usedBytes(all, progress);
+    final used = downloadUsedBytes(all, progress);
 
     return TvScreen(
       order: 1,
@@ -177,12 +174,15 @@ class _ActiveRow extends ConsumerWidget {
     final d = download;
     final progress = ref.watch(progressOfProvider(d.videoId));
     final repo = ref.read(downloadsRepositoryProvider);
-    final fraction = progress?.fraction ?? 0;
+    final fraction = downloadFraction(d, progress);
+    final sizes = downloadSizesLabel(l10n, d, progress);
     final percent = l10n.tvPercent((fraction * 100).round());
-    // "42% · 1080p · 3.2 MB/s · 4 min left" (the design).
+    // "42% · 1080p · 3.2 MB/s · 4 min left" with saved bytes in idle states.
     final meta = switch (d.status) {
       DownloadStatus.running => context.joinMeta([
+        if (d.startedOver) l10n.downloadStartedOver,
         percent,
+        ?sizes,
         d.quality,
         if (progress?.bytesPerSecond case final speed? when speed > 0)
           l10n.downloadSpeed(formatBytes(l10n, speed.round())),
@@ -190,24 +190,34 @@ class _ActiveRow extends ConsumerWidget {
           minutesLeft(l10n, left),
       ]),
       DownloadStatus.queued => context.joinMeta([
-        l10n.downloadQueued,
+        if (d.startedOver) l10n.downloadStartedOver else l10n.downloadQueued,
+        ?sizes,
         d.quality,
       ]),
       DownloadStatus.paused => context.joinMeta([
-        l10n.downloadPaused,
-        percent,
+        d.isWaitingForConnection
+            ? l10n.downloadWaitingConnection
+            : l10n.downloadPaused,
+        ?sizes,
+        if (sizes == null) percent,
         d.quality,
       ]),
-      DownloadStatus.failed => problemText(l10n, d.problem),
+      DownloadStatus.failed => context.joinMeta([
+        problemText(l10n, d.problem),
+        ?sizes,
+      ]),
       DownloadStatus.complete => '',
     };
     final title = _title(context, d);
     final (String label, VoidCallback onSelect) = switch (d.status) {
       DownloadStatus.paused => (
         l10n.downloadResume,
-        () => repo.resume(d.videoId),
+        () => tvResumeDownload(context, ref, d),
       ),
-      DownloadStatus.failed => (l10n.retry, () => repo.resume(d.videoId)),
+      DownloadStatus.failed => (
+        l10n.retry,
+        () => tvResumeDownload(context, ref, d),
+      ),
       _ => (l10n.downloadPause, () => repo.pause(d.videoId)),
     };
     return Row(
@@ -219,7 +229,7 @@ class _ActiveRow extends ConsumerWidget {
             title: title,
             posterUrl: d.posterUrl,
             lines: [meta],
-            bar: d.status == DownloadStatus.failed ? null : fraction,
+            bar: fraction,
             barColor: d.status == DownloadStatus.running
                 ? MarqueeColors.bulb
                 : MarqueeColors.dust,
@@ -262,17 +272,21 @@ class _TitleRow extends ConsumerWidget {
     final first = downloads.first;
     final repo = ref.read(downloadsRepositoryProvider);
     final series = first.isEpisode;
+    final missingMovie =
+        !series && ref.watch(isDownloadMissingProvider(first.videoId));
     final bytes = downloads.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
     final title = context.titleOf(first.item);
-    final meta = context.joinMeta([
-      if (series)
-        l10n.downloadEpisodeCount(downloads.length)
-      else ...[
-        l10n.tvMovie,
-        first.quality,
-      ],
-      if (bytes > 0) formatBytes(l10n, bytes),
-    ]);
+    final meta = missingMovie
+        ? l10n.downloadFileRemoved
+        : context.joinMeta([
+            if (series)
+              l10n.downloadEpisodeCount(downloads.length)
+            else ...[
+              l10n.tvMovie,
+              first.quality,
+            ],
+            if (bytes > 0) formatBytes(l10n, bytes),
+          ]);
     return Row(
       children: [
         Expanded(
@@ -291,14 +305,24 @@ class _TitleRow extends ConsumerWidget {
                 : null,
             onSelect: () => series
                 ? context.push('/downloads/saved/${first.titleId}')
+                : missingMovie
+                ? tvDownloadMenu(context, ref, first)
                 : tvOpenPlayer(context, first.request),
           ),
         ),
         const SizedBox(width: 14),
         TvButton(
           index: index + 1,
-          label: series ? l10n.downloadDeleteAll : l10n.tvDelete,
+          label: missingMovie
+              ? l10n.downloadAgain
+              : series
+              ? l10n.downloadDeleteAll
+              : l10n.tvDelete,
           onSelect: () async {
+            if (missingMovie) {
+              await repo.redownload(first.videoId);
+              return;
+            }
             if (await tvConfirm(
               context,
               series ? l10n.downloadDeleteAll : l10n.downloadDelete,
@@ -389,14 +413,19 @@ class TvSavedSeriesScreen extends ConsumerWidget {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final d = episodes[i];
+                    final missing = ref.watch(
+                      isDownloadMissingProvider(d.videoId),
+                    );
                     final where =
                         '${l10n.seasonNumber(d.season!)} · '
                         '${episodeLabel(l10n, d.asEpisode!.numbering)}';
-                    final meta = context.joinMeta([
-                      d.quality,
-                      if (d.totalBytes case final b? when b > 0)
-                        formatBytes(l10n, b),
-                    ]);
+                    final meta = missing
+                        ? l10n.downloadFileRemoved
+                        : context.joinMeta([
+                            d.quality,
+                            if (d.totalBytes case final b? when b > 0)
+                              formatBytes(l10n, b),
+                          ]);
                     return Row(
                       children: [
                         Expanded(
@@ -406,14 +435,20 @@ class TvSavedSeriesScreen extends ConsumerWidget {
                             title: where,
                             posterUrl: d.posterUrl,
                             lines: [meta],
-                            onSelect: () => tvOpenPlayer(context, d.request),
+                            onSelect: () => missing
+                                ? tvDownloadMenu(context, ref, d)
+                                : tvOpenPlayer(context, d.request),
                           ),
                         ),
                         const SizedBox(width: 14),
                         TvButton(
                           index: i * 2 + 1,
-                          label: l10n.tvDelete,
+                          label: missing ? l10n.downloadAgain : l10n.tvDelete,
                           onSelect: () async {
+                            if (missing) {
+                              await repo.redownload(d.videoId);
+                              return;
+                            }
                             if (await tvConfirm(
                               context,
                               l10n.downloadDelete,

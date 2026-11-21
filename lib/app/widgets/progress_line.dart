@@ -9,12 +9,16 @@ class ProgressLine extends StatelessWidget {
     super.key,
     required this.value,
     this.track = MarqueeColors.velvet,
+    this.color = MarqueeColors.bulb,
   });
 
   final double value;
 
   /// The unfilled part; `velvetStrong` where it sits on a `booth` row.
   final Color track;
+
+  /// The filled part; `dust` for paused/failed/idle downloads (DOWNLOADS.md §5.10).
+  final Color color;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -27,10 +31,10 @@ class ProgressLine extends StatelessWidget {
       child: FractionallySizedBox(
         alignment: AlignmentDirectional.centerStart,
         widthFactor: value.clamp(0.0, 1.0),
-        child: const DecoratedBox(
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: MarqueeColors.bulb,
-            borderRadius: BorderRadius.all(Radius.circular(2)),
+            color: color,
+            borderRadius: const BorderRadius.all(Radius.circular(2)),
           ),
         ),
       ),

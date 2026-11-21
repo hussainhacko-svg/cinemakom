@@ -1,18 +1,29 @@
 package io.github.sharon_xa.cinemakom
 
+import android.Manifest
 import android.app.UiModeManager
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.media.MediaScannerConnection
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.StatFs
 import android.view.Display
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 /**
  * The phone and tablet entry, declared portrait in the manifest. TVs launch
@@ -58,9 +69,44 @@ open class MainActivity : FlutterActivity() {
                         null
                     },
                 )
+                "sdkInt" -> result.success(Build.VERSION.SDK_INT)
+                "publicMoviesDir" -> result.success(
+                    try {
+                        @Suppress("DEPRECATION")
+                        val movies = Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_MOVIES,
+                        )
+                        File(movies, "Cinemakom").absolutePath
+                    } catch (e: Exception) {
+                        null
+                    },
+                )
+                "hasLegacyStoragePermission" -> result.success(
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                        ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        ) == PackageManager.PERMISSION_GRANTED,
+                )
+                "scanFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        MediaScannerConnection.scanFile(
+                            applicationContext,
+                            arrayOf(path),
+                            null,
+                            null,
+                        )
+                    }
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CONNECTIVITY_CHANNEL,
+        ).setStreamHandler(ConnectivityStreamHandler(applicationContext))
     }
 
     private fun isTvDevice(): Boolean {
@@ -111,5 +157,66 @@ open class MainActivity : FlutterActivity() {
 
     companion object {
         private const val PLATFORM_CHANNEL = "io.github.sharon_xa.cinemakom/platform"
+        private const val CONNECTIVITY_CHANNEL = "io.github.sharon_xa.cinemakom/connectivity"
+    }
+}
+
+/**
+ * Emits `true` when the default network has validated internet access, `false`
+ * otherwise (docs/DOWNLOADS.md §5.5: pause downloads while offline so their
+ * resume data is preserved, and resume when the network returns).
+ */
+private class ConnectivityStreamHandler(
+    private val context: Context,
+) : EventChannel.StreamHandler {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var callback: ConnectivityManager.NetworkCallback? = null
+    private var lastOnline: Boolean? = null
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+        fun emit(online: Boolean) {
+            if (online == lastOnline) return
+            lastOnline = online
+            mainHandler.post { events.success(online) }
+        }
+        fun checkNow() {
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            val online = caps != null &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            emit(online)
+        }
+        checkNow()
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = checkNow()
+            override fun onLost(network: Network) = checkNow()
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities,
+            ) = checkNow()
+            override fun onUnavailable() = emit(false)
+        }
+        callback = cb
+        try {
+            cm.registerDefaultNetworkCallback(cb)
+        } catch (_: Exception) {
+            // Permission or OS quirk; leave default online state.
+        }
+    }
+
+    override fun onCancel(arguments: Any?) {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val cb = callback
+        callback = null
+        lastOnline = null
+        if (cm != null && cb != null) {
+            try {
+                cm.unregisterNetworkCallback(cb)
+            } catch (_: Exception) {
+                // Already unregistered.
+            }
+        }
     }
 }

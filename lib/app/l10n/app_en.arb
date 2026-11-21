@@ -512,6 +512,18 @@
   "@downloadProblemNetwork": {
     "description": "A download failed for the network"
   },
+  "downloadProblemLinkExpired": "Stopped: link expired",
+  "@downloadProblemLinkExpired": {
+    "description": "A download failed because the signed link expired"
+  },
+  "downloadProblemInterrupted": "Stopped: interrupted",
+  "@downloadProblemInterrupted": {
+    "description": "A download was interrupted by the system or lost"
+  },
+  "downloadProblemServer": "Stopped: server error",
+  "@downloadProblemServer": {
+    "description": "A download failed with a server error (HTTP 5xx)"
+  },
   "downloadProblemSpace": "Not enough space on this device",
   "@downloadProblemSpace": {
     "description": "A download failed for disk space"
@@ -527,6 +539,119 @@
   "downloadProblemUnknown": "The download stopped",
   "@downloadProblemUnknown": {
     "description": "A download failed for another reason"
+  },
+  "downloadWaitingConnection": "Waiting for connection",
+  "@downloadWaitingConnection": {
+    "description": "A download paused automatically until the network returns"
+  },
+  "downloadStartedOver": "Started over",
+  "@downloadStartedOver": {
+    "description": "Shown once when retrying had to restart a download from 0"
+  },
+  "downloadDetails": "Details",
+  "@downloadDetails": {
+    "description": "Menu action and dialog title showing download status, reason and path"
+  },
+  "downloadDetailReason": "Reason",
+  "@downloadDetailReason": {
+    "description": "Label in the download details dialog"
+  },
+  "downloadDetailEngine": "Engine message",
+  "@downloadDetailEngine": {
+    "description": "Label for the raw engine error description in the download details dialog"
+  },
+  "downloadDetailPath": "File location",
+  "@downloadDetailPath": {
+    "description": "Label for the file path in the download details dialog"
+  },
+  "downloadDetailProgress": "Progress",
+  "@downloadDetailProgress": {
+    "description": "Label for downloaded bytes in the download details dialog"
+  },
+  "downloadClose": "Close",
+  "@downloadClose": {
+    "description": "Closes the download details dialog"
+  },
+  "downloadsStorageLine": "Downloads use {used} · {free} free",
+  "@downloadsStorageLine": {
+    "description": "Downloads tab storage summary when free space is known",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadQualityGoneTitle": "{quality} is no longer available",
+  "@downloadQualityGoneTitle": {
+    "description": "Shown when retrying a download whose quality was removed from the server",
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadSwitchQuality": "Start over in {quality}",
+  "@downloadSwitchQuality": {
+    "description": "Confirms switching quality and restarting a download from 0",
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadFileRemoved": "File removed",
+  "@downloadFileRemoved": {
+    "description": "Shown when a finished download was deleted or moved outside the app"
+  },
+  "downloadAgain": "Download again",
+  "@downloadAgain": {
+    "description": "Re-downloads a title whose finished file was removed outside the app"
+  },
+  "downloadRemove": "Remove",
+  "@downloadRemove": {
+    "description": "Removes a download entry whose file was removed outside the app"
+  },
+  "downloadDeleteConfirm": "Delete the file from your device too?",
+  "@downloadDeleteConfirm": {
+    "description": "Confirmation when deleting a finished download from public storage"
+  },
+  "downloadShowInFolder": "Show in folder",
+  "@downloadShowInFolder": {
+    "description": "Desktop action: opens the folder containing the downloaded file"
+  },
+  "downloadSpaceNeeded": "Storage full: {needed} more needed",
+  "@downloadSpaceNeeded": {
+    "description": "Shown when a download does not fit in free storage",
+    "placeholders": {
+      "needed": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeWaitingSlot": "Waiting for a slot",
+  "@noticeWaitingSlot": {
+    "description": "System notification when a download is queued in the holding queue"
+  },
+  "noticeDownloadedFolder": "Downloaded · {size} · Movies/Cinemakom",
+  "@noticeDownloadedFolder": {
+    "description": "Android notification when a download finishes in Movies/Cinemakom",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeDownloadedSize": "Downloaded · {size}",
+  "@noticeDownloadedSize": {
+    "description": "Notification when a download finishes with its size",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
   },
   "downloadPause": "Pause",
   "@downloadPause": {

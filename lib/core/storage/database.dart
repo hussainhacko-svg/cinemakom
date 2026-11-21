@@ -63,11 +63,12 @@ class ContinueHidden extends Table {
   Set<Column> get primaryKey => {titleId};
 }
 
-/// A downloaded (or downloading) movie or episode (PLAN.md Phase 6). The
-/// file's place is stored the way background_downloader names it: a base
-/// directory, a folder in it, and a file name, so app sandboxes that move
-/// between launches (iOS) still resolve. Live progress isn't stored; the
-/// downloader reports it.
+/// A downloaded (or downloading) movie or episode (PLAN.md Phase 6,
+/// docs/DOWNLOADS.md §5.3). The file's place is stored the way
+/// background_downloader names it: a base directory, a folder in it, and a
+/// file name, so app sandboxes that move between launches (iOS) still resolve.
+/// Saved progress (`downloadedBytes`) is persisted here so paused and failed
+/// rows never drop to 0; live speed and time left stay in memory.
 @DataClassName('DownloadRow')
 class Downloads extends Table {
   /// The movie or episode; also the downloader's task ID.
@@ -103,13 +104,30 @@ class Downloads extends Table {
   TextColumn get subtitles => text().withDefault(const Constant('[]'))();
   IntColumn get totalBytes => integer().nullable()();
 
+  /// Bytes downloaded so far, persisted at most every 2 s while running and
+  /// on every pause, failure or completion.
+  IntColumn get downloadedBytes => integer().withDefault(const Constant(0))();
+
   /// `DownloadStatus.name`.
   TextColumn get status => text()();
 
+  /// Whether the user pressed Pause (vs. paused by connectivity loss).
+  BoolColumn get pausedByUser => boolean().withDefault(const Constant(false))();
+
+  /// True after a retry had to restart from 0; cleared on the next progress.
+  BoolColumn get startedOver => boolean().withDefault(const Constant(false))();
+
   /// Why it failed (`DownloadProblem.name`), when it did.
   TextColumn get problem => text().nullable()();
+
+  /// The engine's own error description, for logs and Details. Never parsed.
+  TextColumn get problemDetail => text().nullable()();
   DateTimeColumn get addedAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
+
+  /// MediaStore content URI on Android, if finishing used MediaStore.
+  TextColumn get contentUri => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {videoId};
@@ -123,9 +141,9 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'cinemakom'));
 
   /// 1: watch history (Phase 4). 2: favorites and hidden Continue titles.
-  /// 3: downloads.
+  /// 3: downloads. 4: downloads reliability fields (DOWNLOADS.md §5.3).
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +154,14 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(continueHidden);
       }
       if (from < 3) await m.createTable(downloads);
+      if (from < 4 && from >= 3) {
+        await m.addColumn(downloads, downloads.downloadedBytes);
+        await m.addColumn(downloads, downloads.pausedByUser);
+        await m.addColumn(downloads, downloads.startedOver);
+        await m.addColumn(downloads, downloads.problemDetail);
+        await m.addColumn(downloads, downloads.updatedAt);
+        await m.addColumn(downloads, downloads.contentUri);
+      }
     },
   );
 }
