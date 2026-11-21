@@ -12,6 +12,7 @@ import '../../app/widgets/error_view.dart';
 import '../../app/widgets/media_image.dart';
 import '../../app/widgets/media_row.dart';
 import '../../app/widgets/media_text.dart';
+import '../../app/widgets/word_fit_title.dart';
 import '../../app/widgets/sub_page.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/models/media_details.dart';
@@ -170,7 +171,8 @@ class _Header extends ConsumerWidget {
     final trailer = details?.trailerUrl;
 
     final titleBlock = <Widget>[
-      Text(
+      // A long word steps the size down instead of breaking in half.
+      WordFitTitle(
         arabicTitle ? title : title.toUpperCase(),
         style: text.displayLargeFor(title),
       ),
@@ -264,8 +266,10 @@ class _Header extends ConsumerWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // The poster at the top: a long title grows downwards beside
+              // it instead of pushing it down.
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   poster,
                   const SizedBox(width: MarqueeSpace.l),

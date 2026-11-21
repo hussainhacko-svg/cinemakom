@@ -147,7 +147,7 @@ Drawn on the canvas's "App screens" page (*decisions 2026-11-19*). Every tab scr
   - Results: the title grid (3 columns or more on wide windows), infinitely scrolling. The kind chips filter it. Titles also match by cast or crew name. *There is no People row: the API has no people search, and list items carry no cast (2026-11-19).*
 - **Genre:** back button and genre name, a Movies | Series segmented control, a sort button ("Recently added ▾") at the end, language chips (the genre × language filter), then the 3-column grid with infinite scroll.
 - **Details:** a **full page** pushed inside the current tab, so the nav stays visible. It is not a bottom sheet, because related titles and people open further pages and back must step through them.
-  - Back button, then the poster (128 × 192) beside the title, meta, audio language and the external link.
+  - Back button, then the poster (128 × 192) beside the title, meta, audio language and the external link. The poster is aligned to the top, so a long title grows downwards beside it; the title (`WordFitTitle`) steps its size down rather than break a word in half.
   - Primary button (Play, or "Resume · S2 E5 · 14 min left"), then Favorite and Trailer as secondary pills.
   - Synopsis, genre chips (each opens the genre page), the season chips and episode rows (§5), Cast and crew, More like this.
   - On desktop the same content sits in two columns.
