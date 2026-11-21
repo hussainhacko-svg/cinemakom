@@ -8,7 +8,6 @@ import '../focus/tv_focusable.dart';
 import '../focus/tv_zone.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
-import 'tv_steady_text.dart';
 
 /// The TV's top tabs (docs/TV.md §6.4, the TvTabs design): the mark, then
 /// Home · Search · Library · Downloads · Settings as 40 dp pills. The current
@@ -72,12 +71,13 @@ class TvTabBar extends StatelessWidget {
                             color: on ? MarqueeColors.boothRaised : null,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: TvSteadyText(
+                          // One weight: the current tab follows focus, so
+                          // bolding it changed the weight as you moved
+                          // (owner, 2026-11-22). Colour and fill show it.
+                          child: Text(
                             label,
                             style: text.navLabel
-                                .withWeight(
-                                  on ? FontWeight.w600 : FontWeight.w500,
-                                )
+                                .withWeight(FontWeight.w500)
                                 .copyWith(
                                   color: on
                                       ? MarqueeColors.bulb
