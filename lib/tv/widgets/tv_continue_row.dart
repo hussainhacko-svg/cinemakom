@@ -32,7 +32,7 @@ class TvContinueRow extends ConsumerWidget {
 
   /// Between cards, and above them: room for a focused card's growth and
   /// ring (TvCardFocus.reach), or it slides under its neighbour or is cut.
-  static const double gap = 16;
+  static const double gap = 20;
   static const double topRoom = TvPoster.growRoom - 8;
 
   @override
@@ -40,14 +40,16 @@ class TvContinueRow extends ConsumerWidget {
     final entries = ref.watch(continueEntriesProvider).value ?? const [];
     if (entries.isEmpty) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TvSectionTitle(l10n.rowContinueWatching),
-        SizedBox(
-          height: topRoom + cardHeight + gap,
-          child: TvZone.row(
-            order: order,
+    // The title is inside the zone, so the page scrolls it, not the cards,
+    // to the top keyline (R10) and it isn't pushed against the screen edge.
+    return TvZone.row(
+      order: order,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TvSectionTitle(l10n.rowContinueWatching),
+          SizedBox(
+            height: topRoom + cardHeight + gap,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsetsDirectional.fromSTEB(
@@ -68,8 +70,8 @@ class TvContinueRow extends ConsumerWidget {
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

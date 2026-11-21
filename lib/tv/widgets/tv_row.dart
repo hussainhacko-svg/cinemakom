@@ -102,33 +102,37 @@ class TvPosterRow extends StatelessWidget {
           : items.length + (onSeeAll != null ? 1 : 0);
       body = SizedBox(
         height: height,
-        child: TvZone.row(
-          order: order,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsetsDirectional.fromSTEB(
-              TvSpace.safeH,
-              TvPoster.growRoom,
-              TvSpace.safeH,
-              0,
-            ),
-            itemExtent: TvPoster.width + TvPoster.gap,
-            itemCount: count,
-            itemBuilder: (context, i) {
-              if (items.isEmpty) return const TvPosterPlaceholder();
-              final card = i < items.length
-                  ? TvPosterCard(
-                      index: i,
-                      item: items[i],
-                      onSelect: () => onOpen(items[i]),
-                    )
-                  : TvSeeAllCard(index: i, onSelect: onSeeAll!);
-              return Align(
-                alignment: AlignmentDirectional.topStart,
-                child: card,
-              );
-            },
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            TvSpace.safeH,
+            TvPoster.growRoom,
+            TvSpace.safeH,
+            0,
           ),
+          itemExtent: TvPoster.width + TvPoster.gap,
+          itemCount: count,
+          itemBuilder: (context, i) {
+            if (items.isEmpty) return const TvPosterPlaceholder();
+            final card = i < items.length
+                ? TvPosterCard(
+                    index: i,
+                    item: items[i],
+                    onSelect: () => onOpen(items[i]),
+                  )
+                : TvSeeAllCard(index: i, onSelect: onSeeAll!);
+            return Align(alignment: AlignmentDirectional.topStart, child: card);
+          },
+        ),
+      );
+      // The title is inside the zone, so the page scrolls it, not the
+      // posters, to the top keyline (R10) and it isn't pushed against the
+      // screen edge.
+      return TvZone.row(
+        order: order,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [TvSectionTitle(title), body],
         ),
       );
     }
