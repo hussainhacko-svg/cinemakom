@@ -98,6 +98,7 @@ class TvHomeScreen extends ConsumerWidget {
 
     return TvScreen(
       order: 1,
+      keylineTop: TvSpace.homeRowKeyline,
       builder: (context, scroll) => CustomScrollView(
         controller: scroll,
         scrollCacheExtent: const ScrollCacheExtent.pixels(600),

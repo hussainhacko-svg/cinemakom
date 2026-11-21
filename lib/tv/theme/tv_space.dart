@@ -10,6 +10,10 @@ abstract final class TvSpace {
   /// Where the page scrolls a focused zone's top to (R10).
   static const double pageKeyline = safeV;
 
+  /// Where Home scrolls a row's top, its title (owner's call, 2026-11-21:
+  /// 27 put the title too low). The cards under it stay in the safe area.
+  static const double homeRowKeyline = 16;
+
   /// The gap kept between a focused item and a scroll edge when the page
   /// or a column only scrolls as far as needed.
   static const double revealMargin = safeV;
