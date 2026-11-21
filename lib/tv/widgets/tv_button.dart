@@ -6,6 +6,7 @@ import '../focus/tv_focusable.dart';
 import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
+import 'tv_steady_text.dart';
 
 /// A TV pill button, item [index] of its zone (the TV system sheet; docs/
 /// TV.md §6.3). 48 tall.
@@ -89,9 +90,8 @@ class TvButton extends StatelessWidget {
                   const SizedBox(width: 10),
                 ],
                 Flexible(
-                  child: Text(
+                  child: TvSteadyText(
                     label,
-                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: text.label.withWeight(weight).copyWith(color: color),
                   ),
