@@ -12,17 +12,34 @@ class FakeDownloader implements Downloader {
 
   final String root;
   final _events = StreamController<DownloaderEvent>.broadcast();
+  final _taps = StreamController<String>.broadcast();
 
   final enqueued = <DownloadJob>[];
   final paused = <String>[];
   final resumed = <(String, String)>[];
   final canceled = <String>[];
   final knownStates = <String, DownloaderState>{};
+  final knownFailures = <String, DownloaderStatus>{};
+  final knownProgress = <String, (double, int?)>{};
+  final tempDirectories = <String>[];
+  int syncCalls = 0;
   bool started = false;
   DownloadNotices? notices;
 
-  /// What [resume] answers (whether a partial file exists).
-  bool canResume = true;
+  /// What [pause] answers (`false` simulates a task in the holding queue).
+  bool pauseReturns = true;
+
+  /// Per-task override for [pause].
+  final pauseable = <String, bool>{};
+
+  /// What [resume] and [canResume] answer (whether a partial file exists).
+  bool resumeAllowed = true;
+
+  /// Per-task override for [resume] and [canResume].
+  final resumable = <String, bool>{};
+
+  /// Backwards-compatible setter for tests that toggle `canResume = false`.
+  set canResumeValue(bool value) => resumeAllowed = value;
 
   /// Sends an engine event, as background_downloader would.
   void send(DownloaderEvent event) => _events.add(event);
@@ -32,11 +49,18 @@ class FakeDownloader implements Downloader {
     final file = File(await pathOf(job.spot));
     await file.parent.create(recursive: true);
     await file.writeAsBytes(List.filled(bytes, 0));
+    knownStates[job.taskId] = DownloaderState.complete;
     send(DownloaderStatus(job.taskId, DownloaderState.complete));
   }
 
+  /// Simulates the user tapping a system download notification.
+  void tapNotification(String taskId) => _taps.add(taskId);
+
   @override
   Stream<DownloaderEvent> get events => _events.stream;
+
+  @override
+  Stream<String> get notificationTaps => _taps.stream;
 
   @override
   Future<void> start({String? partialDir, int maxRunning = 2}) async =>
@@ -59,24 +83,47 @@ class FakeDownloader implements Downloader {
   @override
   Future<bool> pause(String taskId) async {
     paused.add(taskId);
-    knownStates[taskId] = DownloaderState.paused;
-    return true;
+    final ok = pauseable[taskId] ?? pauseReturns;
+    if (ok) knownStates[taskId] = DownloaderState.paused;
+    return ok;
   }
 
   @override
   Future<bool> resume(String taskId, String url) async {
     resumed.add((taskId, url));
-    return canResume;
+    final ok = resumable[taskId] ?? resumeAllowed;
+    if (ok) knownStates[taskId] = DownloaderState.queued;
+    return ok;
   }
 
   @override
   Future<void> cancel(String taskId) async {
     canceled.add(taskId);
     knownStates.remove(taskId);
+    knownFailures.remove(taskId);
+    knownProgress.remove(taskId);
   }
 
   @override
-  Future<Map<String, DownloaderState>> known() async => Map.of(knownStates);
+  Future<bool> canResume(String taskId) async =>
+      resumable[taskId] ?? resumeAllowed;
+
+  @override
+  Future<void> sync() async => syncCalls++;
+
+  @override
+  Future<Map<String, KnownTask>> known() async => {
+    for (final e in knownStates.entries)
+      e.key: KnownTask(
+        e.value,
+        fraction: knownProgress[e.key]?.$1,
+        expectedBytes: knownProgress[e.key]?.$2,
+        failure: knownFailures[e.key],
+      ),
+  };
+
+  @override
+  Future<List<String>> tempDirs() async => List.of(tempDirectories);
 
   @override
   Future<String> pathOf(FileSpot spot) async => spot.baseDirectory == 'root'

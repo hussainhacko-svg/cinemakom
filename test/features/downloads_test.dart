@@ -4,6 +4,7 @@ import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
 import 'package:cinemakom/core/downloads/downloader.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
+import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/download.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/repositories/download_store.dart';
@@ -54,28 +55,48 @@ Download _row(
   String id, {
   String titleId = '3119279',
   String title = 'Eve of Destruction',
+  String? titleAr,
   DownloadStatus status = DownloadStatus.complete,
   int? season,
   int? episode,
   int bytes = 2 * 1024 * 1024 * 1024,
+  int downloadedBytes = 0,
+  bool pausedByUser = false,
+  bool startedOver = false,
   DownloadProblem? problem,
+  String? problemDetail,
   String? dir,
-}) => Download(
-  videoId: id,
-  titleId: titleId,
-  title: LocalizedText(en: title),
-  season: season,
-  episode: episode,
-  kind: season == null ? VideoKind.movies : VideoKind.series,
-  quality: '1080p',
-  baseDirectory: 'root',
-  directory: dir ?? _dir,
-  fileName: '$id.mp4',
-  status: status,
-  problem: problem,
-  totalBytes: bytes,
-  addedAt: DateTime(2026, 11, 19),
-);
+  bool createFile = true,
+}) {
+  final folder = dir ?? _dir;
+  if (status == DownloadStatus.complete && createFile) {
+    final f = File(p.join(folder, '$id.mp4'));
+    if (!f.existsSync()) {
+      f.parent.createSync(recursive: true);
+      f.writeAsBytesSync(const [0]);
+    }
+  }
+  return Download(
+    videoId: id,
+    titleId: titleId,
+    title: LocalizedText(en: title, ar: titleAr),
+    season: season,
+    episode: episode,
+    kind: season == null ? VideoKind.movies : VideoKind.series,
+    quality: '1080p',
+    baseDirectory: 'root',
+    directory: folder,
+    fileName: '$id.mp4',
+    status: status,
+    problem: problem,
+    problemDetail: problemDetail,
+    totalBytes: bytes,
+    downloadedBytes: downloadedBytes,
+    pausedByUser: pausedByUser,
+    startedOver: startedOver,
+    addedAt: DateTime(2026, 11, 19),
+  );
+}
 
 void main() {
   testWidgets('an empty Downloads tab says what goes there', (tester) async {
@@ -253,5 +274,151 @@ void main() {
       api.requests.where((r) => r.path.startsWith('transcoddedFiles')),
       isEmpty,
     );
+  });
+
+  testWidgets(
+    'paused, waiting and failed rows show saved bytes (never 1 MB of 27 GB) and Details',
+    (tester) async {
+      const gb = 1024 * 1024 * 1024;
+      final downloader = FakeDownloader();
+      final store = MemoryDownloadStore([
+        _row(
+          'p1',
+          titleId: 'p1',
+          title: 'The Odyssey',
+          status: DownloadStatus.paused,
+          pausedByUser: true,
+          bytes: 27 * gb,
+          downloadedBytes: (3.6 * gb).round(),
+        ),
+        _row(
+          'w1',
+          titleId: 'w1',
+          title: 'Arrival',
+          status: DownloadStatus.paused,
+          pausedByUser: false,
+          bytes: 4 * gb,
+          downloadedBytes: 1 * gb,
+        ),
+        _row(
+          'f1',
+          titleId: 'f1',
+          title: 'Dune',
+          status: DownloadStatus.failed,
+          problem: DownloadProblem.interrupted,
+          problemDetail: 'Task timed out',
+          bytes: 27 * gb,
+          downloadedBytes: 0,
+        ),
+      ]);
+      await pumpApp(tester, downloads: store, downloader: downloader);
+      await _openDownloads(tester);
+
+      expect(find.textContaining('Paused · 3.6 GB of 27 GB'), findsOneWidget);
+      expect(
+        find.textContaining('Waiting for connection · 1.0 GB of 4.0 GB'),
+        findsOneWidget,
+      );
+      // 0 saved bytes must NEVER show "1 MB of 27 GB".
+      expect(find.textContaining('1 MB'), findsNothing);
+      expect(find.text('Stopped: interrupted'), findsOneWidget);
+
+      // Long-press opens menu -> Details shows engine message & path.
+      await tester.longPress(find.text('Dune'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Task timed out'), findsOneWidget);
+      expect(find.textContaining('f1.mp4'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Arabic RTL Downloads rows show saved bytes and reasons', (
+    tester,
+  ) async {
+    const gb = 1024 * 1024 * 1024;
+    final downloader = FakeDownloader();
+    final store = MemoryDownloadStore([
+      _row(
+        'p1',
+        titleId: 'p1',
+        title: 'The Odyssey',
+        titleAr: 'الأوديسة',
+        status: DownloadStatus.paused,
+        pausedByUser: true,
+        bytes: 27 * gb,
+        downloadedBytes: (3.6 * gb).round(),
+      ),
+      _row(
+        'f1',
+        titleId: 'f1',
+        title: 'Dune',
+        titleAr: 'كثيب',
+        status: DownloadStatus.failed,
+        problem: DownloadProblem.server,
+        bytes: 4 * gb,
+        downloadedBytes: 2 * gb,
+      ),
+    ]);
+    await pumpApp(
+      tester,
+      downloads: store,
+      downloader: downloader,
+      store: MemoryPreferenceStore({PreferenceKeys.language: 'ar'}),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('التنزيلات'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(directionAt(tester, find.text('الأوديسة')), TextDirection.rtl);
+    expect(find.textContaining('متوقف مؤقتًا'), findsOneWidget);
+    expect(find.textContaining('3.6 غ.ب من 27 غ.ب'), findsOneWidget);
+    expect(find.textContaining('توقف: خطأ في الخادم'), findsOneWidget);
+  });
+
+  testWidgets(
+    'storage line shows used and free space when free space is known',
+    (tester) async {
+      const gb = 1024 * 1024 * 1024;
+      final store = MemoryDownloadStore([_row('3119279', bytes: 27 * gb)]);
+      await pumpApp(tester, downloads: store, freeSpace: 120 * gb);
+      await _openDownloads(tester);
+      expect(find.text('Downloads use 27 GB · 120 GB free'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'missing finished file shows File removed with Download again and Remove',
+    (tester) async {
+      final goneDir = Directory.systemTemp.createTempSync('dl-gone').path;
+      addTearDown(() => Directory(goneDir).deleteSync(recursive: true));
+      final downloader = FakeDownloader();
+      final store = MemoryDownloadStore([
+        _row('3119279', dir: goneDir, createFile: false),
+      ]);
+      await pumpApp(tester, downloads: store, downloader: downloader);
+      await _openDownloads(tester);
+
+      expect(find.text('File removed'), findsOneWidget);
+      await tester.tap(find.text('Eve of Destruction'));
+      await tester.pumpAndSettle();
+      expect(find.text('Download again'), findsOneWidget);
+      expect(find.text('Remove'), findsOneWidget);
+    },
+  );
+
+  testWidgets('tapping a download notification navigates to Downloads tab', (
+    tester,
+  ) async {
+    final downloader = FakeDownloader();
+    await pumpApp(tester, downloader: downloader);
+    expect(find.text('DOWNLOADS'), findsNothing);
+
+    downloader.tapNotification('3119279');
+    await tester.pumpAndSettle();
+    expect(find.text('DOWNLOADS'), findsOneWidget);
   });
 }

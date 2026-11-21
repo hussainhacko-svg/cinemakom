@@ -136,7 +136,9 @@ void main() {
     await tester.runAsync(() => repo.pause(pilot.id));
     await until(tester, 'paused', () => row?.status == DownloadStatus.paused);
     final pausedAt = fraction;
-    debugPrint('paused at $pausedAt');
+    final savedAtPause = row!.downloadedBytes;
+    debugPrint('paused at $pausedAt ($savedAtPause bytes saved)');
+    expect(savedAtPause, greaterThan(0));
 
     fraction = -1;
     await tester.runAsync(() => repo.resume(pilot.id));
@@ -187,8 +189,48 @@ void main() {
       () => find.byType(PlayerScreen).evaluate().isEmpty,
     );
 
+    // Deleting the finished file outside the app marks it missing (§9).
+    var missing = <String>{};
+    final missingSub = repo.watchMissing().listen((m) => missing = m);
+    addTearDown(missingSub.cancel);
+    file.deleteSync();
+    await tester.runAsync(() => repo.reconcile(force: true));
+    await until(tester, 'missing detected', () => missing.contains(pilot.id));
+    expect(await tester.runAsync(() => repo.playable(pilot.id)), isNull);
+
     await tester.runAsync(() => repo.delete(pilot.id));
-    expect(file.existsSync(), isFalse);
     await until(tester, 'the row gone', () => row == null);
+
+    // Deleting during a download leaves no `.partial` temp files behind (§9).
+    await tester.runAsync(
+      () => repo.download(
+        friends,
+        episode: pilot,
+        source: low.source,
+        bytes: low.bytes,
+      ),
+    );
+    fraction = 0;
+    await until(
+      tester,
+      'second download running',
+      () => fraction > 0.05,
+      seconds: 60,
+    );
+    await tester.runAsync(() => repo.delete(pilot.id));
+    await until(tester, 'second row gone', () => row == null);
+    final partialDir = Directory(p.join(dir.path, '.partial'));
+    final strays = partialDir.existsSync()
+        ? partialDir
+              .listSync()
+              .whereType<File>()
+              .where(
+                (f) => p
+                    .basename(f.path)
+                    .startsWith('com.bbflight.background_downloader'),
+              )
+              .toList()
+        : const <File>[];
+    expect(strays, isEmpty);
   });
 }
