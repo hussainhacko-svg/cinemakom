@@ -6,7 +6,6 @@ import '../focus/tv_focusable.dart';
 import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
-import 'tv_steady_text.dart';
 
 /// A TV filter chip, item [index] of its zone (the TV system sheet and Genre
 /// design): a 40 dp pill.
@@ -70,11 +69,11 @@ class TvChip extends StatelessWidget {
                   Text(name!, style: text.caption.copyWith(fontSize: 15)),
                   const SizedBox(width: 8),
                 ],
-                TvSteadyText(
+                Text(
                   label,
                   style: text.label
                       .copyWith(fontSize: 15)
-                      .withWeight(selected ? FontWeight.w600 : FontWeight.w500)
+                      .withWeight(FontWeight.w500)
                       .copyWith(
                         color: picker || selected || focused
                             ? MarqueeColors.cream

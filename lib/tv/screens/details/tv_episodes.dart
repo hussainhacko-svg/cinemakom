@@ -303,7 +303,7 @@ class _SeasonEntry extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: text.body
-                .withWeight(selected ? FontWeight.w600 : FontWeight.w500)
+                .withWeight(FontWeight.w500)
                 .copyWith(
                   height: 1.2,
                   color: selected ? MarqueeColors.bulb : MarqueeColors.dust,

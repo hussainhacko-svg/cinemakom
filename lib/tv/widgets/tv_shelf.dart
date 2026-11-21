@@ -7,7 +7,6 @@ import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
 import 'tv_image.dart';
-import 'tv_steady_text.dart';
 
 // The tabs' rows and tiles (the TV Library, Downloads, Search and Settings
 // designs). Focused, each gets a `boothRaised` fill and the 3 px `bulb` ring
@@ -215,10 +214,10 @@ class TvSegment extends StatelessWidget {
             color: selected || focused ? MarqueeColors.boothRaised : null,
             shape: const StadiumBorder(),
           ),
-          child: TvSteadyText(
+          child: Text(
             label,
             style: text.label
-                .withWeight(selected ? FontWeight.w600 : FontWeight.w500)
+                .withWeight(FontWeight.w500)
                 .copyWith(
                   color: selected ? MarqueeColors.cream : MarqueeColors.dust,
                 ),
