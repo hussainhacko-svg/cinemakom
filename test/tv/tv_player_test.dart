@@ -123,7 +123,7 @@ void main() {
     // Halfway through hiding: neither shown nor gone (it used to jump).
     await tester.pump(TvPlayerScreen.hideAfter);
     await tester.pump();
-    await tester.pump(controlsFadeOut ~/ 2);
+    await tester.pump(controlsFade ~/ 2);
     expect(opacity(), inExclusiveRange(0, 1));
     await tester.pumpAndSettle();
     expect(opacity(), 0);
@@ -131,7 +131,7 @@ void main() {
     // Down shows them again, fading in.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
-    await tester.pump(controlsFadeIn ~/ 2);
+    await tester.pump(controlsFade ~/ 2);
     expect(opacity(), inExclusiveRange(0, 1));
     await tester.pumpAndSettle();
     expect(opacity(), 1);

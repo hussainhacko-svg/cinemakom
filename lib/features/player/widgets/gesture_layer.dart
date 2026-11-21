@@ -18,7 +18,7 @@ import '../player_state.dart';
 /// | Tap | [onTap] (show or hide the controls) |
 /// | Double-tap the left / right third | −10 s / +10 s; more taps add up |
 /// | Vertical drag, left / right half | Brightness / volume |
-/// | Pinch out / in | Fill / Fit |
+/// | Two fingers (a pinch) | Nothing (the owner removed pinch to fill) |
 ///
 /// Sides are physical, in Arabic too (PLAYER.md §2). Drags that start
 /// within [edge] of the screen's edge are left to the system (back gesture,
@@ -31,7 +31,6 @@ class GestureLayer extends StatefulWidget {
     required this.locked,
     required this.onTap,
     required this.onLockedTap,
-    required this.onPinch,
     required this.child,
   });
 
@@ -40,7 +39,6 @@ class GestureLayer extends StatefulWidget {
   final bool locked;
   final VoidCallback onTap;
   final VoidCallback onLockedTap;
-  final ValueChanged<VideoFit> onPinch;
 
   /// The controls, under the gestures' feedback.
   final Widget child;
@@ -61,7 +59,7 @@ class GestureLayer extends StatefulWidget {
 
 enum _Side { left, right }
 
-enum _Drag { none, ignored, brightness, volume, pinch }
+enum _Drag { none, ignored, brightness, volume }
 
 class _GestureLayerState extends State<GestureLayer> {
   // Double taps.
@@ -79,7 +77,6 @@ class _GestureLayerState extends State<GestureLayer> {
   /// check and the swipe's length.
   Offset _down = Offset.zero;
   Offset _start = Offset.zero;
-  double _pinch = 1;
   double _levelFrom = 0;
   double? _level;
   bool _levelIsBrightness = false;
@@ -166,7 +163,7 @@ class _GestureLayerState extends State<GestureLayer> {
   }
 
   // ---------------------------------------------------------------------------
-  // Drags and pinches
+  // Drags
 
   void _onScaleStart(ScaleStartDetails d) {
     _drag = _Drag.none;
@@ -174,9 +171,9 @@ class _GestureLayerState extends State<GestureLayer> {
       _drag = _Drag.ignored;
       return;
     }
+    // Two fingers do nothing: no pinch to fill (owner, 2026-11-22).
     if (d.pointerCount >= 2) {
-      _drag = _Drag.pinch;
-      _pinch = 1;
+      _drag = _Drag.ignored;
       return;
     }
     final size = context.size!;
@@ -193,9 +190,8 @@ class _GestureLayerState extends State<GestureLayer> {
 
   void _onScaleUpdate(ScaleUpdateDetails d) {
     if (_drag == _Drag.ignored) return;
-    if (d.pointerCount >= 2 && (_drag == _Drag.none || _drag == _Drag.pinch)) {
-      _drag = _Drag.pinch;
-      _pinch = d.scale;
+    if (d.pointerCount >= 2) {
+      _drag = _Drag.ignored;
       return;
     }
     final size = context.size!;
@@ -246,9 +242,6 @@ class _GestureLayerState extends State<GestureLayer> {
 
   void _onScaleEnd(ScaleEndDetails _) {
     switch (_drag) {
-      case _Drag.pinch:
-        if (_pinch > 1.1) widget.onPinch(VideoFit.fill);
-        if (_pinch < 0.9) widget.onPinch(VideoFit.fit);
       case _Drag.brightness || _Drag.volume:
         _levelHide = Timer(const Duration(milliseconds: 600), () {
           if (mounted) setState(() => _level = null);

@@ -593,7 +593,7 @@ void main() {
       );
     });
 
-    testWidgets('pinch out fills the screen, pinch in fits it', (tester) async {
+    testWidgets('a pinch does nothing (no pinch to fill)', (tester) async {
       await playing(tester);
       Future<void> pinch(double from, double to) async {
         final a = await tester.startGesture(Offset(422 - from, 195));
@@ -608,10 +608,9 @@ void main() {
       }
 
       await pinch(60, 160);
-      expect(find.text('Fill'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Fill'), findsNothing);
       await pinch(160, 60);
-      expect(find.text('Fit'), findsOneWidget);
+      expect(find.text('Fit'), findsNothing);
     });
 
     testWidgets('the lock ignores touches until Unlock', (tester) async {

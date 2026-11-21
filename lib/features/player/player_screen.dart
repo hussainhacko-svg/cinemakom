@@ -299,13 +299,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _show();
   }
 
-  /// A pinch: Fill or Fit, with the same note as the fit chip.
-  void _pinchFit(AppLocalizations l10n, VideoFit fit) {
-    if (fit == _state.fit) return;
-    _controller.setFit(fit);
-    _showToast(fitIcon(fit), fitLabel(l10n, fit));
-  }
-
   Future<void> _episodesPanel() async {
     final picked = await _open(
       () => showEpisodesPanel(
@@ -651,9 +644,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ignoring: !_visible || _locked,
                       child: AnimatedOpacity(
                         opacity: _visible && !_locked ? 1 : 0,
-                        duration: _visible && !_locked
-                            ? controlsFadeIn
-                            : controlsFadeOut,
+                        duration: controlsFade,
                         curve: Curves.easeOut,
                         child: ControlsOverlay(
                           state: state,
@@ -748,7 +739,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  /// Phones: taps, double taps, swipes and pinches over the controls.
+  /// Phones: taps, double taps and swipes over the controls.
   /// Desktop: a tap shows or hides them (mouse and keys come in M8).
   Widget _gestures(AppLocalizations l10n, PlayerState state, Widget controls) =>
       isMobile
@@ -758,7 +749,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           locked: _locked,
           onTap: _toggle,
           onLockedTap: _showUnlock,
-          onPinch: (fit) => _pinchFit(l10n, fit),
           child: controls,
         )
       : Listener(

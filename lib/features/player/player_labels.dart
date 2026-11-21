@@ -64,7 +64,5 @@ String subtitleLabel(AppLocalizations l10n, SubtitleOption option) {
 }
 
 /// How long the player's controls take to fade in and out, on every
-/// platform (phone, desktop, TV). Long enough to see (150 ms looked like a
-/// cut, 2026-11-21); they leave more slowly, so it's gentle.
-const controlsFadeIn = Duration(milliseconds: 250);
-const controlsFadeOut = Duration(milliseconds: 400);
+/// platform: TV, phones and desktop (owner, 2026-11-22).
+const controlsFade = Duration(milliseconds: 200);

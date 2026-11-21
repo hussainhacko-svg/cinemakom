@@ -554,9 +554,7 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
                   opacity: _visible && !failed ? 1 : 0,
                   duration: MediaQuery.disableAnimationsOf(context)
                       ? Duration.zero
-                      : _visible && !failed
-                      ? controlsFadeIn
-                      : controlsFadeOut,
+                      : controlsFade,
                   curve: TvFocusStyle.curve,
                   child: KeyedSubtree(
                     key: ValueKey(_shows),

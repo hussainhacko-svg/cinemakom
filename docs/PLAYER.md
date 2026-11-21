@@ -87,7 +87,7 @@ lib/
       skip_intro_button.dart
       up_next_card.dart
       episodes_panel.dart       # series: pick another episode without leaving the player
-      gesture_layer.dart        # mobile: taps, double-tap seek, swipes, pinch, lock
+      gesture_layer.dart        # mobile: taps, double-tap seek, swipes, lock
       shortcuts.dart            # desktop: Shortcuts/Actions and mouse handling
 ```
 
@@ -170,7 +170,7 @@ Every error message goes in the ARB files.
 0.5×, 0.75×, 1×, 1.25×, 1.5×, 1.75×, 2× with pitch correction (the default on both mpv and ExoPlayer). The chip shows "1×". It's kept for the session, across episodes.
 
 ### 7.4 Fit
-**Fit** (whole frame, letterboxed; the default), **Fill** (crop to fill the screen), **Stretch**. The chip cycles through them (icon plus a short toast "Fill"). On mobile, pinch out = Fill and pinch in = Fit. Done with `PlayerEngine.buildVideo(fit:)` (`Video(fit:)` on mpv, a `FittedBox` on ExoPlayer). Plain subtitles stay on screen in Fill because Flutter draws them.
+**Fit** (whole frame, letterboxed; the default), **Fill** (crop to fill the screen), **Stretch**. The chip cycles through them (icon plus a short toast "Fill"). There's no pinch to fill: the owner removed it (2026-11-22); two fingers do nothing. Done with `PlayerEngine.buildVideo(fit:)` (`Video(fit:)` on mpv, a `FittedBox` on ExoPlayer). Plain subtitles stay on screen in Fill because Flutter draws them.
 
 ### 7.5 Skip intro
 - While the playhead is inside an intro range (`SkipRange.contains`), show **Skip intro** (outlined pill, at the end side above the seek bar, as in the design). It jumps to the range's `end`.
@@ -253,7 +253,6 @@ Every error message goes in the ARB files.
 | Double-tap left / right third | −10 s / +10 s. Repeated taps add up ("+30 s") with a ripple on that side |
 | Vertical drag, left half | Brightness (app-level, through `screen_brightness`, restored on exit) |
 | Vertical drag, right half | Volume (system volume through `volume_controller`, without the system slider) |
-| Pinch | Fill / Fit |
 
   - Drags start 24 dp from the screen edges, so the system back gesture and notification shade still work.
   - The brightness and volume levels show as a slim vertical bar (`bulb` on `velvet`) with an icon.
