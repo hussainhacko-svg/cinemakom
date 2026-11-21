@@ -1716,6 +1716,18 @@ class $DownloadsTable extends Downloads
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _downloadedBytesMeta = const VerificationMeta(
+    'downloadedBytes',
+  );
+  @override
+  late final GeneratedColumn<int> downloadedBytes = GeneratedColumn<int>(
+    'downloaded_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -1725,12 +1737,53 @@ class $DownloadsTable extends Downloads
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _pausedByUserMeta = const VerificationMeta(
+    'pausedByUser',
+  );
+  @override
+  late final GeneratedColumn<bool> pausedByUser = GeneratedColumn<bool>(
+    'paused_by_user',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("paused_by_user" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _startedOverMeta = const VerificationMeta(
+    'startedOver',
+  );
+  @override
+  late final GeneratedColumn<bool> startedOver = GeneratedColumn<bool>(
+    'started_over',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("started_over" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _problemMeta = const VerificationMeta(
     'problem',
   );
   @override
   late final GeneratedColumn<String> problem = GeneratedColumn<String>(
     'problem',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _problemDetailMeta = const VerificationMeta(
+    'problemDetail',
+  );
+  @override
+  late final GeneratedColumn<String> problemDetail = GeneratedColumn<String>(
+    'problem_detail',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -1747,6 +1800,17 @@ class $DownloadsTable extends Downloads
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -1756,6 +1820,17 @@ class $DownloadsTable extends Downloads
     aliasedName,
     true,
     type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contentUriMeta = const VerificationMeta(
+    'contentUri',
+  );
+  @override
+  late final GeneratedColumn<String> contentUri = GeneratedColumn<String>(
+    'content_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   @override
@@ -1778,10 +1853,16 @@ class $DownloadsTable extends Downloads
     fileName,
     subtitles,
     totalBytes,
+    downloadedBytes,
     status,
+    pausedByUser,
+    startedOver,
     problem,
+    problemDetail,
     addedAt,
+    updatedAt,
     completedAt,
+    contentUri,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1921,6 +2002,15 @@ class $DownloadsTable extends Downloads
         totalBytes.isAcceptableOrUnknown(data['total_bytes']!, _totalBytesMeta),
       );
     }
+    if (data.containsKey('downloaded_bytes')) {
+      context.handle(
+        _downloadedBytesMeta,
+        downloadedBytes.isAcceptableOrUnknown(
+          data['downloaded_bytes']!,
+          _downloadedBytesMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -1929,10 +2019,37 @@ class $DownloadsTable extends Downloads
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
+    if (data.containsKey('paused_by_user')) {
+      context.handle(
+        _pausedByUserMeta,
+        pausedByUser.isAcceptableOrUnknown(
+          data['paused_by_user']!,
+          _pausedByUserMeta,
+        ),
+      );
+    }
+    if (data.containsKey('started_over')) {
+      context.handle(
+        _startedOverMeta,
+        startedOver.isAcceptableOrUnknown(
+          data['started_over']!,
+          _startedOverMeta,
+        ),
+      );
+    }
     if (data.containsKey('problem')) {
       context.handle(
         _problemMeta,
         problem.isAcceptableOrUnknown(data['problem']!, _problemMeta),
+      );
+    }
+    if (data.containsKey('problem_detail')) {
+      context.handle(
+        _problemDetailMeta,
+        problemDetail.isAcceptableOrUnknown(
+          data['problem_detail']!,
+          _problemDetailMeta,
+        ),
       );
     }
     if (data.containsKey('added_at')) {
@@ -1943,6 +2060,12 @@ class $DownloadsTable extends Downloads
     } else if (isInserting) {
       context.missing(_addedAtMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -1950,6 +2073,12 @@ class $DownloadsTable extends Downloads
           data['completed_at']!,
           _completedAtMeta,
         ),
+      );
+    }
+    if (data.containsKey('content_uri')) {
+      context.handle(
+        _contentUriMeta,
+        contentUri.isAcceptableOrUnknown(data['content_uri']!, _contentUriMeta),
       );
     }
     return context;
@@ -2033,21 +2162,45 @@ class $DownloadsTable extends Downloads
         DriftSqlType.int,
         data['${effectivePrefix}total_bytes'],
       ),
+      downloadedBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}downloaded_bytes'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
+      )!,
+      pausedByUser: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}paused_by_user'],
+      )!,
+      startedOver: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}started_over'],
       )!,
       problem: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}problem'],
       ),
+      problemDetail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}problem_detail'],
+      ),
       addedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}added_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
+      ),
+      contentUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_uri'],
       ),
     );
   }
@@ -2092,13 +2245,30 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
   final String subtitles;
   final int? totalBytes;
 
+  /// Bytes downloaded so far, persisted at most every 2 s while running and
+  /// on every pause, failure or completion.
+  final int downloadedBytes;
+
   /// `DownloadStatus.name`.
   final String status;
 
+  /// Whether the user pressed Pause (vs. paused by connectivity loss).
+  final bool pausedByUser;
+
+  /// True after a retry had to restart from 0; cleared on the next progress.
+  final bool startedOver;
+
   /// Why it failed (`DownloadProblem.name`), when it did.
   final String? problem;
+
+  /// The engine's own error description, for logs and Details. Never parsed.
+  final String? problemDetail;
   final DateTime addedAt;
+  final DateTime? updatedAt;
   final DateTime? completedAt;
+
+  /// MediaStore content URI on Android, if finishing used MediaStore.
+  final String? contentUri;
   const DownloadRow({
     required this.videoId,
     required this.titleId,
@@ -2118,10 +2288,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
     required this.fileName,
     required this.subtitles,
     this.totalBytes,
+    required this.downloadedBytes,
     required this.status,
+    required this.pausedByUser,
+    required this.startedOver,
     this.problem,
+    this.problemDetail,
     required this.addedAt,
+    this.updatedAt,
     this.completedAt,
+    this.contentUri,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2164,13 +2340,25 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
     if (!nullToAbsent || totalBytes != null) {
       map['total_bytes'] = Variable<int>(totalBytes);
     }
+    map['downloaded_bytes'] = Variable<int>(downloadedBytes);
     map['status'] = Variable<String>(status);
+    map['paused_by_user'] = Variable<bool>(pausedByUser);
+    map['started_over'] = Variable<bool>(startedOver);
     if (!nullToAbsent || problem != null) {
       map['problem'] = Variable<String>(problem);
     }
+    if (!nullToAbsent || problemDetail != null) {
+      map['problem_detail'] = Variable<String>(problemDetail);
+    }
     map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    if (!nullToAbsent || contentUri != null) {
+      map['content_uri'] = Variable<String>(contentUri);
     }
     return map;
   }
@@ -2211,14 +2399,26 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
       totalBytes: totalBytes == null && nullToAbsent
           ? const Value.absent()
           : Value(totalBytes),
+      downloadedBytes: Value(downloadedBytes),
       status: Value(status),
+      pausedByUser: Value(pausedByUser),
+      startedOver: Value(startedOver),
       problem: problem == null && nullToAbsent
           ? const Value.absent()
           : Value(problem),
+      problemDetail: problemDetail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(problemDetail),
       addedAt: Value(addedAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
+      contentUri: contentUri == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contentUri),
     );
   }
 
@@ -2246,10 +2446,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
       fileName: serializer.fromJson<String>(json['fileName']),
       subtitles: serializer.fromJson<String>(json['subtitles']),
       totalBytes: serializer.fromJson<int?>(json['totalBytes']),
+      downloadedBytes: serializer.fromJson<int>(json['downloadedBytes']),
       status: serializer.fromJson<String>(json['status']),
+      pausedByUser: serializer.fromJson<bool>(json['pausedByUser']),
+      startedOver: serializer.fromJson<bool>(json['startedOver']),
       problem: serializer.fromJson<String?>(json['problem']),
+      problemDetail: serializer.fromJson<String?>(json['problemDetail']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      contentUri: serializer.fromJson<String?>(json['contentUri']),
     );
   }
   @override
@@ -2274,10 +2480,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
       'fileName': serializer.toJson<String>(fileName),
       'subtitles': serializer.toJson<String>(subtitles),
       'totalBytes': serializer.toJson<int?>(totalBytes),
+      'downloadedBytes': serializer.toJson<int>(downloadedBytes),
       'status': serializer.toJson<String>(status),
+      'pausedByUser': serializer.toJson<bool>(pausedByUser),
+      'startedOver': serializer.toJson<bool>(startedOver),
       'problem': serializer.toJson<String?>(problem),
+      'problemDetail': serializer.toJson<String?>(problemDetail),
       'addedAt': serializer.toJson<DateTime>(addedAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'contentUri': serializer.toJson<String?>(contentUri),
     };
   }
 
@@ -2300,10 +2512,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
     String? fileName,
     String? subtitles,
     Value<int?> totalBytes = const Value.absent(),
+    int? downloadedBytes,
     String? status,
+    bool? pausedByUser,
+    bool? startedOver,
     Value<String?> problem = const Value.absent(),
+    Value<String?> problemDetail = const Value.absent(),
     DateTime? addedAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
+    Value<String?> contentUri = const Value.absent(),
   }) => DownloadRow(
     videoId: videoId ?? this.videoId,
     titleId: titleId ?? this.titleId,
@@ -2323,10 +2541,18 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
     fileName: fileName ?? this.fileName,
     subtitles: subtitles ?? this.subtitles,
     totalBytes: totalBytes.present ? totalBytes.value : this.totalBytes,
+    downloadedBytes: downloadedBytes ?? this.downloadedBytes,
     status: status ?? this.status,
+    pausedByUser: pausedByUser ?? this.pausedByUser,
+    startedOver: startedOver ?? this.startedOver,
     problem: problem.present ? problem.value : this.problem,
+    problemDetail: problemDetail.present
+        ? problemDetail.value
+        : this.problemDetail,
     addedAt: addedAt ?? this.addedAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    contentUri: contentUri.present ? contentUri.value : this.contentUri,
   );
   DownloadRow copyWithCompanion(DownloadsCompanion data) {
     return DownloadRow(
@@ -2356,12 +2582,28 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
       totalBytes: data.totalBytes.present
           ? data.totalBytes.value
           : this.totalBytes,
+      downloadedBytes: data.downloadedBytes.present
+          ? data.downloadedBytes.value
+          : this.downloadedBytes,
       status: data.status.present ? data.status.value : this.status,
+      pausedByUser: data.pausedByUser.present
+          ? data.pausedByUser.value
+          : this.pausedByUser,
+      startedOver: data.startedOver.present
+          ? data.startedOver.value
+          : this.startedOver,
       problem: data.problem.present ? data.problem.value : this.problem,
+      problemDetail: data.problemDetail.present
+          ? data.problemDetail.value
+          : this.problemDetail,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
+      contentUri: data.contentUri.present
+          ? data.contentUri.value
+          : this.contentUri,
     );
   }
 
@@ -2386,10 +2628,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
           ..write('fileName: $fileName, ')
           ..write('subtitles: $subtitles, ')
           ..write('totalBytes: $totalBytes, ')
+          ..write('downloadedBytes: $downloadedBytes, ')
           ..write('status: $status, ')
+          ..write('pausedByUser: $pausedByUser, ')
+          ..write('startedOver: $startedOver, ')
           ..write('problem: $problem, ')
+          ..write('problemDetail: $problemDetail, ')
           ..write('addedAt: $addedAt, ')
-          ..write('completedAt: $completedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('contentUri: $contentUri')
           ..write(')'))
         .toString();
   }
@@ -2414,10 +2662,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
     fileName,
     subtitles,
     totalBytes,
+    downloadedBytes,
     status,
+    pausedByUser,
+    startedOver,
     problem,
+    problemDetail,
     addedAt,
+    updatedAt,
     completedAt,
+    contentUri,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2441,10 +2695,16 @@ class DownloadRow extends DataClass implements Insertable<DownloadRow> {
           other.fileName == this.fileName &&
           other.subtitles == this.subtitles &&
           other.totalBytes == this.totalBytes &&
+          other.downloadedBytes == this.downloadedBytes &&
           other.status == this.status &&
+          other.pausedByUser == this.pausedByUser &&
+          other.startedOver == this.startedOver &&
           other.problem == this.problem &&
+          other.problemDetail == this.problemDetail &&
           other.addedAt == this.addedAt &&
-          other.completedAt == this.completedAt);
+          other.updatedAt == this.updatedAt &&
+          other.completedAt == this.completedAt &&
+          other.contentUri == this.contentUri);
 }
 
 class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
@@ -2466,10 +2726,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
   final Value<String> fileName;
   final Value<String> subtitles;
   final Value<int?> totalBytes;
+  final Value<int> downloadedBytes;
   final Value<String> status;
+  final Value<bool> pausedByUser;
+  final Value<bool> startedOver;
   final Value<String?> problem;
+  final Value<String?> problemDetail;
   final Value<DateTime> addedAt;
+  final Value<DateTime?> updatedAt;
   final Value<DateTime?> completedAt;
+  final Value<String?> contentUri;
   final Value<int> rowid;
   const DownloadsCompanion({
     this.videoId = const Value.absent(),
@@ -2490,10 +2756,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
     this.fileName = const Value.absent(),
     this.subtitles = const Value.absent(),
     this.totalBytes = const Value.absent(),
+    this.downloadedBytes = const Value.absent(),
     this.status = const Value.absent(),
+    this.pausedByUser = const Value.absent(),
+    this.startedOver = const Value.absent(),
     this.problem = const Value.absent(),
+    this.problemDetail = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.contentUri = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DownloadsCompanion.insert({
@@ -2515,10 +2787,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
     required String fileName,
     this.subtitles = const Value.absent(),
     this.totalBytes = const Value.absent(),
+    this.downloadedBytes = const Value.absent(),
     required String status,
+    this.pausedByUser = const Value.absent(),
+    this.startedOver = const Value.absent(),
     this.problem = const Value.absent(),
+    this.problemDetail = const Value.absent(),
     required DateTime addedAt,
+    this.updatedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.contentUri = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : videoId = Value(videoId),
        titleId = Value(titleId),
@@ -2547,10 +2825,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
     Expression<String>? fileName,
     Expression<String>? subtitles,
     Expression<int>? totalBytes,
+    Expression<int>? downloadedBytes,
     Expression<String>? status,
+    Expression<bool>? pausedByUser,
+    Expression<bool>? startedOver,
     Expression<String>? problem,
+    Expression<String>? problemDetail,
     Expression<DateTime>? addedAt,
+    Expression<DateTime>? updatedAt,
     Expression<DateTime>? completedAt,
+    Expression<String>? contentUri,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2572,10 +2856,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
       if (fileName != null) 'file_name': fileName,
       if (subtitles != null) 'subtitles': subtitles,
       if (totalBytes != null) 'total_bytes': totalBytes,
+      if (downloadedBytes != null) 'downloaded_bytes': downloadedBytes,
       if (status != null) 'status': status,
+      if (pausedByUser != null) 'paused_by_user': pausedByUser,
+      if (startedOver != null) 'started_over': startedOver,
       if (problem != null) 'problem': problem,
+      if (problemDetail != null) 'problem_detail': problemDetail,
       if (addedAt != null) 'added_at': addedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (completedAt != null) 'completed_at': completedAt,
+      if (contentUri != null) 'content_uri': contentUri,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2599,10 +2889,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
     Value<String>? fileName,
     Value<String>? subtitles,
     Value<int?>? totalBytes,
+    Value<int>? downloadedBytes,
     Value<String>? status,
+    Value<bool>? pausedByUser,
+    Value<bool>? startedOver,
     Value<String?>? problem,
+    Value<String?>? problemDetail,
     Value<DateTime>? addedAt,
+    Value<DateTime?>? updatedAt,
     Value<DateTime?>? completedAt,
+    Value<String?>? contentUri,
     Value<int>? rowid,
   }) {
     return DownloadsCompanion(
@@ -2624,10 +2920,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
       fileName: fileName ?? this.fileName,
       subtitles: subtitles ?? this.subtitles,
       totalBytes: totalBytes ?? this.totalBytes,
+      downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       status: status ?? this.status,
+      pausedByUser: pausedByUser ?? this.pausedByUser,
+      startedOver: startedOver ?? this.startedOver,
       problem: problem ?? this.problem,
+      problemDetail: problemDetail ?? this.problemDetail,
       addedAt: addedAt ?? this.addedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
+      contentUri: contentUri ?? this.contentUri,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2689,17 +2991,35 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
     if (totalBytes.present) {
       map['total_bytes'] = Variable<int>(totalBytes.value);
     }
+    if (downloadedBytes.present) {
+      map['downloaded_bytes'] = Variable<int>(downloadedBytes.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
+    }
+    if (pausedByUser.present) {
+      map['paused_by_user'] = Variable<bool>(pausedByUser.value);
+    }
+    if (startedOver.present) {
+      map['started_over'] = Variable<bool>(startedOver.value);
     }
     if (problem.present) {
       map['problem'] = Variable<String>(problem.value);
     }
+    if (problemDetail.present) {
+      map['problem_detail'] = Variable<String>(problemDetail.value);
+    }
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (contentUri.present) {
+      map['content_uri'] = Variable<String>(contentUri.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2728,10 +3048,16 @@ class DownloadsCompanion extends UpdateCompanion<DownloadRow> {
           ..write('fileName: $fileName, ')
           ..write('subtitles: $subtitles, ')
           ..write('totalBytes: $totalBytes, ')
+          ..write('downloadedBytes: $downloadedBytes, ')
           ..write('status: $status, ')
+          ..write('pausedByUser: $pausedByUser, ')
+          ..write('startedOver: $startedOver, ')
           ..write('problem: $problem, ')
+          ..write('problemDetail: $problemDetail, ')
           ..write('addedAt: $addedAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('completedAt: $completedAt, ')
+          ..write('contentUri: $contentUri, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3563,10 +3889,16 @@ typedef $$DownloadsTableCreateCompanionBuilder = DownloadsCompanion Function({
   required String fileName,
   Value<String> subtitles,
   Value<int?> totalBytes,
+  Value<int> downloadedBytes,
   required String status,
+  Value<bool> pausedByUser,
+  Value<bool> startedOver,
   Value<String?> problem,
+  Value<String?> problemDetail,
   required DateTime addedAt,
+  Value<DateTime?> updatedAt,
   Value<DateTime?> completedAt,
+  Value<String?> contentUri,
   Value<int> rowid,
 });
 typedef $$DownloadsTableUpdateCompanionBuilder = DownloadsCompanion Function({
@@ -3588,10 +3920,16 @@ typedef $$DownloadsTableUpdateCompanionBuilder = DownloadsCompanion Function({
   Value<String> fileName,
   Value<String> subtitles,
   Value<int?> totalBytes,
+  Value<int> downloadedBytes,
   Value<String> status,
+  Value<bool> pausedByUser,
+  Value<bool> startedOver,
   Value<String?> problem,
+  Value<String?> problemDetail,
   Value<DateTime> addedAt,
+  Value<DateTime?> updatedAt,
   Value<DateTime?> completedAt,
+  Value<String?> contentUri,
   Value<int> rowid,
 });
 
@@ -3694,8 +4032,23 @@ class $$DownloadsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pausedByUser => $composableBuilder(
+    column: $table.pausedByUser,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get startedOver => $composableBuilder(
+    column: $table.startedOver,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3704,13 +4057,28 @@ class $$DownloadsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get problemDetail => $composableBuilder(
+    column: $table.problemDetail,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get addedAt => $composableBuilder(
     column: $table.addedAt,
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentUri => $composableBuilder(
+    column: $table.contentUri,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3814,8 +4182,23 @@ class $$DownloadsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get pausedByUser => $composableBuilder(
+    column: $table.pausedByUser,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get startedOver => $composableBuilder(
+    column: $table.startedOver,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3824,13 +4207,28 @@ class $$DownloadsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get problemDetail => $composableBuilder(
+    column: $table.problemDetail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get addedAt => $composableBuilder(
     column: $table.addedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentUri => $composableBuilder(
+    column: $table.contentUri,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -3906,17 +4304,45 @@ class $$DownloadsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get pausedByUser => $composableBuilder(
+    column: $table.pausedByUser,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get startedOver => $composableBuilder(
+    column: $table.startedOver,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get problem =>
       $composableBuilder(column: $table.problem, builder: (column) => column);
 
+  GeneratedColumn<String> get problemDetail => $composableBuilder(
+    column: $table.problemDetail,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentUri => $composableBuilder(
+    column: $table.contentUri,
     builder: (column) => column,
   );
 }
@@ -3970,10 +4396,16 @@ class $$DownloadsTableTableManager
                 Value<String> fileName = const Value.absent(),
                 Value<String> subtitles = const Value.absent(),
                 Value<int?> totalBytes = const Value.absent(),
+                Value<int> downloadedBytes = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<bool> pausedByUser = const Value.absent(),
+                Value<bool> startedOver = const Value.absent(),
                 Value<String?> problem = const Value.absent(),
+                Value<String?> problemDetail = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<String?> contentUri = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadsCompanion(
                 videoId: videoId,
@@ -3994,10 +4426,16 @@ class $$DownloadsTableTableManager
                 fileName: fileName,
                 subtitles: subtitles,
                 totalBytes: totalBytes,
+                downloadedBytes: downloadedBytes,
                 status: status,
+                pausedByUser: pausedByUser,
+                startedOver: startedOver,
                 problem: problem,
+                problemDetail: problemDetail,
                 addedAt: addedAt,
+                updatedAt: updatedAt,
                 completedAt: completedAt,
+                contentUri: contentUri,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4020,10 +4458,16 @@ class $$DownloadsTableTableManager
                 required String fileName,
                 Value<String> subtitles = const Value.absent(),
                 Value<int?> totalBytes = const Value.absent(),
+                Value<int> downloadedBytes = const Value.absent(),
                 required String status,
+                Value<bool> pausedByUser = const Value.absent(),
+                Value<bool> startedOver = const Value.absent(),
                 Value<String?> problem = const Value.absent(),
+                Value<String?> problemDetail = const Value.absent(),
                 required DateTime addedAt,
+                Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<String?> contentUri = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadsCompanion.insert(
                 videoId: videoId,
@@ -4044,10 +4488,16 @@ class $$DownloadsTableTableManager
                 fileName: fileName,
                 subtitles: subtitles,
                 totalBytes: totalBytes,
+                downloadedBytes: downloadedBytes,
                 status: status,
+                pausedByUser: pausedByUser,
+                startedOver: startedOver,
                 problem: problem,
+                problemDetail: problemDetail,
                 addedAt: addedAt,
+                updatedAt: updatedAt,
                 completedAt: completedAt,
+                contentUri: contentUri,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

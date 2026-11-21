@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
@@ -57,21 +58,28 @@ Download _download(
   DownloadStatus status = DownloadStatus.complete,
   int? season,
   int? episode,
-}) => Download(
-  videoId: id,
-  titleId: titleId,
-  title: LocalizedText(en: title),
-  season: season,
-  episode: episode,
-  kind: season == null ? VideoKind.movies : VideoKind.series,
-  quality: '1080p',
-  baseDirectory: 'root',
-  directory: _dir,
-  fileName: '$id.mp4',
-  status: status,
-  totalBytes: 2 * 1024 * 1024 * 1024,
-  addedAt: DateTime(2026, 11, 19),
-);
+  bool createFile = true,
+}) {
+  if (status == DownloadStatus.complete && createFile) {
+    final f = File(p.join(_dir, '$id.mp4'));
+    if (!f.existsSync()) f.writeAsBytesSync(const [0]);
+  }
+  return Download(
+    videoId: id,
+    titleId: titleId,
+    title: LocalizedText(en: title),
+    season: season,
+    episode: episode,
+    kind: season == null ? VideoKind.movies : VideoKind.series,
+    quality: '1080p',
+    baseDirectory: 'root',
+    directory: _dir,
+    fileName: '$id.mp4',
+    status: status,
+    totalBytes: 2 * 1024 * 1024 * 1024,
+    addedAt: DateTime(2026, 11, 19),
+  );
+}
 
 /// The app on TV, then [tab] (1 Search … 4 Settings) by remote.
 Future<TvDriver> _openTab(
@@ -248,6 +256,75 @@ void main() {
       await tv.back();
       expect(tv.focused, contains('2 episodes'));
     });
+
+    testWidgets('paused and failed rows show saved bytes on TV', (
+      tester,
+    ) async {
+      const gb = 1024 * 1024 * 1024;
+      final store = MemoryDownloadStore([
+        Download(
+          videoId: 'p1',
+          titleId: 'p1',
+          title: const LocalizedText(en: 'The Odyssey'),
+          kind: VideoKind.movies,
+          quality: '2160p',
+          baseDirectory: 'root',
+          directory: _dir,
+          fileName: 'p1.mp4',
+          status: DownloadStatus.paused,
+          pausedByUser: true,
+          totalBytes: 27 * gb,
+          downloadedBytes: (3.6 * gb).round(),
+          addedAt: DateTime(2026, 11, 21),
+        ),
+        Download(
+          videoId: 'f1',
+          titleId: 'f1',
+          title: const LocalizedText(en: 'Dune'),
+          kind: VideoKind.movies,
+          quality: '1080p',
+          baseDirectory: 'root',
+          directory: _dir,
+          fileName: 'f1.mp4',
+          status: DownloadStatus.failed,
+          problem: DownloadProblem.interrupted,
+          totalBytes: 4 * gb,
+          downloadedBytes: 1 * gb,
+          addedAt: DateTime(2026, 11, 20),
+        ),
+      ]);
+      await _openTab(tester, 3, downloads: store, freeSpace: 50 * gb);
+      expect(find.textContaining('3.6 GB of 27 GB'), findsOneWidget);
+      expect(find.textContaining('Stopped: interrupted'), findsOneWidget);
+      expect(find.textContaining('1.0 GB of 4.0 GB'), findsOneWidget);
+    });
+
+    testWidgets(
+      'missing finished movie shows File removed and Download again on TV',
+      (tester) async {
+        final goneDir = Directory.systemTemp.createTempSync('tv-gone').path;
+        addTearDown(() => Directory(goneDir).deleteSync(recursive: true));
+        final store = MemoryDownloadStore([
+          Download(
+            videoId: '3119279',
+            titleId: '3119279',
+            title: const LocalizedText(en: 'Eve of Destruction'),
+            kind: VideoKind.movies,
+            quality: '1080p',
+            baseDirectory: 'root',
+            directory: goneDir,
+            fileName: 'missing.mp4',
+            status: DownloadStatus.complete,
+            totalBytes: 2 * 1024 * 1024 * 1024,
+            addedAt: DateTime(2026, 11, 21),
+          ),
+        ]);
+        final tv = await _openTab(tester, 3, downloads: store);
+        expect(find.text('File removed'), findsOneWidget);
+        await tv.right();
+        expect(tv.focused, 'Download again');
+      },
+    );
   });
 
   group('Settings', () {

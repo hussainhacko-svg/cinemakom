@@ -13,9 +13,9 @@ import '../app/theme/marquee_colors.dart';
 import '../app/widgets/bulb_loader.dart';
 import '../app/widgets/error_view.dart';
 import '../app/widgets/media_image.dart';
-import '../core/downloads/downloader.dart';
 import '../core/storage/preferences.dart';
 import '../data/repositories/downloads_repository.dart';
+import '../features/downloads/download_flow.dart' show buildDownloadNotices;
 import 'focus/tv_back.dart';
 import 'focus/tv_focus_watchdog.dart';
 import 'focus/tv_screen.dart';
@@ -191,8 +191,35 @@ class _Downloads extends ConsumerStatefulWidget {
   ConsumerState<_Downloads> createState() => _DownloadsState();
 }
 
-class _DownloadsState extends ConsumerState<_Downloads> {
+class _DownloadsState extends ConsumerState<_Downloads>
+    with WidgetsBindingObserver {
   Locale? _locale;
+  StreamSubscription<String>? _tapsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _tapsSub = ref.read(downloadsRepositoryProvider).notificationTaps.listen((
+      _,
+    ) {
+      if (mounted) ref.read(tvRouterProvider).go('/downloads');
+    });
+  }
+
+  @override
+  void dispose() {
+    _tapsSub?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(downloadsRepositoryProvider).reconcile());
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -202,12 +229,7 @@ class _DownloadsState extends ConsumerState<_Downloads> {
     final first = _locale == null;
     _locale = locale;
     final l10n = AppLocalizations.of(context);
-    final notices = DownloadNotices(
-      running: l10n.noticeDownloading,
-      complete: l10n.noticeDownloaded,
-      failed: l10n.noticeFailed,
-      paused: l10n.noticePaused,
-    );
+    final notices = buildDownloadNotices(l10n);
     final downloads = ref.read(downloadsRepositoryProvider);
     unawaited(first ? downloads.start(notices) : downloads.setNotices(notices));
   }

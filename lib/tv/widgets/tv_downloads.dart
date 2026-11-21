@@ -215,10 +215,22 @@ Future<DownloadChoice?> _pickQuality(
   );
 }
 
-enum _Action { play, pause, resume, retry, cancel, delete, open }
+enum _Action {
+  play,
+  redownload,
+  pause,
+  resume,
+  retry,
+  details,
+  cancel,
+  delete,
+  remove,
+  open,
+}
 
-/// What can be done with [d]: play or delete a finished one; pause, resume
-/// or try again, cancel, or go to Downloads for an unfinished one.
+/// What can be done with [d]: play, details or delete a finished one; Download
+/// again or Remove when its file was removed outside the app; pause, resume or
+/// try again, details, cancel, or go to Downloads for an unfinished one.
 Future<void> tvDownloadMenu(
   BuildContext context,
   WidgetRef ref,
@@ -227,6 +239,7 @@ Future<void> tvDownloadMenu(
   final l10n = AppLocalizations.of(context);
   final repo = ref.read(downloadsRepositoryProvider);
   final progress = ref.read(progressOfProvider(d.videoId));
+  final missing = ref.read(isDownloadMissingProvider(d.videoId));
   final title = d.isEpisode
       ? l10n.episodeNumber(d.episode!)
       : context.titleOf(d.item);
@@ -234,25 +247,36 @@ Future<void> tvDownloadMenu(
     context,
     eyebrow: l10n.download,
     title: title,
-    subtitle: tvDownloadStatus(l10n, d, progress),
+    subtitle: missing
+        ? l10n.downloadFileRemoved
+        : tvDownloadStatus(l10n, d, progress),
     choices: switch (d.status) {
+      DownloadStatus.complete when missing => [
+        TvChoice(_Action.redownload, l10n.downloadAgain),
+        TvChoice(_Action.details, l10n.downloadDetails),
+        TvChoice(_Action.remove, l10n.downloadRemove),
+      ],
       DownloadStatus.complete => [
         TvChoice(_Action.play, l10n.play),
+        TvChoice(_Action.details, l10n.downloadDetails),
         TvChoice(_Action.delete, l10n.downloadDelete),
       ],
       DownloadStatus.failed => [
         TvChoice(_Action.retry, l10n.retry),
         TvChoice(_Action.cancel, l10n.downloadCancel),
+        TvChoice(_Action.details, l10n.downloadDetails),
         TvChoice(_Action.open, l10n.tvGoToDownloads),
       ],
       DownloadStatus.paused => [
         TvChoice(_Action.resume, l10n.downloadResume),
         TvChoice(_Action.cancel, l10n.downloadCancel),
+        TvChoice(_Action.details, l10n.downloadDetails),
         TvChoice(_Action.open, l10n.tvGoToDownloads),
       ],
       _ => [
         TvChoice(_Action.pause, l10n.downloadPause),
         TvChoice(_Action.cancel, l10n.downloadCancel),
+        TvChoice(_Action.details, l10n.downloadDetails),
         TvChoice(_Action.open, l10n.tvGoToDownloads),
       ],
     },
@@ -261,10 +285,25 @@ Future<void> tvDownloadMenu(
   switch (action) {
     case _Action.play:
       tvOpenPlayer(context, d.request);
+    case _Action.redownload:
+      await repo.redownload(d.videoId);
     case _Action.pause:
       await repo.pause(d.videoId);
     case _Action.resume || _Action.retry:
-      await repo.resume(d.videoId);
+      await tvResumeDownload(context, ref, d);
+    case _Action.details:
+      final path = await repo.filePath(d);
+      if (!context.mounted) return;
+      final sizes = downloadSizesLabel(l10n, d, progress);
+      final lines = [
+        missing
+            ? l10n.downloadFileRemoved
+            : tvDownloadStatus(l10n, d, progress),
+        ?sizes,
+        if (d.problemDetail case final detail? when detail.isNotEmpty) detail,
+        path,
+      ];
+      await _say(context, l10n.downloadDetails, lines.join('\n'));
     case _Action.cancel:
       if (await tvConfirm(
         context,
@@ -274,6 +313,8 @@ Future<void> tvDownloadMenu(
       )) {
         await repo.cancel(d.videoId);
       }
+    case _Action.remove:
+      await repo.delete(d.videoId);
     case _Action.delete:
       if (await tvConfirm(
         context,
@@ -287,6 +328,30 @@ Future<void> tvDownloadMenu(
       context.go('/downloads');
     case null:
       break;
+  }
+}
+
+/// Resumes or retries [d] on TV. If the stored quality is gone, asks the user
+/// before switching quality and starting over (docs/DOWNLOADS.md §5.5).
+Future<void> tvResumeDownload(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final repo = ref.read(downloadsRepositoryProvider);
+  final outcome = await repo.resume(d.videoId);
+  if (!context.mounted) return;
+  if (outcome case ResumeQualityGone(:final previousQuality, :final fallback)) {
+    final sure = await tvConfirm(
+      context,
+      l10n.downloadSwitchQuality(qualityChipLabel(fallback)),
+      l10n.downloadQualityGoneTitle(previousQuality),
+      l10n.tvKeepIt,
+    );
+    if (sure && context.mounted) {
+      await repo.resume(d.videoId, switchTo: fallback);
+    }
   }
 }
 
@@ -307,7 +372,8 @@ Future<bool> tvConfirm(
     ) ??
     false;
 
-/// "Downloading · 42%", "Waiting", "Paused", the problem, or "Downloaded".
+/// "Downloading · 42%", "Waiting", "Paused", "Waiting for connection", the
+/// problem, or "Downloaded".
 String tvDownloadStatus(
   AppLocalizations l10n,
   Download d,
@@ -315,9 +381,12 @@ String tvDownloadStatus(
 ) => switch (d.status) {
   DownloadStatus.queued => l10n.downloadQueued,
   DownloadStatus.running => l10n.tvDownloadingPercent(
-    ((progress?.fraction ?? 0) * 100).round(),
+    (downloadFraction(d, progress) * 100).round(),
   ),
-  DownloadStatus.paused => l10n.downloadPaused,
+  DownloadStatus.paused =>
+    d.isWaitingForConnection
+        ? l10n.downloadWaitingConnection
+        : l10n.downloadPaused,
   DownloadStatus.failed => problemText(l10n, d.problem),
   DownloadStatus.complete => l10n.downloaded,
 };
@@ -379,9 +448,9 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
                   SizedBox.square(
                     dimension: size - 10,
                     child: CircularProgressIndicator(
-                      value: (progress?.fraction ?? 0).clamp(0.02, 1),
+                      value: downloadFraction(d!, progress).clamp(0.02, 1),
                       strokeWidth: 3,
-                      color: d!.status == DownloadStatus.paused
+                      color: d.status == DownloadStatus.paused
                           ? MarqueeColors.dust
                           : MarqueeColors.bulb,
                       backgroundColor: MarqueeColors.velvet,
@@ -391,7 +460,7 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
                     const Icon(Icons.pause, size: 18, color: MarqueeColors.dust)
                   else
                     Text(
-                      '${((progress?.fraction ?? 0) * 100).round()}',
+                      '${(downloadFraction(d, progress) * 100).round()}',
                       style: text.caption.copyWith(
                         fontSize: 13,
                         color: MarqueeColors.cream,

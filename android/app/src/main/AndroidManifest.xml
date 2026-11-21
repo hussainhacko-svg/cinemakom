@@ -1,12 +1,21 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Streaming app: every screen talks to the Cinemana API. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Downloads (PLAN.md Phase 6): progress notifications (asked for at
-         the first download on Android 13+), and user-initiated transfers
-         so a long download isn't cut at WorkManager's 9 minutes on
-         Android 14+ (background_downloader, doc/parameters.md priority). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- Downloads (PLAN.md Phase 6, docs/DOWNLOADS.md §5.1): progress
+         notifications (asked for at the first download on Android 13+),
+         user-initiated transfers, and foreground data-sync service so long
+         downloads have no WorkManager time limit. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Android 7-9 (API 24-28): writing finished videos to Movies/Cinemakom
+         (docs/DOWNLOADS.md §5.6). Android 10+ uses scoped storage / legacy flag. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
     <!-- Android TV / Google TV support: the same APK runs on phones, tablets
          and TVs (docs/TV.md). -->
     <uses-feature
@@ -28,7 +37,8 @@
         android:label="Cinemakom"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:banner="@drawable/tv_banner">
+        android:banner="@drawable/tv_banner"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -83,6 +93,10 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="true"
             android:foregroundServiceType="dataSync" />
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

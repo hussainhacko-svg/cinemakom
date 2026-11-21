@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cinemakom/core/downloads/connectivity_monitor.dart';
 import 'package:cinemakom/data/repositories/download_store.dart';
 import 'package:cinemakom/data/repositories/downloads_repository.dart';
 import 'package:cinemakom/features/downloads/download_flow.dart';
@@ -135,6 +136,9 @@ Future<void> pumpApp(
           downloads ?? MemoryDownloadStore(),
         ),
         downloaderProvider.overrideWithValue(downloader ?? FakeDownloader()),
+        connectivityMonitorProvider.overrideWithValue(
+          const AlwaysOnlineConnectivity(),
+        ),
         downloadFreeSpaceProvider.overrideWithValue(() async => freeSpace),
         downloadRootProvider.overrideWithValue(
           () async => (

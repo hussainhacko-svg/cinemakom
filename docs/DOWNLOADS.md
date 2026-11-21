@@ -1,6 +1,6 @@
 # Downloads: the reliability plan
 
-> **Status (2026-11-21):** planned, nothing built yet. Downloads were built in Phase 6 (PLAN.md §5) and passed the tests and the Linux check, but they fail on the phone. This plan replaces "to check on the phone" in Phase 6. **Read it before touching `lib/core/downloads`, `downloads_repository.dart`, `download_store.dart` or the Downloads screens.**
+> **Status (2026-11-21):** D0 findings confirmed; D1–D6 code & automated tests implemented on `downloads-fix`; awaiting on-device phone verification (D1 30-min check, D5 rename spike/verification on phone, D6 notification check, D7 release checklist). **Read it before touching `lib/core/downloads`, `downloads_repository.dart`, `download_store.dart` or the Downloads screens.**
 
 The goal: **a download the user starts always finishes**, whether the app is open, in the background or killed, and whatever happens to the network. When it can't finish, the app says why, shows how much is saved, and continues from there. The app never leaves stray files behind, and the finished video is the user's: they can see it in their file manager and do what they like with it.
 
@@ -61,9 +61,12 @@ The temp file is on internal storage (`/data/user/0/…/files`) and the destinat
 
 One global configuration (`configureNotification`, `background_file_downloader.dart:103`) whose running text is only `{displayName}`. It has no size, percent, speed or time left, no clear Pause or Cancel buttons, and a tap does nothing useful. Its "paused" form appears on every timeout (§3.1).
 
-### 3.6 Still to check
+### 3.6 Checked (2026-11-21, D0)
 
-- **"27 GB"** for The Odyssey: confirm against the live CDN (`Content-Range` total) for the chosen quality. If it's right, the free-space check must handle files this large. If it's wrong, we're reading the size incorrectly.
+- **"27 GB" for The Odyssey (2026) (`id=3156005`, 2h 52m 35s):** confirmed against the live CDN (`Content-Range: bytes 0-0/28611233360` = 26.65 GiB, rounded to 27 GB by `formatBytes`; 1080p is 3.20 GiB). `ApiClient.contentLength` is accurate, and the free-space check handles 25–30+ GB files.
+- **WorkManager fallback:** `dumpsys jobscheduler` on the OnePlus CPH2423 (Android 15) confirmed past WorkManager Expedited Job (`Timer<EJ>`) sessions (up to 146.9 s) for `io.github.sharon_xa.cinemakom`, matching §3.1.
+- **Resume data after final `failed` (D3 check):** verified in `background_downloader-9.6.6/lib/src/base_downloader.dart` (`processStatusUpdate`): `_clearPauseResumeInfo` is called unconditionally on `update.status.isFinalState` before emitting the update, with no opt-out flag. Keeping network trouble from becoming final (`retries: 10` + connectivity pause on offline) plus honest `startedOver` restart is the intended design (§5.5).
+- **Android notification buttons (D6 check):** `background_downloader` localizes Pause/Resume/Cancel via `bg_downloader_pause` / `bg_downloader_resume` / `bg_downloader_cancel` string resources (`values/strings.xml` and `values-ar/strings.xml`), and supports `{progress}`, `{networkSpeed}`, `{timeRemaining}` in `Notifications.kt`.
 
 ## 4. The rules (what must always be true)
 

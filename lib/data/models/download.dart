@@ -21,19 +21,28 @@ enum DownloadStatus {
   bool get isActive => this != complete;
 }
 
-/// Why a download failed.
+/// Why a download failed (docs/DOWNLOADS.md §5.5).
 enum DownloadProblem {
   /// No connection, or it dropped for too long.
   network,
 
+  /// The signed link expired and failed again on refresh (HTTP 401/403).
+  linkExpired,
+
+  /// The server refused (HTTP 404/410) or the title has no stream any more.
+  unavailable,
+
   /// Less than the reserve would be left on the disk.
   noSpace,
 
-  /// The server refused or the title has no stream any more.
-  unavailable,
-
   /// The file can't be written (the folder was removed, no permission).
   storage,
+
+  /// Interrupted by the OS or engine timeout, or lost while closed.
+  interrupted,
+
+  /// Server error (HTTP 5xx after retries).
+  server,
   unknown,
 }
 
@@ -90,8 +99,14 @@ class Download {
     this.duration,
     this.subtitles = const [],
     this.totalBytes,
+    this.downloadedBytes = 0,
+    this.pausedByUser = false,
+    this.startedOver = false,
     this.problem,
+    this.problemDetail,
+    this.updatedAt,
     this.completedAt,
+    this.contentUri,
   });
 
   /// The movie or episode, and the downloader's task ID.
@@ -120,12 +135,38 @@ class Download {
   final String fileName;
   final List<DownloadedSubtitle> subtitles;
   final int? totalBytes;
+
+  /// Bytes saved on disk so far (never dropped on pause or failure).
+  final int downloadedBytes;
   final DownloadStatus status;
+
+  /// True when the user asked to pause; false when paused by connectivity loss.
+  final bool pausedByUser;
+
+  /// True after Retry had to restart from 0; cleared on the next progress.
+  final bool startedOver;
   final DownloadProblem? problem;
+
+  /// The engine's own description of the failure, for Details and logs.
+  final String? problemDetail;
   final DateTime addedAt;
+  final DateTime? updatedAt;
   final DateTime? completedAt;
+  final String? contentUri;
 
   bool get isEpisode => season != null && episode != null;
+
+  /// Paused automatically while waiting for network connectivity to return.
+  bool get isWaitingForConnection =>
+      status == DownloadStatus.paused && !pausedByUser;
+
+  /// Saved progress as a 0–1 fraction (for paused/failed/idle rows).
+  double get savedFraction {
+    if (status == DownloadStatus.complete) return 1;
+    final total = totalBytes;
+    if (total == null || total <= 0) return 0;
+    return (downloadedBytes / total).clamp(0.0, 1.0);
+  }
 
   /// The movie or series, as a list item.
   MediaItem get item => MediaItem(
@@ -159,9 +200,21 @@ class Download {
     DownloadStatus? status,
     DownloadProblem? problem,
     bool clearProblem = false,
+    String? problemDetail,
+    bool clearProblemDetail = false,
     int? totalBytes,
+    int? downloadedBytes,
+    bool? pausedByUser,
+    bool? startedOver,
+    DateTime? updatedAt,
     DateTime? completedAt,
     String? quality,
+    String? baseDirectory,
+    String? directory,
+    String? fileName,
+    List<DownloadedSubtitle>? subtitles,
+    String? contentUri,
+    bool clearContentUri = false,
   }) => Download(
     videoId: videoId,
     titleId: titleId,
@@ -175,15 +228,23 @@ class Download {
     year: year,
     duration: duration,
     quality: quality ?? this.quality,
-    baseDirectory: baseDirectory,
-    directory: directory,
-    fileName: fileName,
-    subtitles: subtitles,
+    baseDirectory: baseDirectory ?? this.baseDirectory,
+    directory: directory ?? this.directory,
+    fileName: fileName ?? this.fileName,
+    subtitles: subtitles ?? this.subtitles,
     totalBytes: totalBytes ?? this.totalBytes,
+    downloadedBytes: downloadedBytes ?? this.downloadedBytes,
     status: status ?? this.status,
+    pausedByUser: pausedByUser ?? this.pausedByUser,
+    startedOver: startedOver ?? this.startedOver,
     problem: clearProblem ? null : (problem ?? this.problem),
+    problemDetail: (clearProblem || clearProblemDetail)
+        ? null
+        : (problemDetail ?? this.problemDetail),
     addedAt: addedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
     completedAt: completedAt ?? this.completedAt,
+    contentUri: clearContentUri ? null : (contentUri ?? this.contentUri),
   );
 
   @override

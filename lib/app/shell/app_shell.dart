@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../data/repositories/downloads_repository.dart';
 import '../brand/cinemakom_mark.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/marquee_colors.dart';
@@ -41,18 +45,25 @@ final _destinations = [
 
 /// The five-tab frame around every main screen. Each tab keeps its own back
 /// stack; tapping the active tab again returns it to its first screen.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
-  void _select(int index) => navigationShell.goBranch(
-    index,
-    initialLocation: index == navigationShell.currentIndex,
-  );
+  static const _downloadsTab = 3;
+
+  void _select(WidgetRef ref, int index) {
+    if (index == _downloadsTab) {
+      unawaited(ref.read(downloadsRepositoryProvider).reconcile());
+    }
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final layout = navLayoutFor(MediaQuery.sizeOf(context).width);
     final index = navigationShell.currentIndex;
@@ -66,7 +77,7 @@ class AppShell extends StatelessWidget {
           ),
           child: NavigationBar(
             selectedIndex: index,
-            onDestinationSelected: _select,
+            onDestinationSelected: (i) => _select(ref, i),
             destinations: [
               for (final d in _destinations)
                 NavigationDestination(icon: Icon(d.icon), label: d.label(l10n)),
@@ -90,7 +101,7 @@ class AppShell extends StatelessWidget {
             ),
             child: NavigationRail(
               selectedIndex: index,
-              onDestinationSelected: _select,
+              onDestinationSelected: (i) => _select(ref, i),
               extended: extended,
               minExtendedWidth: 232,
               labelType: extended

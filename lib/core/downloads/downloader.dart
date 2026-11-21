@@ -17,6 +17,29 @@ class FileSpot {
   String toString() => 'FileSpot($baseDirectory, $directory, $fileName)';
 }
 
+/// Per-task system notification texts (docs/DOWNLOADS.md §5.9).
+class DownloadTaskNotice {
+  const DownloadTaskNotice({
+    required this.runningTitle,
+    required this.runningBody,
+    required this.pausedTitle,
+    required this.pausedBody,
+    required this.completeTitle,
+    required this.completeBody,
+    required this.errorTitle,
+    required this.errorBody,
+  });
+
+  final String runningTitle;
+  final String runningBody;
+  final String pausedTitle;
+  final String pausedBody;
+  final String completeTitle;
+  final String completeBody;
+  final String errorTitle;
+  final String errorBody;
+}
+
 /// A file to fetch in the background.
 class DownloadJob {
   const DownloadJob({
@@ -25,6 +48,7 @@ class DownloadJob {
     required this.headers,
     required this.spot,
     required this.displayName,
+    this.notice,
   });
 
   /// The movie's or episode's ID.
@@ -35,6 +59,9 @@ class DownloadJob {
 
   /// Shown in the system notification.
   final String displayName;
+
+  /// Per-task notification configuration (Android/iOS, §5.9).
+  final DownloadTaskNotice? notice;
 }
 
 enum DownloaderState {
@@ -62,7 +89,11 @@ class DownloaderStatus extends DownloaderEvent {
     this.httpCode,
     this.noSpace = false,
     this.fileError = false,
+    this.connectionError = false,
+    this.resumeError = false,
+    this.timedOut = false,
     this.canResume = false,
+    this.detail,
   });
 
   final DownloaderState state;
@@ -74,13 +105,40 @@ class DownloaderStatus extends DownloaderEvent {
   /// Failed writing the file.
   final bool fileError;
 
+  /// Failed due to a connection / socket exception.
+  final bool connectionError;
+
+  /// Failed resuming (ETag mismatch or missing temp file).
+  final bool resumeError;
+
+  /// Failed because the OS/engine timed out the task ("Task timed out").
+  final bool timedOut;
+
   /// A failed task kept its partial file, so [Downloader.resume] works.
   final bool canResume;
+
+  /// The engine's raw error description, for logs and Details. Never parsed.
+  final String? detail;
 
   @override
   String toString() =>
       'DownloaderStatus($taskId, ${state.name}'
       '${httpCode == null ? '' : ', HTTP $httpCode'})';
+}
+
+/// Snapshot of a task the engine knows about (database + native/holding queue).
+class KnownTask {
+  const KnownTask(
+    this.state, {
+    this.fraction,
+    this.expectedBytes,
+    this.failure,
+  });
+
+  final DownloaderState state;
+  final double? fraction;
+  final int? expectedBytes;
+  final DownloaderStatus? failure;
 }
 
 class DownloaderProgress extends DownloaderEvent {
@@ -105,12 +163,20 @@ class DownloadNotices {
     required this.complete,
     required this.failed,
     required this.paused,
+    this.waiting,
+    this.formatSize,
+    this.downloadedFolder,
+    this.downloadedSize,
   });
 
   final String running;
   final String complete;
   final String failed;
   final String paused;
+  final String? waiting;
+  final String Function(int bytes)? formatSize;
+  final String Function(String size)? downloadedFolder;
+  final String Function(String size)? downloadedSize;
 }
 
 /// The free space a download never takes, in MB: the engine refuses to go
@@ -121,6 +187,9 @@ abstract interface class Downloader {
   /// Status and progress of every task, also those started before a
   /// restart (after [start]).
   Stream<DownloaderEvent> get events;
+
+  /// Task IDs whose system notification was tapped (docs/DOWNLOADS.md §5.9).
+  Stream<String> get notificationTaps;
 
   /// Starts the engine: at most [maxRunning] at once, partial files under
   /// [partialDir] (desktop; null keeps the default), and a free-space
@@ -142,8 +211,19 @@ abstract interface class Downloader {
 
   Future<void> cancel(String taskId);
 
-  /// The tasks the engine still knows, by ID, with their last state.
-  Future<Map<String, DownloaderState>> known();
+  /// Whether the engine currently has resume data for [taskId].
+  Future<bool> canResume(String taskId);
+
+  /// Delivers any status/progress updates accumulated while backgrounded.
+  Future<void> sync();
+
+  /// The tasks the engine still knows, by ID, from both its database and
+  /// active/holding queues.
+  Future<Map<String, KnownTask>> known();
+
+  /// Directories where the engine stores temporary partial download files
+  /// (`com.bbflight.background_downloader*`), used by [DownloadsJanitor].
+  Future<List<String>> tempDirs();
 
   /// The absolute path of [spot].
   Future<String> pathOf(FileSpot spot);

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:background_downloader/background_downloader.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../platform/platform_info.dart';
 import 'downloader.dart';
@@ -13,33 +14,48 @@ class BackgroundFileDownloader implements Downloader {
 
   final FileDownloader _fd;
   final _events = StreamController<DownloaderEvent>.broadcast();
+  final _taps = StreamController<String>.broadcast();
   bool _started = false;
+  String? _partialDir;
 
   /// Fail a download when less than this would be left free (MB).
   static const spaceReserveMb = downloadSpaceReserveMb;
 
-  /// How often a dropped connection is retried before the task fails.
-  static const retries = 3;
+  /// How often a dropped connection is retried before the task fails
+  /// (docs/DOWNLOADS.md §5.1, §5.5: max 10, exponential 2 s to 512 s).
+  static const retries = 10;
 
   @override
   Stream<DownloaderEvent> get events => _events.stream;
 
   @override
+  Stream<String> get notificationTaps => _taps.stream;
+
+  @override
   Future<void> start({String? partialDir, int maxRunning = 2}) async {
     if (_started) return;
     _started = true;
+    _partialDir = partialDir;
     await _fd.configure(
       globalConfig: [
         (Config.holdingQueue, (maxRunning, null, null)),
         (Config.checkAvailableSpace, spaceReserveMb),
       ],
-      // Multi-GB files: the cache dir can be evicted, and its quota is
-      // small (CONFIG.md, useCacheDir).
-      androidConfig: [(Config.useCacheDir, Config.never)],
+      // Multi-GB files: keep partial files on the same external volume as
+      // Movies/Cinemakom so finishing is a rename, and run every Android
+      // download in a foreground service (docs/DOWNLOADS.md §5.1, §5.6).
+      androidConfig: [
+        (Config.useCacheDir, Config.never),
+        (Config.runInForeground, Config.always),
+        if (partialDir != null) (Config.tempFilePath, partialDir),
+      ],
       // /tmp is often RAM (tmpfs); keep partial files on the target disk.
       desktopConfig: [
         if (partialDir != null) (Config.tempFilePath, partialDir),
       ],
+    );
+    _fd.registerCallbacks(
+      taskNotificationTapCallback: (task, type) => _taps.add(task.taskId),
     );
     // Lives as long as the app (the service is never disposed).
     _fd.updates.listen(_onUpdate);
@@ -48,25 +64,42 @@ class BackgroundFileDownloader implements Downloader {
     await _fd.start();
   }
 
+  static DownloaderStatus _statusFrom(
+    String id,
+    TaskStatus status,
+    TaskException? exception, {
+    int? responseStatusCode,
+  }) {
+    final http = exception is TaskHttpException
+        ? exception.httpResponseCode
+        : responseStatusCode;
+    final description = exception?.description.toLowerCase() ?? '';
+    final isSpace =
+        exception is TaskFileSystemException && description.contains('space');
+    final isTimedOut = description.contains('timed out');
+    return DownloaderStatus(
+      id,
+      _state(status),
+      httpCode: http != null && http > 0 ? http : null,
+      noSpace: isSpace,
+      fileError: exception is TaskFileSystemException && !isSpace,
+      connectionError: exception is TaskConnectionException && !isTimedOut,
+      resumeError: exception is TaskResumeException,
+      timedOut: isTimedOut,
+      detail: exception?.toString(),
+    );
+  }
+
   void _onUpdate(TaskUpdate update) {
     final id = update.task.taskId;
     switch (update) {
       case TaskStatusUpdate(:final status, :final exception):
-        final http = exception is TaskHttpException
-            ? exception.httpResponseCode
-            : update.responseStatusCode;
-        final description = exception?.description.toLowerCase() ?? '';
         _events.add(
-          DownloaderStatus(
+          _statusFrom(
             id,
-            _state(status),
-            httpCode: http != null && http > 0 ? http : null,
-            noSpace:
-                exception is TaskFileSystemException &&
-                description.contains('space'),
-            fileError:
-                exception is TaskFileSystemException &&
-                !description.contains('space'),
+            status,
+            exception,
+            responseStatusCode: update.responseStatusCode,
           ),
         );
       case TaskProgressUpdate(:final progress):
@@ -101,10 +134,13 @@ class BackgroundFileDownloader implements Downloader {
   @override
   Future<void> setNotices(DownloadNotices n) async {
     _fd.configureNotification(
-      running: TaskNotification(n.running, '{displayName}'),
-      complete: TaskNotification(n.complete, '{displayName}'),
-      error: TaskNotification(n.failed, '{displayName}'),
-      paused: TaskNotification(n.paused, '{displayName}'),
+      running: TaskNotification(
+        '{displayName}',
+        '${n.running} · {progress} · {networkSpeed} · {timeRemaining}',
+      ),
+      complete: TaskNotification('{displayName}', n.complete),
+      error: TaskNotification('{displayName}', n.failed),
+      paused: TaskNotification('{displayName}', '${n.paused} · {progress}'),
       progressBar: true,
     );
   }
@@ -141,7 +177,18 @@ class BackgroundFileDownloader implements Downloader {
   Future<bool> enqueue(DownloadJob job) async {
     // A task with this ID may linger from an earlier attempt.
     await _fd.database.deleteRecordWithId(job.taskId);
-    return _fd.enqueue(_task(job));
+    final task = _task(job);
+    if (job.notice case final n?) {
+      _fd.configureNotificationForTask(
+        task,
+        running: TaskNotification(n.runningTitle, n.runningBody),
+        paused: TaskNotification(n.pausedTitle, n.pausedBody),
+        complete: TaskNotification(n.completeTitle, n.completeBody),
+        error: TaskNotification(n.errorTitle, n.errorBody),
+        progressBar: true,
+      );
+    }
+    return _fd.enqueue(task);
   }
 
   Future<DownloadTask?> _known(String taskId) async {
@@ -173,9 +220,73 @@ class BackgroundFileDownloader implements Downloader {
   }
 
   @override
-  Future<Map<String, DownloaderState>> known() async => {
-    for (final r in await _fd.database.allRecords()) r.taskId: _state(r.status),
-  };
+  Future<bool> canResume(String taskId) async {
+    final task = await _known(taskId);
+    if (task == null) return false;
+    // background_downloader's `taskCanResume` returns `true` immediately when
+    // stored ResumeData exists, but otherwise awaits an uncompleted Completer
+    // until a task receives HTTP headers (which hangs forever for tasks still
+    // waiting in the holding queue). Bound the check so it can never deadlock.
+    return _fd
+        .taskCanResume(task)
+        .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
+  }
+
+  @override
+  Future<void> sync() => _fd.resumeFromBackground();
+
+  @override
+  Future<Map<String, KnownTask>> known() async {
+    final out = <String, KnownTask>{};
+    for (final r in await _fd.database.allRecords()) {
+      final state = _state(r.status);
+      out[r.taskId] = KnownTask(
+        state,
+        fraction: r.progress >= 0 ? r.progress.clamp(0, 1).toDouble() : null,
+        expectedBytes: r.expectedFileSize > 0 ? r.expectedFileSize : null,
+        failure: state == DownloaderState.failed
+            ? _statusFrom(r.taskId, r.status, r.exception)
+            : null,
+      );
+    }
+    // Also check active native & holding-queue tasks (docs/DOWNLOADS.md §5.4).
+    for (final t in await _fd.allTasks(allGroups: true)) {
+      final existing = out[t.taskId];
+      if (existing == null ||
+          existing.state == DownloaderState.paused ||
+          existing.state == DownloaderState.failed ||
+          existing.state == DownloaderState.canceled) {
+        out[t.taskId] = KnownTask(
+          DownloaderState.queued,
+          fraction: existing?.fraction,
+          expectedBytes: existing?.expectedBytes,
+        );
+      }
+    }
+    return out;
+  }
+
+  @override
+  Future<List<String>> tempDirs() async {
+    final dirs = <String>{};
+    if (_partialDir != null) dirs.add(_partialDir!);
+    if (isMobile) {
+      try {
+        dirs.add((await getApplicationSupportDirectory()).path);
+      } on Object {
+        // Ignore if unavailable.
+      }
+    }
+    if (isAndroid) {
+      try {
+        final ext = await getExternalStorageDirectory();
+        if (ext != null) dirs.add(ext.path);
+      } on Object {
+        // Ignore if unavailable.
+      }
+    }
+    return dirs.toList();
+  }
 
   @override
   Future<String> pathOf(FileSpot spot) => DownloadTask(
