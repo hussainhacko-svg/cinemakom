@@ -89,7 +89,13 @@ class _TvSearchScreenState extends ConsumerState<TvSearchScreen> {
         controller: scroll,
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: TvSpace.safeH),
+            // The box's ring at the top, which the scroll view clips.
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              TvSpace.safeH,
+              TvFocusStyle.buttonOutset,
+              TvSpace.safeH,
+              0,
+            ),
             sliver: SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

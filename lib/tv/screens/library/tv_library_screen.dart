@@ -41,9 +41,10 @@ class _TvLibraryScreenState extends ConsumerState<TvLibraryScreen> {
         controller: scroll,
         slivers: [
           SliverPadding(
+            // The segment's ring at the top, which the scroll view clips.
             padding: const EdgeInsetsDirectional.fromSTEB(
               TvSpace.safeH,
-              0,
+              TvFocusStyle.buttonOutset,
               TvSpace.safeH,
               20,
             ),

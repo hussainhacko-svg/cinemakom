@@ -36,6 +36,10 @@ abstract final class TvFocusStyle {
   static const double cardGap = 3;
   static const double buttonGap = 2;
 
+  /// How far a button's ring reaches past its edge: room to leave above a
+  /// button at the top of a scroll view, which clips there.
+  static const double buttonOutset = buttonGap + ring;
+
   /// The grow, and scrolling that follows focus.
   static const Duration duration = Duration(milliseconds: 150);
   static const Curve curve = Curves.easeOut;
