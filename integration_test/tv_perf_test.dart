@@ -63,6 +63,10 @@ const quality = int.fromEnvironment('PERF_QUALITY', defaultValue: 2160);
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Under the test binding the app draws about 60 frames a second even when
+  // paused (benchmarkLive too); the real app draws ~30 while playing and
+  // none when paused. So the player numbers here are a worst case: judge 4K
+  // smoothness with tool/tv_cadence.sh on the real app (docs/TV.md §9).
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
   MediaKit.ensureInitialized();
 
@@ -159,8 +163,11 @@ void main() {
       }
     }, reportKey: 'controls_fade');
 
-    // Seeking over the video: a held arrow with the preview frame.
+    // Only the video: the controls hidden, nothing over it.
     await wait(5600);
+    await binding.watchPerformance(() => wait(5000), reportKey: 'watching');
+
+    // Seeking over the video: a held arrow with the preview frame.
     await binding.watchPerformance(
       () => hold(LogicalKeyboardKey.arrowRight, repeats: 30),
       reportKey: 'watching_hold_seek',
@@ -179,6 +186,16 @@ void main() {
         await wait(800);
       }
     }, reportKey: 'player_panel');
+
+    // Paused with the controls up: no new video frames, so anything drawn
+    // here is the UI's own.
+    await wait(6000);
+    await press(ok);
+    await binding.watchPerformance(
+      () => wait(5000),
+      reportKey: 'paused_controls_up',
+    );
+    await press(ok);
 
     // Memory after about a minute of 4K.
     await wait(10000);
