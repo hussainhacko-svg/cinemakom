@@ -338,7 +338,7 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
           TvChoice(
             s,
             s.label,
-            caption: s.height == 2160 ? l10n.quality4kCaption : null,
+            detail: s.height == 2160 ? l10n.quality4kCaption : null,
           ),
       ],
     );

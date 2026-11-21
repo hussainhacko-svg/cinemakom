@@ -7,14 +7,23 @@ import '../focus/tv_zone.dart';
 import '../theme/tv_text.dart';
 import 'tv_list_row.dart';
 
-/// One choice in a [showTvChoicePanel]. A disabled one ("2160p · Too big")
-/// stays visible and can't be focused.
+/// One choice in a [showTvChoicePanel]: a short [caption] at the end of the
+/// row ("1.2 GB"), or a longer [detail] on a line under the label ("4K ·
+/// about 10 GB per hour"). A disabled one ("2160p · Too big") stays visible
+/// and can't be focused.
 class TvChoice<T> {
-  const TvChoice(this.value, this.label, {this.caption, this.enabled = true});
+  const TvChoice(
+    this.value,
+    this.label, {
+    this.caption,
+    this.detail,
+    this.enabled = true,
+  });
 
   final T value;
   final String label;
   final String? caption;
+  final String? detail;
   final bool enabled;
 }
 
@@ -77,6 +86,7 @@ Future<T?> showTvChoicePanel<T>(
                   index: i,
                   label: choices[i].label,
                   value: choices[i].caption,
+                  detail: choices[i].detail,
                   enabled: choices[i].enabled,
                   selected: i == current,
                   onSelect: () => Navigator.of(context).pop(choices[i].value),
