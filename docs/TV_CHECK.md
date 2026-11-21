@@ -46,37 +46,37 @@ Start a movie from Details (Play), and an episode from a series.
 
 ## 5. Player: series
 
-- [ ] **Episodes**: a wide panel with seasons beside episodes, opened on the episode playing (`boothRaised`, "Playing" in `bulb`). Left to the seasons; moving onto a season shows its episodes; OK on an episode plays it in place (quality, subtitles and speed kept).
-- [ ] A long series (One Piece): the blocks of 50 are in the seasons column, and it opens on the right block.
-- [ ] **Next episode** plays the next one; it's skipped on the last episode.
-- [ ] The **Up next** card appears only in the **last 10 s** (smaller since 2026-11-21: judge the look): with the controls hidden it **takes the focus** (OK plays now, Right → Hide, Up/Down show the controls). A `bulb` line fills and the next episode starts.
-- [ ] After 3 automatic episodes: "Still watching?" with Play now focused.
+- [x] **Episodes**: a wide panel with seasons beside episodes, opened on the episode playing (`boothRaised`, "Playing" in `bulb`). Left to the seasons; moving onto a season shows its episodes; OK on an episode plays it in place (quality, subtitles and speed kept).
+- [x] A long series (One Piece): the blocks of 50 are in the seasons column, and it opens on the right block.
+- [x] **Next episode** plays the next one; it's skipped on the last episode.
+- [x] The **Up next** card appears only in the **last 10 s** (smaller since 2026-11-21: judge the look): with the controls hidden it **takes the focus** (OK plays now, Right → Hide, Up/Down show the controls). A `bulb` line fills and the next episode starts.
+- [x] After 3 automatic episodes: "Still watching?" with Play now focused.
 
 ## 6. Player: Skip intro, resume, errors
 
-- [ ] An episode with an intro: **Skip intro** appears above the bar; with the controls hidden it **takes the focus**, so OK skips. Left/Right still seek from it. After 8 s it shows only with the controls.
-- [ ] Resuming a title watched before: "Resuming from 14:32" for 5 s, with **Start over** in the row above the bar when the controls are up.
-- [ ] **No network** (unplug or Wi-Fi off) mid-play: "Reconnecting…", then it plays on, or the error with **Try again focused** and Back.
+- [x] An episode with an intro: **Skip intro** appears above the bar; with the controls hidden it **takes the focus**, so OK skips. Left/Right still seek from it. After 8 s it shows only with the controls.
+- [x] Resuming a title watched before: "Resuming from 14:32" for 5 s, with **Start over** in the row above the bar when the controls are up.
+- [x] **No network** (unplug or Wi-Fi off) mid-play: "Reconnecting…", then it plays on, or the error with **Try again focused** and Back.
 - [ ] A downloaded episode plays **offline**.
 
 ## 7. Player: picture and performance
 
-- [ ] A **1080p** and a **4K** title play smoothly (4K looks like 1080p: expected, `TV.md` §9.1).
-- [ ] The controls fade in and out without stutter over 4K.
-- [ ] **Subtitles are readable from the sofa** at Medium; Small and Large (Settings) change them. They move up when the controls show.
-- [ ] Measured 2026-11-21 (`TV.md` §9): TVs now draw with Skia, which removed most 4K hitches. Say if anything still feels slow, or if something stutters the first time it appears.
-- [ ] Each subtitle line shows **once**. (On Linux, in the live screenshot run, one Arabic line was drawn twice; it may be the subtitle file or mpv, but check on the TV.)
+- [x] A **1080p** and a **4K** title play smoothly (4K looks like 1080p: expected, `TV.md` §9.1).
+- [x] The controls fade in and out without stutter over 4K.
+- [x] **Subtitles are readable from the sofa** at Medium; Small and Large (Settings) change them. They move up when the controls show.
+- [x] Measured 2026-11-21 (`TV.md` §9): TVs now draw with Skia, which removed most 4K hitches. Say if anything still feels slow, or if something stutters the first time it appears.
+- [x] Each subtitle line shows **once**. (On Linux, in the live screenshot run, one Arabic line was drawn twice; it may be the subtitle file or mpv, but check on the TV.)
 
 ## 8. Search (TV-5)
 
-- [ ] Down from the Search tab focuses the **search box** ("OK to type" in `bulb`); the arrows never type.
-- [ ] **OK opens the TV's keyboard** (Gboard). Type: results appear as you type. Check that Gboard doesn't capture the D-pad or cover the results so you can't use them. **If it does, say so: the fallback is an in-app letter grid.**
-- [ ] Voice typing from Gboard works (if offered). **(AR)** Arabic typing works.
-- [ ] Done (or Back) closes the keyboard, focus on the box; Down → All · Movies · Series → the results.
-- [ ] The kind chips filter the results.
-- [ ] Open a result, press Back: **the same result is focused**. The search is now under Recent searches.
-- [ ] Before typing: **Recent searches** (OK searches again; ✕ removes one, Down keeps the ✕ column), **Clear all**, then the genre tiles (OK opens the genre).
-- [ ] No People row (the API can't search people; the artboard had one).
+- [x] Down from the Search tab focuses the **search box** ("OK to type" in `bulb`); the arrows never type.
+- [x] **OK opens the TV's keyboard** (Gboard). Type: results appear as you type. Check that Gboard doesn't capture the D-pad or cover the results so you can't use them. **If it does, say so: the fallback is an in-app letter grid.**
+- [x] Voice typing from Gboard works (if offered). **(AR)** Arabic typing works.
+- [x] Done (or Back) closes the keyboard, focus on the box; Down → All · Movies · Series → the results.
+- [x] The kind chips filter the results.
+- [x] Open a result, press Back: **the same result is focused**. The search is now under Recent searches.
+- [x] Before typing: **Recent searches** (OK searches again; ✕ removes one, Down keeps the ✕ column), **Clear all**, then the genre tiles (OK opens the genre).
+- [x] No People row (the API can't search people; the artboard had one).
 
 ## 9. Library
 
