@@ -257,7 +257,9 @@ class ExoPlayerEngine implements PlayerEngine {
     final t = at - _subtitleDelay;
     final lines = <String>[
       for (final c in _captions)
-        if (c.start <= t && t < c.end) ...c.text.split('\n'),
+        if (c.start <= t && t < c.end)
+          for (final line in plainCaptionText(c.text).split('\n'))
+            if (line.trim().isNotEmpty) line,
     ];
     if (listEquals(lines, _shownLines)) return;
     _shownLines = lines;
@@ -326,3 +328,14 @@ class ExoPlayerEngine implements PlayerEngine {
     }
   }
 }
+
+/// [text] without the markup SubRip files carry, which video_player keeps:
+/// SSA override blocks (`{\an8}`, `{\i1}`) and HTML-style tags (`<i>`,
+/// `<font color=…>`). mpv drops them itself.
+@visibleForTesting
+String plainCaptionText(String text) => text
+    .replaceAll(RegExp(r'\{\\[^}]*\}'), '')
+    .replaceAll(
+      RegExp(r'</?(?:i|b|u|s|font)\b[^>]*>', caseSensitive: false),
+      '',
+    );
