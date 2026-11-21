@@ -247,7 +247,11 @@ class TvLicensesScreen extends ConsumerWidget {
                           keyline: 0,
                           child: ListView.separated(
                             controller: scroll,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            // Room for the rows' ring, which the list clips.
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: TvFocusStyle.ring,
+                            ),
                             itemCount: licenses.length,
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 6),

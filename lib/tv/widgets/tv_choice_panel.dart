@@ -4,6 +4,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../focus/tv_panel.dart';
 import '../focus/tv_zone.dart';
+import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_list_row.dart';
 
@@ -79,7 +80,11 @@ Future<T?> showTvChoicePanel<T>(
               keyline: 0,
               child: ListView.separated(
                 controller: scroll,
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                // Room for the rows' ring, which the list clips.
+                padding: const EdgeInsets.symmetric(
+                  vertical: 4,
+                  horizontal: TvFocusStyle.ring,
+                ),
                 itemCount: choices.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, i) => TvListRow(

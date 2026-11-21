@@ -5,12 +5,17 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cinemakom/tv/focus/tv_focusable.dart';
 import 'package:cinemakom/tv/focus/tv_nav.dart';
 
+import 'ring_check.dart';
+
 /// Presses remote keys in widget tests (docs/TV.md §5.3) and says where
-/// focus is. Each press settles, so focus and scrolling are done after it.
+/// focus is. Each press settles, so focus and scrolling are done after it,
+/// and then checks the focus ring is drawn whole ([expectRingVisible]),
+/// unless [checkRings] is off.
 class TvDriver {
-  TvDriver(this.tester);
+  TvDriver(this.tester, {this.checkRings = true});
 
   final WidgetTester tester;
+  final bool checkRings;
 
   Future<void> up() => press(LogicalKeyboardKey.arrowUp);
   Future<void> down() => press(LogicalKeyboardKey.arrowDown);
@@ -25,6 +30,7 @@ class TvDriver {
     for (var i = 0; i < times; i++) {
       await tester.sendKeyEvent(key);
       await tester.pumpAndSettle();
+      if (checkRings) expectRingVisible(tester, reason: 'after $key');
     }
   }
 

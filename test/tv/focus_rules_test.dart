@@ -33,7 +33,8 @@ Future<TvDriver> _pump(
   _exits.clear();
   await tester.pumpWidget(DemoApp(key: UniqueKey(), locale: locale, log: log));
   await tester.pumpAndSettle();
-  return TvDriver(tester);
+  // Not laid out like the app (an 800 × 600 view): no ring check.
+  return TvDriver(tester, checkRings: false);
 }
 
 ScrollPosition _scrollOf(WidgetTester tester, String label) {
@@ -270,6 +271,9 @@ void main() {
         tester,
         pumpScreen: () => _pump(tester, locale: locale),
         leftScreen: () => _exits.isNotEmpty,
+        // The demo screen isn't laid out like the app (an 800 × 600 view);
+        // the real screens check their rings.
+        checkRings: false,
       );
       expect(reached, contains('Search'));
       expect(reached, contains('Poster 19'));

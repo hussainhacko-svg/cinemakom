@@ -9,6 +9,7 @@ import 'package:cinemakom/tv/tv_router.dart';
 
 import '../helpers/app_harness.dart';
 import 'reachability.dart';
+import 'ring_check.dart';
 import 'tv_driver.dart';
 
 // The TV genre page (docs/TV.md §7.2) on fixture data.
@@ -64,5 +65,31 @@ void main() {
       backChecks: 8,
     );
     expect(reached, contains('Sort: Recently added'));
+  });
+
+  testWidgets('every row of the filter panels shows its whole ring', (
+    tester,
+  ) async {
+    final tv = await _pumpGenre(tester);
+    await tv.up();
+    // Sort, Kind, Audio: open each, walk its rows down and back up.
+    for (var chip = 0; chip < 3; chip++) {
+      final label = tv.focused;
+      await tv.ok();
+      expectRingVisible(tester, reason: 'opening $label');
+      final seen = <String>{tv.focused};
+      for (var i = 0; i < 12; i++) {
+        await tv.down();
+        expectRingVisible(tester, reason: 'in $label on ${tv.focused}');
+        if (!seen.add(tv.focused)) break;
+      }
+      for (var i = 0; i < 12; i++) {
+        await tv.up();
+        expectRingVisible(tester, reason: 'in $label on ${tv.focused}');
+      }
+      await tv.back();
+      expect(tv.focused, label);
+      await tv.right();
+    }
   });
 }

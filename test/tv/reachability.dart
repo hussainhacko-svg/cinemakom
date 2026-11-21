@@ -42,7 +42,9 @@ const _arrows = [
 ///    (a breadth-first search) reaches every enabled control on screen;
 /// 2. pressing Back again and again from any reached item leaves the screen
 ///    ([leftScreen] says when);
-/// 3. the focus watchdog never fires (it fails the test by itself).
+/// 3. the focus watchdog never fires (it fails the test by itself);
+/// 4. with [checkRings], every focused item's ring is drawn whole
+///    ([expectRingVisible], after each press).
 /// Returns the labels reached.
 Future<Set<String>> expectNoTraps(
   WidgetTester tester, {
@@ -50,9 +52,10 @@ Future<Set<String>> expectNoTraps(
   required bool Function() leftScreen,
   int maxBack = 10,
   int? backChecks,
+  bool checkRings = true,
 }) async {
   final semantics = tester.ensureSemantics();
-  final tv = TvDriver(tester);
+  final tv = TvDriver(tester, checkRings: checkRings);
   await pumpScreen();
   final buttons = enabledButtons(tester);
 

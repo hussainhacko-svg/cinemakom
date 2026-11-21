@@ -105,6 +105,7 @@ Start a movie from Details (Play), and an episode from a series.
 - [ ] No focus trap anywhere: every button can be reached, and Back always does something (panel → page → tab bar → Home → exit).
 - [ ] Focus is never lost (nothing focused after a load, a delete or a removal).
 - [ ] Holding an arrow along a row and down Home stays smooth.
+- [ ] **Focus rings are never cut** (fixed 2026-11-22; the tests now check every ring): on a genre page, open Sort, Kind and Audio and move through every row; the ring shows whole on all four sides. Same in the other panels (player quality, speed, fit, subtitles with Sync and Reset; Settings; downloads) and on every screen.
 
 ## 13. TV-6, with the TV connected to this machine
 

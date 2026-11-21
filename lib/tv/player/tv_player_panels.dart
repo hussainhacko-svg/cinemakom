@@ -82,7 +82,11 @@ class _SubtitlePanel extends ConsumerWidget {
             child: ListView.separated(
               controller: scroll,
               shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              // Room for the rows' ring, which the list clips.
+              padding: const EdgeInsets.symmetric(
+                vertical: 4,
+                horizontal: TvFocusStyle.ring,
+              ),
               itemCount: options.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, i) => TvListRow(
