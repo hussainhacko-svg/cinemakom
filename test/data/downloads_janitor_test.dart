@@ -141,101 +141,164 @@ void main() {
     },
   );
 
-  test(
-    'deletes half-written videos, orphan subtitles and empty folders',
-    () async {
-      final goodDir = p.join(dlRoot.path, 'Good Movie');
-      final goodVideo = _write(p.join(goodDir, 'Good Movie 1080p.mp4'), 1000);
-      final goodSub = _write(p.join(goodDir, 'Good Movie 1080p.ar.srt'), 50);
+  test('keeps every video the user owns; removes only a failed download\'s '
+      'leftover, its subtitles and empty folders', () async {
+    final goodDir = p.join(dlRoot.path, 'Good Movie');
+    final goodVideo = _write(p.join(goodDir, 'Good Movie 1080p.mp4'), 1000);
+    final goodSub = _write(p.join(goodDir, 'Good Movie 1080p.ar.srt'), 50);
 
-      final halfDir = p.join(dlRoot.path, 'Half Movie');
-      final halfVideo = _write(p.join(halfDir, 'Half Movie 1080p.mp4'), 400);
-      final halfSub = _write(p.join(halfDir, 'Half Movie 1080p.en.srt'), 40);
+    // A finished download whose size doesn't match: still the user's.
+    final halfDir = p.join(dlRoot.path, 'Half Movie');
+    final halfVideo = _write(p.join(halfDir, 'Half Movie 1080p.mp4'), 400);
+    final halfSub = _write(p.join(halfDir, 'Half Movie 1080p.en.srt'), 40);
 
-      final activeDir = p.join(dlRoot.path, 'Active Movie');
-      final activeSub = _write(
-        p.join(activeDir, 'Active Movie 720p.ar.srt'),
-        30,
-      );
+    // A finished download the user renamed: the row's path is gone.
+    final renamedDir = p.join(dlRoot.path, 'Renamed Movie');
+    final renamedVideo = _write(p.join(renamedDir, 'My copy.mp4'), 900);
+    final renamedSub = _write(
+      p.join(renamedDir, 'Renamed Movie 1080p.ar.srt'),
+      45,
+    );
 
-      final strayDir = p.join(dlRoot.path, 'Orphan');
-      final strayVideo = _write(p.join(strayDir, 'stray.mp4'), 250);
-      final straySub = _write(p.join(strayDir, 'stray.srt'), 20);
+    final activeDir = p.join(dlRoot.path, 'Active Movie');
+    final activeSub = _write(p.join(activeDir, 'Active Movie 720p.ar.srt'), 30);
 
-      final emptyDir = Directory(p.join(dlRoot.path, 'Empty'))..createSync();
+    // No row at all: an earlier install's download, or the user's own.
+    final strayDir = p.join(dlRoot.path, 'Orphan');
+    final strayVideo = _write(p.join(strayDir, 'stray.mp4'), 250);
+    final straySub = _write(p.join(strayDir, 'stray.srt'), 20);
 
-      final rows = [
-        _row(
-          'good',
-          dir: goodDir,
-          fileName: 'Good Movie 1080p.mp4',
-          status: DownloadStatus.complete,
-          totalBytes: 1000,
-          subtitles: const [
-            DownloadedSubtitle(
-              language: 'ar',
-              fileName: 'Good Movie 1080p.ar.srt',
-              format: 'srt',
-            ),
-          ],
-        ),
-        _row(
-          'half',
-          dir: halfDir,
-          fileName: 'Half Movie 1080p.mp4',
-          status: DownloadStatus.complete,
-          totalBytes: 2000, // mismatch: only 400 bytes written
-          subtitles: const [
-            DownloadedSubtitle(
-              language: 'en',
-              fileName: 'Half Movie 1080p.en.srt',
-              format: 'srt',
-            ),
-          ],
-        ),
-        _row(
-          'active',
-          dir: activeDir,
-          fileName: 'Active Movie 720p.mp4',
-          status: DownloadStatus.running,
-          subtitles: const [
-            DownloadedSubtitle(
-              language: 'ar',
-              fileName: 'Active Movie 720p.ar.srt',
-              format: 'srt',
-            ),
-          ],
-        ),
-      ];
+    // A failed download's interrupted copy at its own path.
+    final brokenDir = p.join(dlRoot.path, 'Broken Movie');
+    final brokenVideo = _write(p.join(brokenDir, 'Broken Movie 720p.mp4'), 300);
+    final brokenSub = _write(p.join(brokenDir, 'Broken Movie 720p.ar.srt'), 25);
 
-      final janitor = DownloadsJanitor(clock: () => now);
-      final report = await janitor.sweep(
-        rows: rows,
-        tempDirs: [tempDir.path],
-        downloadRoots: [dlRoot.path],
-        pathOf: (d) async => p.join(d.directory, d.fileName),
-        canResume: (_) async => false,
-      );
+    final emptyDir = Directory(p.join(dlRoot.path, 'Empty'))..createSync();
 
-      expect(goodVideo.existsSync(), isTrue);
-      expect(goodSub.existsSync(), isTrue);
-      expect(activeSub.existsSync(), isTrue);
+    const arSub = DownloadedSubtitle(
+      language: 'ar',
+      fileName: 'Good Movie 1080p.ar.srt',
+      format: 'srt',
+    );
+    final rows = [
+      _row(
+        'good',
+        dir: goodDir,
+        fileName: 'Good Movie 1080p.mp4',
+        totalBytes: 1000,
+        subtitles: const [arSub],
+      ),
+      _row(
+        'half',
+        dir: halfDir,
+        fileName: 'Half Movie 1080p.mp4',
+        totalBytes: 2000, // mismatch: only 400 bytes on disk
+        subtitles: const [
+          DownloadedSubtitle(
+            language: 'en',
+            fileName: 'Half Movie 1080p.en.srt',
+            format: 'srt',
+          ),
+        ],
+      ),
+      _row(
+        'renamed',
+        dir: renamedDir,
+        fileName: 'Renamed Movie 1080p.mp4',
+        totalBytes: 900,
+        subtitles: const [
+          DownloadedSubtitle(
+            language: 'ar',
+            fileName: 'Renamed Movie 1080p.ar.srt',
+            format: 'srt',
+          ),
+        ],
+      ),
+      _row(
+        'active',
+        dir: activeDir,
+        fileName: 'Active Movie 720p.mp4',
+        status: DownloadStatus.running,
+        subtitles: const [
+          DownloadedSubtitle(
+            language: 'ar',
+            fileName: 'Active Movie 720p.ar.srt',
+            format: 'srt',
+          ),
+        ],
+      ),
+      _row(
+        'broken',
+        dir: brokenDir,
+        fileName: 'Broken Movie 720p.mp4',
+        status: DownloadStatus.failed,
+        subtitles: const [
+          DownloadedSubtitle(
+            language: 'ar',
+            fileName: 'Broken Movie 720p.ar.srt',
+            format: 'srt',
+          ),
+        ],
+      ),
+    ];
 
-      expect(halfVideo.existsSync(), isFalse);
-      expect(halfSub.existsSync(), isFalse);
-      expect(strayVideo.existsSync(), isFalse);
-      expect(straySub.existsSync(), isFalse);
-      expect(Directory(halfDir).existsSync(), isFalse);
-      expect(Directory(strayDir).existsSync(), isFalse);
-      expect(emptyDir.existsSync(), isFalse);
-      expect(dlRoot.existsSync(), isTrue);
+    final janitor = DownloadsJanitor(clock: () => now);
+    final report = await janitor.sweep(
+      rows: rows,
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      canResume: (_) async => false,
+    );
 
-      expect(report.removedVideos, 2);
-      expect(report.removedSubtitles, 2);
-      expect(report.removedDirs, 3);
-      expect(report.reclaimedBytes, 400 + 40 + 250 + 20);
-    },
-  );
+    for (final kept in [
+      goodVideo,
+      goodSub,
+      halfVideo,
+      halfSub,
+      renamedVideo,
+      renamedSub,
+      activeSub,
+      strayVideo,
+      straySub,
+    ]) {
+      expect(kept.existsSync(), isTrue, reason: kept.path);
+    }
+
+    expect(brokenVideo.existsSync(), isFalse);
+    expect(brokenSub.existsSync(), isFalse);
+    expect(Directory(brokenDir).existsSync(), isFalse);
+    expect(emptyDir.existsSync(), isFalse);
+    expect(dlRoot.existsSync(), isTrue);
+
+    expect(report.removedVideos, 1);
+    expect(report.removedSubtitles, 1);
+    expect(report.removedDirs, 2);
+    expect(report.reclaimedBytes, 300 + 25);
+  });
+
+  test('after the app\'s data is cleared (no rows), nothing in the download '
+      'folder is deleted', () async {
+    final video = _write(
+      p.join(dlRoot.path, 'Old', 'Old Movie 1080p.mp4'),
+      800,
+    );
+    final sub = _write(
+      p.join(dlRoot.path, 'Old', 'Old Movie 1080p.ar.srt'),
+      30,
+    );
+    final report = await DownloadsJanitor(clock: () => now).sweep(
+      rows: const [],
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      canResume: (_) async => false,
+    );
+    expect(video.existsSync(), isTrue);
+    expect(sub.existsSync(), isTrue);
+    expect(report.removedVideos, 0);
+    expect(report.removedSubtitles, 0);
+  });
 
   test('never queries canResume on queued/running tasks and never deletes in-progress videos', () async {
     final queried = <String>[];

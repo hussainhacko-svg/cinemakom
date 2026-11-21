@@ -34,8 +34,13 @@ class JanitorReport {
 /// §5.7):
 /// 1. Stray `com.bbflight.background_downloader*` temp files in every engine
 ///    temp folder.
-/// 2. Half-written or orphaned video files in download folders.
-/// 3. Orphan subtitles and empty folders.
+/// 2. The leftover video of a *failed* download, at that download's own path
+///    (an interrupted copy). Nothing else: the download folders are the
+///    user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video or
+///    subtitle no row claims (renamed, from an earlier install, put there by
+///    hand) and a finished download's video are never deleted (PR #4 review,
+///    critical 1, 2026-11-22).
+/// 3. The subtitles of a failed row whose video is gone, and empty folders.
 ///
 /// Pure file-system logic so it can be unit-tested on a real temp directory.
 class DownloadsJanitor {
@@ -101,22 +106,24 @@ class DownloadsJanitor {
     removedTemp += tempResult.$1;
     reclaimed += tempResult.$2;
 
-    // Build expected paths from rows.
-    final completeVideos = <String, int?>{};
-    final inProgressVideos = <String>{};
+    // The paths rows own. Only a failed row's leftover video may go; a
+    // complete, queued, running or paused row's file is kept (a queued or
+    // running one may have just been moved into place natively, moments
+    // before its `complete` event reaches Dart).
+    final failedVideos = <String>{};
+    final keptRowVideos = <String>{};
     final rowVideoPaths = <String, String>{};
     for (final d in rows) {
       final videoPath = _norm(await pathOf(d));
       rowVideoPaths[d.videoId] = videoPath;
-      if (d.status == DownloadStatus.complete) {
-        completeVideos[videoPath] = d.totalBytes;
-      } else if (d.status != DownloadStatus.failed) {
-        // A queued/running/paused row may have just finished moving its video
-        // on the native side moments before its `complete` event runs in Dart:
-        // never delete it as an orphan!
-        inProgressVideos.add(videoPath);
+      if (d.status == DownloadStatus.failed) {
+        failedVideos.add(videoPath);
+      } else {
+        keptRowVideos.add(videoPath);
       }
     }
+    // Two rows can share a path (a failed attempt, then a new one): keep it.
+    failedVideos.removeAll(keptRowVideos);
 
     final normalizedTempDirs = {for (final t in tempDirs) _norm(t)};
 
@@ -149,57 +156,47 @@ class DownloadsJanitor {
         continue;
       }
 
-      // 2a. Videos.
+      // 2a. Videos: only a failed row's leftover.
       final survivingVideos = <String>{};
       for (final file in allFiles) {
         final ext = p.extension(file.path).toLowerCase();
         if (!_videoExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        if (inProgressVideos.contains(norm)) {
+        if (!failedVideos.contains(norm)) {
           survivingVideos.add(norm);
           continue;
         }
-        final knownComplete = completeVideos.containsKey(norm);
-        final expectedSize = completeVideos[norm];
-        int actualSize;
-        try {
-          actualSize = file.lengthSync();
-        } on FileSystemException {
-          continue;
-        }
-        final halfWritten =
-            knownComplete &&
-            expectedSize != null &&
-            expectedSize > 0 &&
-            actualSize != expectedSize;
-        if (!knownComplete || halfWritten) {
-          if (_deleteFileSync(file)) {
-            removedVideos++;
-            reclaimed += actualSize;
-          }
-        } else {
-          survivingVideos.add(norm);
+        final size = _safeLengthSync(file);
+        if (_deleteFileSync(file)) {
+          removedVideos++;
+          reclaimed += size;
         }
       }
 
-      // 3a. Orphan subtitles (not owned by any active row or surviving complete
-      // video).
-      final validSubtitles = <String>{};
+      // 3a. The subtitles of a failed row whose video is gone. A finished
+      // row's stay even if its video was renamed (they go with it), and a
+      // subtitle no row lists is the user's: kept.
+      final keptSubtitles = <String>{};
+      final droppedSubtitles = <String>{};
       for (final d in rows) {
         final videoPath = rowVideoPaths[d.videoId]!;
         final dir = p.dirname(videoPath);
-        final keep = d.status.isActive || survivingVideos.contains(videoPath);
-        if (!keep) continue;
+        final keep =
+            d.status != DownloadStatus.failed ||
+            survivingVideos.contains(videoPath);
         for (final s in d.subtitles) {
-          validSubtitles.add(_norm(p.join(dir, s.fileName)));
+          (keep ? keptSubtitles : droppedSubtitles).add(
+            _norm(p.join(dir, s.fileName)),
+          );
         }
       }
+      droppedSubtitles.removeAll(keptSubtitles);
 
       for (final file in allFiles) {
         final ext = p.extension(file.path).toLowerCase();
         if (!_subtitleExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        if (!validSubtitles.contains(norm)) {
+        if (droppedSubtitles.contains(norm)) {
           final size = _safeLengthSync(file);
           if (_deleteFileSync(file)) {
             removedSubs++;

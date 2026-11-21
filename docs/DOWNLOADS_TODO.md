@@ -6,7 +6,7 @@
 
 ## Critical
 
-- [ ] **1. Stop `DownloadsJanitor` from deleting user-renamed or prior-install videos in public folders**
+- [x] **1. Stop `DownloadsJanitor` from deleting user-renamed or prior-install videos in public folders** *(fixed 2026-11-22: only a failed row's leftover video and subtitles are removed; tests for renamed, unclaimed, size-mismatch and no-rows cases)*
   - **Where:** `lib/data/repositories/downloads_janitor.dart` (`sweep`, lines 152–183)
   - **Problem:** `sweep()` recursively scans `downloadRoots` (`Movies/Cinemakom` on Android, `~/Videos/Cinemakom` on desktop) and deletes any video file not in `completeVideos`/`inProgressVideos`, plus any `complete` video whose size differs from `d.totalBytes`.
     - Renaming a finished file inside `Movies/Cinemakom` (allowed by Rule 8 / §5.8) causes the janitor to permanently delete it on the next reconcile.

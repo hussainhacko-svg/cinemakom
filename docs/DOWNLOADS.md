@@ -194,8 +194,8 @@ D3 tests all of this against the real plugin on Linux (cut the network mid-downl
 
 Runs after each reconcile, after delete, cancel and final failures, and after a quality change.
 1. **Temp files.** List `com.bbflight.background_downloader*` in every folder the engine uses: internal `files`, external `files`, desktop `.partial`. A file is **kept** only if it belongs to a task that is running (written to within the last 2 minutes) or paused or failed with resume data. Since the library doesn't expose which temp file belongs to which task, we match by count and age: keep at most one per resumable task, the most recent first. **Everything else is deleted.** If there are no unfinished tasks at all, every temp file goes.
-2. **Half-written videos.** A video file in a download folder with no `complete` row, or whose size differs from the row's total, is deleted.
-3. **Subtitles and folders** with no video beside them are deleted, then empty folders.
+2. **A failed download's leftover video**, at that download's own path (an interrupted copy), is deleted. **Nothing else in a download folder is:** the folders are the user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video no row claims (renamed, from an earlier install or before the app's data was cleared, put there by hand) and a finished download's video, whatever its size, always stay. *(Changed 2026-11-22: the first version deleted every unclaimed video and any size mismatch, which would have deleted renamed files and every earlier download; PR #4 review, critical 1.)*
+3. **Subtitles** of a failed download whose video is gone are deleted; a finished download's subtitles stay even if its video was renamed, and a subtitle no row lists is never touched. Then empty folders.
 4. Each run logs what it removed and how many bytes (`debugPrint`), so a phone check can see it in logcat.
 
 **Downloads screen storage line:** "Downloads use 27 GB · 120 GB free", counting the partial files too.
@@ -292,7 +292,7 @@ Order: D0 → D1 → D2 → D3 → D4 → D5 → D6 → D7. D2 to D4 don't need 
 - No network: running tasks pause as "Waiting for connection", resume by themselves when it's back, and a user pause stays paused.
 - Rule 1: never two tasks or two temp files for one download.
 
-**Janitor (`test/data/downloads_janitor_test.dart`, on a real temp folder):** keeps running and resumable temp files, deletes the rest, deletes half-written videos, orphan subtitles and empty folders, and reports the bytes.
+**Janitor (`test/data/downloads_janitor_test.dart`, on a real temp folder):** keeps running and resumable temp files, deletes the rest; keeps every video and subtitle the user owns (renamed, unclaimed, a size mismatch, a folder with no rows at all) and deletes only a failed download's leftover, its subtitles and empty folders; reports the bytes.
 
 **Paths (`test/data/download_paths_test.dart`):** names per platform and API level, ` (2)` for clashes, migration of Phase 6 rows.
 
