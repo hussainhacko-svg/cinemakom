@@ -545,7 +545,10 @@ class _TvPlayerScreenState extends ConsumerState<TvPlayerScreen> {
                 ),
               // The controls fade; hidden, nothing in them can take focus
               // (R5). Each showing builds them afresh, focused on Play/Pause.
+              // Keyed: hiding them adds the Video target before them, and an
+              // unkeyed fade would be rebuilt at its end value, never fading.
               ExcludeFocus(
+                key: const ValueKey('controls'),
                 excluding: !_visible || failed,
                 child: AnimatedOpacity(
                   opacity: _visible && !failed ? 1 : 0,

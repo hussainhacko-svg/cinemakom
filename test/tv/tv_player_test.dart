@@ -8,6 +8,7 @@ import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/media_item.dart';
 import 'package:cinemakom/data/models/playback_request.dart';
+import 'package:cinemakom/features/player/player_labels.dart';
 import 'package:cinemakom/tv/player/tv_player_screen.dart';
 import 'package:cinemakom/tv/player/tv_seek.dart';
 import 'package:cinemakom/tv/tv_app.dart';
@@ -101,6 +102,40 @@ void main() {
     await tester.pump(const Duration(seconds: 10));
     await tester.pumpAndSettle();
     expect(tv.focused, 'Play');
+  });
+
+  testWidgets('the controls fade out and back in', (tester) async {
+    final engine = FakeEngine();
+    final tv = await _open(tester, engine);
+    double opacity() => tester
+        .widget<FadeTransition>(
+          find
+              .ancestor(
+                of: find.text('Eve of Destruction'),
+                matching: find.byType(FadeTransition),
+              )
+              .first,
+        )
+        .opacity
+        .value;
+    expect(opacity(), 1);
+
+    // Halfway through hiding: neither shown nor gone (it used to jump).
+    await tester.pump(TvPlayerScreen.hideAfter);
+    await tester.pump();
+    await tester.pump(controlsFadeOut ~/ 2);
+    expect(opacity(), inExclusiveRange(0, 1));
+    await tester.pumpAndSettle();
+    expect(opacity(), 0);
+
+    // Down shows them again, fading in.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(controlsFadeIn ~/ 2);
+    expect(opacity(), inExclusiveRange(0, 1));
+    await tester.pumpAndSettle();
+    expect(opacity(), 1);
+    expect(tv.focused, 'Pause');
   });
 
   testWidgets('hidden: Right seeks 10 s once the keys stop; Back cancels', (
