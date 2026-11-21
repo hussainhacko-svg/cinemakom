@@ -651,7 +651,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ignoring: !_visible || _locked,
                       child: AnimatedOpacity(
                         opacity: _visible && !_locked ? 1 : 0,
-                        duration: const Duration(milliseconds: 150),
+                        duration: _visible && !_locked
+                            ? controlsFadeIn
+                            : controlsFadeOut,
                         curve: Curves.easeOut,
                         child: ControlsOverlay(
                           state: state,
