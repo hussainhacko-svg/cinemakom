@@ -53,9 +53,12 @@ void tvReveal(BuildContext item, TvNavZone zone, int index) {
         } else {
           // A grid further down, or a zone that is a sliver (no box).
           target = _minimal(position, viewport, itemBox, TvSpace.revealMargin);
-          // Close to the end: go all the way, so what's under the last item
-          // (Settings' name and mark) isn't left just out of view.
-          if (target != null && position.maxScrollExtent - target < _endSnap) {
+          // Down, close to the end: go all the way, so what's under the
+          // last item (Settings' name and mark) isn't left just out of view.
+          // Never on the way up, or the item above stays hidden.
+          if (target != null &&
+              target > position.pixels &&
+              position.maxScrollExtent - target < _endSnap) {
             target = position.maxScrollExtent;
           }
         }

@@ -28,6 +28,10 @@ void expectRingVisible(WidgetTester tester, {String reason = ''}) {
     for (RenderObject? o = box.parent; o != null; o = o.parent) {
       final clips = switch (o) {
         RenderViewportBase(:final clipBehavior) => clipBehavior != Clip.none,
+        // A SingleChildScrollView's viewport (private, so not by type): it
+        // clips unless told not to, which nothing on TV does. Missed before,
+        // so a Settings row hidden under the tab bar passed (2026-11-22).
+        RenderAbstractViewport() => true,
         RenderClipRect(:final clipBehavior) ||
         RenderClipRRect(:final clipBehavior) ||
         RenderClipPath(:final clipBehavior) => clipBehavior != Clip.none,

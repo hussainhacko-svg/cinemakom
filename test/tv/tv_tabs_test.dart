@@ -474,6 +474,12 @@ void main() {
       expect(tv.focused, startsWith('Subtitle size'));
       expect(offset(), before);
       expect(tester.getRect(find.text('Cinemakom').last), mark);
+      // Back up from the end: every row shows as it's focused (the ring
+      // check in each press), up to the first.
+      await tv.up();
+      await tv.up();
+      await tv.up();
+      expect(tv.focused, startsWith('Language'));
     });
 
     testWidgets('About and licenses lists the packages; Back returns', (
