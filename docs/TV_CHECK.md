@@ -89,6 +89,7 @@ Start a movie from Details (Play), and an episode from a series.
 
 - [ ] The top line: "4.0 GB used by Cinemakom" and "3.5 GB free on this TV" (no storage bar: the artboard had one).
 - [ ] A running download: "42% · 1080p · 3.2 MB/s · 4 min left" and a `bulb` bar; **Pause** → Resume; **Cancel** asks first, opening on "Keep downloading".
+- [ ] A **failed** download (e.g. Wi-Fi off until it gives up): Try again · **Details** · Cancel. Details says why (the reason, the engine's message, what's saved), opening on Try again; Back returns to Details.
 - [ ] A finished movie: OK plays it; **Delete** asks first ("Keep it" focused).
 - [ ] A series: one row "3 episodes · 1.8 GB" with a chevron; OK opens its episodes (OK plays one, Delete each, Delete all episodes at the bottom); Back comes back to the series row.
 - [ ] Nothing downloaded: the message and **Browse Home**.

@@ -29,7 +29,8 @@ final _freeSpaceProvider = FutureProvider.autoDispose<int?>((ref) {
 /// take and what's free (not focusable), then one list (zone 0), each row a
 /// row of cells:
 /// - downloading: the title (OK opens its Details) · Pause, Resume or Try
-///   again · Cancel;
+///   again · Cancel; a failed one also has Details (why it stopped) before
+///   Cancel;
 /// - a movie on the TV: the title (OK plays) · Delete;
 /// - a series: one row (OK opens its episodes) · Delete all.
 /// Cancel and Delete ask first, opening on the safe answer. Empty: what
@@ -141,12 +142,12 @@ class _TvDownloadsScreenState extends ConsumerState<TvDownloadsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: TvSpace.safeH),
             sliver: TvZone.grid(
               order: 0,
-              columns: 3,
+              columns: 4,
               keyline: 0,
               child: SliverList.separated(
                 itemCount: rows.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, i) => rows[i](i * 3),
+                itemBuilder: (context, i) => rows[i](i * 4),
               ),
             ),
           ),
@@ -168,7 +169,8 @@ String _title(BuildContext context, Download d) {
   ]);
 }
 
-/// A download still to finish: cells [index] to [index] + 2.
+/// A download still to finish: cells [index] to [index] + 3 (Details only
+/// when it failed).
 class _ActiveRow extends ConsumerWidget {
   const _ActiveRow({required this.index, required this.download});
 
@@ -246,8 +248,16 @@ class _ActiveRow extends ConsumerWidget {
         const SizedBox(width: 14),
         TvButton(index: index + 1, label: label, onSelect: onSelect),
         const SizedBox(width: 14),
+        if (d.status == DownloadStatus.failed) ...[
+          TvButton(
+            index: index + 2,
+            label: l10n.downloadDetails,
+            onSelect: () => tvDownloadDetails(context, ref, d),
+          ),
+          const SizedBox(width: 14),
+        ],
         TvButton(
-          index: index + 2,
+          index: index + 3,
           label: l10n.tvCancel,
           onSelect: () async {
             if (await tvConfirm(

@@ -113,7 +113,7 @@
   - **Problem:** `hasLegacyStoragePermission()` checks the permission without ever requesting it, so API 24–28 devices always silently fall back to the private app folder instead of asking first (§5.6).
   - **Fix:** Request `WRITE_EXTERNAL_STORAGE` before the first download on API 24–28 (falling back to the app folder if denied).
 
-- [ ] **13. Fix UI, RTL, overflow, and missing-file display bugs (phone & TV)** *(2026-11-22: all done except the TV Downloads row's Details, which changes what OK does on a row and needs the owner's call against the TV designs)*
+- [x] **13. Fix UI, RTL, overflow, and missing-file display bugs (phone & TV)** *(2026-11-22: all done. The TV Downloads row's Details, the owner's call: a failed row reads Try again · Details · Cancel, and Details shows the reason, the engine's message and what's saved, with Try again focused; OK on the row still opens the title)*
   - **Where:**
     - `lib/features/downloads/download_actions.dart`:
       - Wrap `showDownloadDetails` `AlertDialog.content` `Column` (lines 270–299) in `SingleChildScrollView` to prevent RenderFlex overflow on long engine errors / paths.

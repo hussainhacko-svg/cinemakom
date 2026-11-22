@@ -440,6 +440,38 @@ Future<bool> tvConfirm(
     ) ??
     false;
 
+/// Why a failed download stopped, as the phone's Details shows it: the
+/// reason, the engine's message (shortened) and what's saved, then Try again
+/// (focused) or OK. The file's path is left out: a TV has nowhere to open it.
+Future<void> tvDownloadDetails(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final sizes = downloadSizesLabel(
+    l10n,
+    d,
+    ref.read(progressOfProvider(d.videoId)),
+  );
+  var detail = d.problemDetail ?? '';
+  if (detail.length > 240) detail = '${detail.substring(0, 240)}…';
+  final retry = await showTvChoicePanel<bool>(
+    context,
+    title: l10n.downloadDetails,
+    subtitle: [
+      '${l10n.downloadDetailReason}: ${problemText(l10n, d.problem)}',
+      if (detail.isNotEmpty)
+        '${l10n.downloadDetailEngine}: ${context.isolate(detail)}',
+      if (sizes != null)
+        '${l10n.downloadDetailProgress}: ${context.isolate(sizes)}',
+    ].join('\n'),
+    selected: true,
+    choices: [TvChoice(true, l10n.retry), TvChoice(false, l10n.tvOk)],
+  );
+  if (retry == true && context.mounted) await tvResumeDownload(context, ref, d);
+}
+
 /// "Downloading · 42%", "Waiting", "Paused", "Waiting for connection", the
 /// problem, "File removed" ([missing]) or "Downloaded".
 String tvDownloadStatus(

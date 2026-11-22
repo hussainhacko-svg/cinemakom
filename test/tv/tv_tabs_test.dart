@@ -311,6 +311,52 @@ void main() {
     });
 
     testWidgets(
+      'a failed row: Try again · Details · Cancel; Details says why',
+      (tester) async {
+        final store = MemoryDownloadStore([
+          Download(
+            videoId: 'f1',
+            titleId: 'f1',
+            title: const LocalizedText(en: 'Dune'),
+            kind: VideoKind.movies,
+            quality: '1080p',
+            baseDirectory: 'root',
+            directory: _dir,
+            fileName: 'f1.mp4',
+            status: DownloadStatus.failed,
+            problem: DownloadProblem.interrupted,
+            problemDetail: 'HTTP 403 from the CDN',
+            totalBytes: 4 * 1024 * 1024 * 1024,
+            downloadedBytes: 1024 * 1024 * 1024,
+            addedAt: DateTime(2026, 11, 20),
+          ),
+        ]);
+        final tv = await _openTab(
+          tester,
+          3,
+          downloads: store,
+          downloader: FakeDownloader()..resumeAllowed = false,
+        );
+        expect(tv.focused, startsWith('Dune'));
+        await tv.right();
+        expect(tv.focused, 'Try again');
+        await tv.right();
+        expect(tv.focused, 'Details');
+        await tv.ok();
+        expect(find.textContaining('Engine message: HTTP 403'), findsOneWidget);
+        expect(
+          find.textContaining('Progress: 1.0 GB of 4.0 GB'),
+          findsOneWidget,
+        );
+        expect(tv.focused, 'Try again');
+        await tv.back();
+        expect(tv.focused, 'Details');
+        await tv.right();
+        expect(tv.focused, 'Cancel');
+      },
+    );
+
+    testWidgets(
       'missing finished movie shows File removed and Download again on TV',
       (tester) async {
         final goneDir = Directory.systemTemp.createTempSync('tv-gone').path;
