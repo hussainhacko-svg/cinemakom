@@ -452,6 +452,30 @@ void main() {
       expect(tv.focused, startsWith('Default quality'));
     });
 
+    testWidgets('the end shows the name and mark; panels never move the page', (
+      tester,
+    ) async {
+      final tv = await _openTab(tester, 4);
+      await tv.focusLabel('About and licenses');
+      final mark = tester.getRect(find.text('Cinemakom').last);
+      expect(mark.bottom, lessThanOrEqualTo(540));
+      double offset() => tester
+          .stateList<ScrollableState>(find.byType(Scrollable))
+          .firstWhere((s) => s.position.axis == Axis.vertical)
+          .position
+          .pixels;
+      await tv.up();
+      await tv.up();
+      await tv.up();
+      expect(tv.focused, startsWith('Subtitle size'));
+      final before = offset();
+      await tv.ok();
+      await tv.back();
+      expect(tv.focused, startsWith('Subtitle size'));
+      expect(offset(), before);
+      expect(tester.getRect(find.text('Cinemakom').last), mark);
+    });
+
     testWidgets('About and licenses lists the packages; Back returns', (
       tester,
     ) async {

@@ -12,6 +12,9 @@ abstract final class TvReveal {
   static bool jump = false;
 }
 
+/// How near the end of a page a scroll goes all the way to the end.
+const _endSnap = 120.0;
+
 /// Scrolls every scroll view around the focused [item] (index [index] of
 /// [zone]) so it's on screen:
 /// - a row (any horizontal scroll view) puts the item at the zone's
@@ -50,6 +53,11 @@ void tvReveal(BuildContext item, TvNavZone zone, int index) {
         } else {
           // A grid further down, or a zone that is a sliver (no box).
           target = _minimal(position, viewport, itemBox, TvSpace.revealMargin);
+          // Close to the end: go all the way, so what's under the last item
+          // (Settings' name and mark) isn't left just out of view.
+          if (target != null && position.maxScrollExtent - target < _endSnap) {
+            target = position.maxScrollExtent;
+          }
         }
       } else if (position.axis == Axis.horizontal) {
         target = _aligned(position, viewport, itemBox, zone.keyline);

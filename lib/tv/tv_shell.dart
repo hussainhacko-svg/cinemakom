@@ -68,7 +68,11 @@ class _TvShellState extends ConsumerState<TvShell> {
     final context = focus.context;
     if (context != null && ModalRoute.of(context) is PopupRoute) return;
     final zone = focus.zone!;
-    final shown = zone == _tabs || zone == _page?.firstZone;
+    final first = _page?.firstZone;
+    // A page that can't say yet (focus coming back from a closing panel,
+    // which still covers it): keep the bar as it is, or the page jumps.
+    if (zone != _tabs && first == null) return;
+    final shown = zone == _tabs || zone == first;
     if (shown != _barShown && mounted) setState(() => _barShown = shown);
   }
 
