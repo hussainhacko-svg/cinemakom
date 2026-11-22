@@ -6,6 +6,7 @@ import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/media_text.dart';
 import '../../data/models/media_item.dart';
 import '../focus/tv_focusable.dart';
+import '../theme/tv_space.dart';
 import '../theme/tv_text.dart';
 import 'tv_focus_look.dart';
 import 'tv_image.dart';
@@ -22,8 +23,9 @@ abstract final class TvPoster {
   /// The card with its title and meta.
   static const double cardHeight = 230;
 
-  /// Room above a row for a focused card's grow and ring (180 × 0.08, plus
-  /// the 3 px ring 3 px out).
+  /// Room above a row for a focused card's grow and ring: enough for up to
+  /// 8% (180 × 0.08, plus the 3 px ring 3 px out), so tuning
+  /// [TvFocusStyle.posterScale] doesn't move the rows.
   static const double growRoom = 22;
 }
 
@@ -65,6 +67,7 @@ class TvPosterCard extends StatelessWidget {
               child: TvCardFocus(
                 focused: focused,
                 radius: TvPoster.radius,
+                scale: TvFocusStyle.posterScale,
                 child: TvImage(
                   url: item.posterUrl,
                   hdUrl: item.hdPosterUrl,
@@ -124,6 +127,7 @@ class TvSeeAllCard extends StatelessWidget {
           child: TvCardFocus(
             focused: focused,
             radius: TvPoster.radius,
+            scale: TvFocusStyle.posterScale,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: focused

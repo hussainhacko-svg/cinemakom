@@ -29,7 +29,14 @@ abstract final class TvSpace {
 
 /// The focus look (docs/TV.md §6.3).
 abstract final class TvFocusStyle {
-  /// A focused card grows to this size, around its centre.
+  /// A focused poster grows to this size: every poster card and See all
+  /// (Home rows, grids, Favorites, a person's titles). One value, so they all
+  /// grow the same: tune posters here. 1.08 looked too big (owner,
+  /// 2026-11-22).
+  static const double posterScale = 1.05;
+
+  /// Other cards (cast photos) grow to this size. Images decode at this
+  /// size, the largest grow, so a grown card stays sharp.
   static const double cardScale = 1.08;
 
   /// Wide cards (Continue watching, 300 wide) grow less: 8% would push them
