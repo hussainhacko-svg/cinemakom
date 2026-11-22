@@ -280,7 +280,9 @@ void main() {
     'paused, waiting and failed rows show saved bytes (never 1 MB of 27 GB) and Details',
     (tester) async {
       const gb = 1024 * 1024 * 1024;
-      final downloader = FakeDownloader();
+      // Failed rows whose partial file is gone wait for the user's Retry
+      // instead of continuing by themselves.
+      final downloader = FakeDownloader()..resumeAllowed = false;
       final store = MemoryDownloadStore([
         _row(
           'p1',
@@ -305,8 +307,9 @@ void main() {
           titleId: 'f1',
           title: 'Dune',
           status: DownloadStatus.failed,
-          problem: DownloadProblem.interrupted,
-          problemDetail: 'Task timed out',
+          // A reason that never continues by itself.
+          problem: DownloadProblem.storage,
+          problemDetail: 'Permission denied',
           bytes: 27 * gb,
           downloadedBytes: 0,
         ),
@@ -321,14 +324,14 @@ void main() {
       );
       // 0 saved bytes must NEVER show "1 MB of 27 GB".
       expect(find.textContaining('1 MB'), findsNothing);
-      expect(find.text('Stopped: interrupted'), findsOneWidget);
+      expect(find.text("Couldn't save the file"), findsOneWidget);
 
       // Long-press opens menu -> Details shows engine message & path.
       await tester.longPress(find.text('Dune'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Details'));
       await tester.pumpAndSettle();
-      expect(find.text('Task timed out'), findsOneWidget);
+      expect(find.text('Permission denied'), findsOneWidget);
       expect(find.textContaining('f1.mp4'), findsOneWidget);
     },
   );
@@ -337,7 +340,9 @@ void main() {
     tester,
   ) async {
     const gb = 1024 * 1024 * 1024;
-    final downloader = FakeDownloader();
+    // Failed rows whose partial file is gone wait for the user's Retry
+    // instead of continuing by themselves.
+    final downloader = FakeDownloader()..resumeAllowed = false;
     final store = MemoryDownloadStore([
       _row(
         'p1',
@@ -420,5 +425,54 @@ void main() {
     downloader.tapNotification('3119279');
     await tester.pumpAndSettle();
     expect(find.text('DOWNLOADS'), findsOneWidget);
+  });
+
+  testWidgets('a season that would not fit says how much more it needs', (
+    tester,
+  ) async {
+    const gb = 1024 * 1024 * 1024;
+    final downloader = FakeDownloader();
+    await pumpApp(
+      tester,
+      downloader: downloader,
+      // The fixture's season has one episode of 2 GB, plus the reserve.
+      freeSpace: 2 * gb,
+      api: fixtureApi([FakeApiClient.path('size:', (ApiRequest r) => 2 * gb)]),
+    );
+    await _push(tester, '/home/title/4328');
+    await tester.scrollUntilVisible(
+      find.text('Download season'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Download season'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('720p · about 2.0 GB each'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Storage full:'), findsOneWidget);
+    expect(downloader.enqueued, isEmpty);
+  });
+
+  testWidgets('a removed file shows "File removed" on its Details button '
+      'and is not counted as used', (tester) async {
+    const gb = 1024 * 1024 * 1024;
+    final goneDir = Directory.systemTemp.createTempSync('dl-gone').path;
+    addTearDown(() => Directory(goneDir).deleteSync(recursive: true));
+    final store = MemoryDownloadStore([
+      _row('3119279', dir: goneDir, createFile: false, bytes: 27 * gb),
+    ]);
+    await pumpApp(tester, downloads: store, freeSpace: 120 * gb);
+    await _openDownloads(tester);
+    await _io(tester);
+    expect(find.text('Downloads use 0 MB · 120 GB free'), findsOneWidget);
+
+    await _push(tester, '/home/title/3119279');
+    expect(
+      find.descendant(
+        of: find.byType(OutlinedButton),
+        matching: find.text('File removed'),
+      ),
+      findsOneWidget,
+    );
   });
 }

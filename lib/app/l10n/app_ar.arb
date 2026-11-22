@@ -129,7 +129,6 @@
   "downloadDeleteConfirm": "هل تريد حذف الملف من جهازك أيضًا؟",
   "downloadShowInFolder": "إظهار في المجلد",
   "downloadSpaceNeeded": "المساحة ممتلئة: تحتاج إلى {needed} إضافية",
-  "noticeWaitingSlot": "بانتظار دور التنزيل",
   "noticeDownloadedFolder": "اكتمل التنزيل · {size} · Movies/Cinemakom",
   "noticeDownloadedSize": "اكتمل التنزيل · {size}",
   "downloadPause": "إيقاف مؤقت",

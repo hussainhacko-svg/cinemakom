@@ -182,63 +182,82 @@ Future<String?> legacyAndroidDownloadRoot() async {
   }
 }
 
+/// What [migrateLegacyDownloads] did.
+typedef LegacyMigration = ({int moved, List<String> restarted});
+
 /// Moves finished Phase 6 downloads from [legacyRoot] into [targetRoot]
 /// (`Movies/Cinemakom`, docs/DOWNLOADS.md §5.6). Same-volume rename; if a
 /// move fails the row keeps its existing path so nothing breaks.
-Future<int> migrateLegacyDownloads({
+///
+/// Unfinished ones are broken anyway (§3): their engine task is cancelled
+/// with [cancelTask], their row points into [targetRoot] with nothing saved,
+/// and their IDs come back in `restarted` for the caller to start over.
+Future<LegacyMigration> migrateLegacyDownloads({
   required DownloadStore store,
   required String legacyRoot,
   required String targetRoot,
   required Future<String> Function(Download) pathOf,
   Future<void> Function(String path)? onMoved,
+  Future<void> Function(String videoId)? cancelTask,
 }) async {
   final normLegacy = p.normalize(legacyRoot).toLowerCase();
   final normTarget = p.normalize(targetRoot).toLowerCase();
-  if (normLegacy == normTarget) return 0;
+  if (normLegacy == normTarget) return (moved: 0, restarted: <String>[]);
 
   var movedCount = 0;
+  final restarted = <String>[];
   for (final d in await store.all()) {
-    if (d.status != DownloadStatus.complete) continue;
     final oldPath = await pathOf(d);
     final normOld = p.normalize(oldPath).toLowerCase();
     if (!normOld.startsWith('$normLegacy${p.separator}')) continue;
+    final oldDir = p.dirname(oldPath);
+    final newDir = p.join(targetRoot, p.basename(oldDir));
+    final ext = p.extension(d.fileName);
+    final baseStem = p.basenameWithoutExtension(d.fileName);
+
+    if (d.status != DownloadStatus.complete) {
+      try {
+        await cancelTask?.call(d.videoId);
+        await Directory(newDir).create(recursive: true);
+        final stem = uniqueFileStem(newDir, baseStem, ext: ext);
+        final subs = await _moveSubtitles(d, oldDir, newDir, baseStem, stem);
+        await store.put(
+          d.copyWith(
+            baseDirectory: 'root',
+            directory: newDir,
+            fileName: '$stem$ext',
+            subtitles: subs,
+            status: DownloadStatus.failed,
+            problem: DownloadProblem.interrupted,
+            downloadedBytes: 0,
+            pausedByUser: false,
+          ),
+        );
+        restarted.add(d.videoId);
+        debugPrint('[downloads] migrated unfinished ${d.videoId} -> $newDir');
+        _removeIfEmpty(oldDir);
+      } on FileSystemException catch (e) {
+        debugPrint('[downloads] migration skipped for ${d.videoId}: $e');
+      }
+      continue;
+    }
+
     final oldFile = File(oldPath);
     if (!oldFile.existsSync()) continue;
-
-    final relFolder = p.basename(p.dirname(oldPath));
-    final newDir = p.join(targetRoot, relFolder);
     try {
       await Directory(newDir).create(recursive: true);
-      final ext = p.extension(d.fileName);
-      final baseStem = p.basenameWithoutExtension(d.fileName);
       final uniqueStem = uniqueFileStem(newDir, baseStem, ext: ext);
       final newFileName = '$uniqueStem$ext';
       final newVideoPath = p.join(newDir, newFileName);
 
       await _moveFile(oldFile, newVideoPath);
-
-      final oldDir = p.dirname(oldPath);
-      final newSubs = <DownloadedSubtitle>[];
-      for (final s in d.subtitles) {
-        final oldSub = File(p.join(oldDir, s.fileName));
-        if (!oldSub.existsSync()) continue;
-        final suffix = s.fileName.startsWith(baseStem)
-            ? s.fileName.substring(baseStem.length)
-            : '.${s.language}.${s.format}';
-        final newSubName = '$uniqueStem$suffix';
-        try {
-          await _moveFile(oldSub, p.join(newDir, newSubName));
-          newSubs.add(
-            DownloadedSubtitle(
-              language: s.language,
-              fileName: newSubName,
-              format: s.format,
-            ),
-          );
-        } on FileSystemException {
-          // Keep video moved even if a subtitle couldn't move.
-        }
-      }
+      final newSubs = await _moveSubtitles(
+        d,
+        oldDir,
+        newDir,
+        baseStem,
+        uniqueStem,
+      );
 
       await store.put(
         d.copyWith(
@@ -251,21 +270,56 @@ Future<int> migrateLegacyDownloads({
       if (onMoved != null) await onMoved(newVideoPath);
       movedCount++;
       debugPrint('[downloads] migrated ${d.videoId} -> $newVideoPath');
-
-      // Remove empty legacy title folder.
-      try {
-        final dir = Directory(oldDir);
-        if (dir.existsSync() && dir.listSync(followLinks: false).isEmpty) {
-          dir.deleteSync();
-        }
-      } on FileSystemException {
-        // Ignore.
-      }
+      _removeIfEmpty(oldDir);
     } on FileSystemException catch (e) {
       debugPrint('[downloads] migration skipped for ${d.videoId}: $e');
     }
   }
-  return movedCount;
+  return (moved: movedCount, restarted: restarted);
+}
+
+/// Moves [d]'s subtitles from [oldDir] to [newDir], renamed from [oldStem]
+/// to [newStem]. One that can't move is left out.
+Future<List<DownloadedSubtitle>> _moveSubtitles(
+  Download d,
+  String oldDir,
+  String newDir,
+  String oldStem,
+  String newStem,
+) async {
+  final moved = <DownloadedSubtitle>[];
+  for (final s in d.subtitles) {
+    final oldSub = File(p.join(oldDir, s.fileName));
+    if (!oldSub.existsSync()) continue;
+    final suffix = s.fileName.startsWith(oldStem)
+        ? s.fileName.substring(oldStem.length)
+        : '.${s.language}.${s.format}';
+    final name = '$newStem$suffix';
+    try {
+      await _moveFile(oldSub, p.join(newDir, name));
+      moved.add(
+        DownloadedSubtitle(
+          language: s.language,
+          fileName: name,
+          format: s.format,
+        ),
+      );
+    } on FileSystemException {
+      // Keep the video even if a subtitle couldn't move.
+    }
+  }
+  return moved;
+}
+
+void _removeIfEmpty(String path) {
+  try {
+    final dir = Directory(path);
+    if (dir.existsSync() && dir.listSync(followLinks: false).isEmpty) {
+      dir.deleteSync();
+    }
+  } on FileSystemException {
+    // Ignore.
+  }
 }
 
 Future<void> _moveFile(File src, String destPath) async {

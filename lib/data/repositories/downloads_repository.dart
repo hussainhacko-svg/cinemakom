@@ -101,12 +101,24 @@ class DownloadsRepository {
     DownloadsJanitor? janitor,
     this.styledSubtitles = true,
     DateTime Function()? clock,
+    Duration Function()? elapsed,
     this.progressSaveInterval = const Duration(seconds: 2),
-    this.stallGuardDuration = const Duration(seconds: 60),
+    this.stallGuardDuration = const Duration(seconds: 8),
     this.rescheduleGrace = const Duration(seconds: 6),
     this.reconcileCooldown = const Duration(seconds: 5),
     this.serverRetryBaseDelay = const Duration(seconds: 2),
+    this.userPauseGrace = const Duration(seconds: 3),
+    this.internalCancelWindow = const Duration(seconds: 30),
+    this.reconnectRetryBaseDelay = const Duration(seconds: 5),
+    this.slowRetryDelays = const [
+      Duration(minutes: 2),
+      Duration(minutes: 5),
+      Duration(minutes: 10),
+      Duration(minutes: 20),
+      Duration(minutes: 30),
+    ],
   }) : _clock = clock ?? DateTime.now,
+       _elapsed = elapsed ?? _stopwatch(),
        _connectivity = connectivity ?? const AlwaysOnlineConnectivity(),
        _janitor = janitor ?? DownloadsJanitor(clock: clock);
 
@@ -116,14 +128,21 @@ class DownloadsRepository {
   final ApiClient _api;
   final Future<DownloadRoot> Function() _root;
   final DateTime Function() _clock;
+
+  /// A monotonic clock for the short in-memory windows ([userPauseGrace],
+  /// [internalCancelWindow]); [_clock] dates the rows.
+  final Duration Function() _elapsed;
   final ConnectivityMonitor _connectivity;
   final DownloadsJanitor _janitor;
 
   /// Minimum interval between persisting running progress to the database.
   final Duration progressSaveInterval;
 
-  /// How long a non-user engine `paused` (e.g. time limit) waits for progress
-  /// before checking the engine and failing with [DownloadProblem.interrupted].
+  /// How long an engine `paused` the app didn't ask for waits for the next
+  /// run before the engine is asked again (rule 4). Foreground mode leaves
+  /// no time limits, so such a pause is nearly always the notification's
+  /// Pause button: still paused then means paused by the user; unknown to
+  /// the engine means [DownloadProblem.interrupted].
   final Duration stallGuardDuration;
 
   /// How long startup reconcile waits for `background_downloader`'s 5 s
@@ -135,6 +154,43 @@ class DownloadsRepository {
 
   /// Initial backoff for automatic HTTP 5xx retries (2 s, 4 s, 8 s).
   final Duration serverRetryBaseDelay;
+
+  /// After the app pauses a task, how long the engine's last progress and
+  /// `running` events (sent while it stops) are ignored. Later ones mean
+  /// the task runs again, e.g. resumed from the notification (rule 2).
+  final Duration userPauseGrace;
+
+  /// How long after the app cancels a task its `canceled` event is taken as
+  /// the app's own. Any other `canceled` is the notification's Cancel.
+  final Duration internalCancelWindow;
+
+  /// First wait before asking again for a fresh URL when the network came
+  /// back but the API isn't reachable yet (5 s, 10 s, 20 s, …).
+  final Duration reconnectRetryBaseDelay;
+
+  /// How often [reconnectRetryBaseDelay] backs off before the row is left
+  /// "Waiting for connection" for the next network change or the user.
+  static const reconnectRetries = 5;
+
+  /// After a download fails for a reason that may pass (connection,
+  /// interruption, server), how long until it continues by itself, then
+  /// again, while the app runs. On a slow or flaky connection the engine's
+  /// own 10 retries are spent in about 17 minutes; these keep a big file
+  /// going from its partial file for hours more (docs/DOWNLOADS.md §5.5).
+  final List<Duration> slowRetryDelays;
+
+  /// The problems a download continues from by itself: on these delays,
+  /// when the app comes to the front (Android also lets background work
+  /// run again then), and when the network returns.
+  static const passingProblems = {
+    DownloadProblem.network,
+    DownloadProblem.interrupted,
+    DownloadProblem.server,
+    DownloadProblem.linkExpired,
+  };
+
+  /// Two automatic continues of the same download are at least this apart.
+  static const autoContinueGap = Duration(seconds: 60);
 
   /// Whether styled (ASS) subtitles are saved too: the player can draw them
   /// everywhere but on Android (PLAYER.md §2, decision 7).
@@ -162,6 +218,25 @@ class DownloadsRepository {
   /// the engine's matching `paused` event is recognized as intentional.
   final _pendingUserPause = <String>{};
   final _pendingNetworkPause = <String>{};
+
+  /// When the app last paused each task ([userPauseGrace]) and cancelled it
+  /// ([internalCancelWindow]), on [_elapsed].
+  final _userPausedAt = <String, Duration>{};
+  final _internalCancelAt = <String, Duration>{};
+
+  /// Fresh-URL attempts after the network came back, by task.
+  final _reconnectAttempts = <String, int>{};
+
+  /// Slow retries after a passing failure, by task, and when each download
+  /// last continued by itself (on [_elapsed]).
+  final _slowRetries = <String, int>{};
+  final _autoContinuedAt = <String, Duration>{};
+
+  /// What the connectivity monitor said last (online until it says not).
+  bool _online = true;
+
+  /// The Phase 6 download folder (app-private, Android), swept as private.
+  String? _legacyRoot;
 
   /// Tasks already auto-retried once for expired link / timeout / restart.
   final _autoRetried = <String>{};
@@ -292,6 +367,37 @@ class DownloadsRepository {
     _timeoutRetried.remove(id);
     _restartRetried.remove(id);
     _serverRetries.remove(id);
+    _reconnectAttempts.remove(id);
+    _slowRetries.remove(id);
+  }
+
+  /// Forgets what this session knew about [id] once its row is gone or done.
+  void _forget(String id) {
+    _clearTimers(id);
+    _clearRetryCounters(id);
+    _lastProgressSavedAt.remove(id);
+    _userPausedAt.remove(id);
+  }
+
+  bool _within(Map<String, Duration> at, String id, Duration window) {
+    final t = at[id];
+    return t != null && _elapsed() - t < window;
+  }
+
+  static Duration Function() _stopwatch() {
+    final watch = Stopwatch()..start();
+    return () => watch.elapsed;
+  }
+
+  /// The app paused [id] moments ago: the engine may still be stopping.
+  bool _stopping(String id) => _within(_userPausedAt, id, userPauseGrace);
+
+  /// Cancels [id] in the engine, remembering it was the app's own cancel so
+  /// its `canceled` event doesn't delete the row (rule 1 still removes the
+  /// engine's task, resume data and record).
+  Future<void> _cancelTask(String id) async {
+    _internalCancelAt[id] = _elapsed();
+    await _downloader.cancel(id);
   }
 
   void _armStallGuard(String id) {
@@ -306,19 +412,47 @@ class DownloadsRepository {
   Future<void> _onStallGuard(String id) async {
     final d = await _store.get(id);
     if (d == null || d.status != DownloadStatus.running) return;
-    final known = await _downloader.known();
-    final state = known[id]?.state;
-    if (state == DownloaderState.running || state == DownloaderState.queued) {
-      _log('$id stall-guard check: engine still ${state!.name}');
-      return;
-    }
+    final info = (await _downloader.known())[id];
+    final state = info?.state;
     final done = _currentBytes(d);
-    _setProgress(id, null);
-    _log(
-      '$id running -> failed reason=interrupted (60s guard, engine=${state?.name ?? "none"}) '
-      'bytes=$done/${d.totalBytes ?? "?"}',
-    );
-    await _fail(d.copyWith(downloadedBytes: done), DownloadProblem.interrupted);
+    switch (state) {
+      case DownloaderState.running || DownloaderState.queued:
+        _log('$id stall-guard check: engine still ${state!.name}');
+      case DownloaderState.paused:
+        // Nothing ran again: paused outside the app (the notification's
+        // Pause). It keeps its resume data, so it's the user's pause.
+        _setProgress(id, null);
+        _log(
+          '$id running -> paused (outside the app, engine paused) '
+          'bytes=$done/${d.totalBytes ?? "?"}',
+        );
+        await _store.put(
+          d.copyWith(
+            status: DownloadStatus.paused,
+            pausedByUser: true,
+            downloadedBytes: done,
+            updatedAt: _clock(),
+          ),
+        );
+      case DownloaderState.complete:
+        await _complete(d.copyWith(downloadedBytes: done));
+      case DownloaderState.failed:
+        _setProgress(id, null);
+        await _failFromStatus(
+          d.copyWith(downloadedBytes: done),
+          info?.failure ?? DownloaderStatus(id, DownloaderState.failed),
+        );
+      case DownloaderState.canceled || null:
+        _setProgress(id, null);
+        _log(
+          '$id running -> failed reason=interrupted (stall guard, '
+          'engine=${state?.name ?? "none"}) bytes=$done/${d.totalBytes ?? "?"}',
+        );
+        await _fail(
+          d.copyWith(downloadedBytes: done),
+          DownloadProblem.interrupted,
+        );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -333,28 +467,30 @@ class DownloadsRepository {
     _eventsSub = _downloader.events.listen(
       (e) => unawaited(_serial(() => _onEvent(e))),
     );
-    _connectivitySub = _connectivity.onChanged.listen(
-      (online) => unawaited(_serial(() => _onConnectivity(online))),
-    );
     _notices = notices;
     try {
       final root = await _root();
       final partial = await platformPartialDir(root);
       await _downloader.start(partialDir: partial);
       await _downloader.setNotices(notices);
-      // Migrate finished Phase 6 downloads from app-private Downloads into
-      // public Movies/Cinemakom on Android (docs/DOWNLOADS.md §5.6).
-      final legacy = await legacyAndroidDownloadRoot();
+      // Migrate Phase 6 downloads from app-private Downloads into public
+      // Movies/Cinemakom on Android (docs/DOWNLOADS.md §5.6): finished ones
+      // move, unfinished ones start over in the new folder.
+      final legacy = _legacyRoot = await legacyAndroidDownloadRoot();
       if (legacy != null && root.baseDirectory == 'root') {
-        await _serial(
-          () => migrateLegacyDownloads(
+        await _serial(() async {
+          final result = await migrateLegacyDownloads(
             store: _store,
             legacyRoot: legacy,
             targetRoot: root.directory,
             pathOf: (d) => _downloader.pathOf(_spot(d)),
             onMoved: scanMediaFile,
-          ),
-        );
+            cancelTask: _cancelTask,
+          );
+          for (final id in result.restarted) {
+            await _resume(id, forceRestart: true, automatic: true);
+          }
+        });
       }
       _lastReconcileAt = _clock();
       await _serial(() => _reconcile(initial: true));
@@ -362,32 +498,43 @@ class DownloadsRepository {
       // Startup never fails because of downloads; they show as failed.
       _log('failed to start: $e\n$stack');
     }
+    // Only once the engine runs: the first answer (online) may resume
+    // downloads that waited for a connection while the app was closed.
+    if (!_disposed) {
+      _connectivitySub = _connectivity.onChanged.listen(
+        (online) => unawaited(_serial(() => _onConnectivity(online))),
+      );
+    }
   }
 
-  /// Pauses active downloads when the network drops (keeping their resume data
-  /// indefinitely as "Waiting for connection") and resumes them automatically
-  /// with fresh URLs when connectivity returns (docs/DOWNLOADS.md §5.5).
+  /// Pauses running downloads when the network drops (keeping their resume
+  /// data indefinitely, "Waiting for connection") and resumes them with
+  /// fresh URLs when it returns (docs/DOWNLOADS.md §5.5).
+  ///
+  /// Queued downloads are left to the engine: one in the holding queue has
+  /// nothing to lose, and one waiting to retry can't be paused, and
+  /// cancelling it would throw its resume data away. The engine retries it
+  /// (10 times, 2 s to 512 s apart).
   Future<void> _onConnectivity(bool online) async {
     if (_disposed) return;
+    _online = online;
     final rows = await _store.all();
     if (!online) {
       for (final d in rows) {
-        if (d.status != DownloadStatus.running &&
-            d.status != DownloadStatus.queued) {
-          continue;
-        }
-        _clearTimers(d.videoId);
+        if (d.status != DownloadStatus.running) continue;
         final done = _currentBytes(d);
         _pendingNetworkPause.add(d.videoId);
         try {
           if (!await _downloader.pause(d.videoId)) {
-            if (d.status == DownloadStatus.queued) {
-              await _downloader.cancel(d.videoId);
-            }
+            // Not running in the engine any more (finishing, failing or
+            // between retries): its own events say what happened.
+            _log('${d.videoId} offline: engine could not pause, left as is');
+            continue;
           }
+          _clearTimers(d.videoId);
           _setProgress(d.videoId, null);
           _log(
-            '${d.videoId} ${d.status.name} -> paused (waiting for connection) '
+            '${d.videoId} running -> paused (waiting for connection) '
             'bytes=$done/${d.totalBytes ?? "?"}',
           );
           await _store.put(
@@ -405,26 +552,132 @@ class DownloadsRepository {
     } else {
       for (final d in rows) {
         if (!d.isWaitingForConnection) continue;
+        _reconnectAttempts.remove(d.videoId);
         _log('${d.videoId} network back -> auto-resuming');
         await _resume(d.videoId, automatic: true);
       }
+      await _continueFailed('network back');
     }
+  }
+
+  /// Continues every download that failed for a passing reason, from its
+  /// partial file (rule 5), at most once a minute each. One that could only
+  /// start over with bytes saved is left to the user's Retry, so a lot of
+  /// downloaded data is never thrown away without them seeing it.
+  Future<void> _continueFailed(String why) async {
+    if (_disposed || !_online) return;
+    for (final d in await _store.all()) {
+      if (d.status != DownloadStatus.failed ||
+          !passingProblems.contains(d.problem)) {
+        continue;
+      }
+      if (_within(_autoContinuedAt, d.videoId, autoContinueGap)) continue;
+      if (d.downloadedBytes > 0 && !await _downloader.canResume(d.videoId)) {
+        continue;
+      }
+      _autoContinuedAt[d.videoId] = _elapsed();
+      _log('${d.videoId} failed (${d.problem!.name}) -> continuing ($why)');
+      await _resume(d.videoId, automatic: true);
+    }
+  }
+
+  /// After a passing failure, continues [id] by itself later
+  /// ([slowRetryDelays], the last one repeating up to 12 tries, about 5 h).
+  void _scheduleSlowRetry(String id) {
+    if (_disposed || slowRetryDelays.isEmpty) return;
+    final attempt = (_slowRetries[id] ?? 0) + 1;
+    if (attempt > 12) {
+      _log('$id no more slow retries; Retry or a restart continues it');
+      return;
+    }
+    _slowRetries[id] = attempt;
+    final delay =
+        slowRetryDelays[(attempt - 1).clamp(0, slowRetryDelays.length - 1)];
+    _log('$id slow retry $attempt in ${delay.inMinutes} min');
+    _retryTimers.remove(id)?.cancel();
+    _retryTimers[id] = Timer(delay, () {
+      _retryTimers.remove(id);
+      if (_disposed) return;
+      unawaited(
+        _serial(() async {
+          final d = await _store.get(id);
+          if (d == null ||
+              d.status != DownloadStatus.failed ||
+              !passingProblems.contains(d.problem)) {
+            return;
+          }
+          if (!_online) return; // The network's return continues it.
+          if (d.downloadedBytes > 0 && !await _downloader.canResume(id)) {
+            return;
+          }
+          _autoContinuedAt[id] = _elapsed();
+          _log('$id failed (${d.problem!.name}) -> continuing (slow retry)');
+          await _resume(id, automatic: true);
+        }),
+      );
+    });
+  }
+
+  /// The network is back but a fresh URL couldn't be fetched (DNS not ready,
+  /// API down): stays "Waiting for connection" and asks again with backoff,
+  /// rather than failing (PR #4 review, high 5).
+  void _retryReconnect(String id) {
+    if (_disposed) return;
+    final attempt = (_reconnectAttempts[id] ?? 0) + 1;
+    if (attempt > reconnectRetries) {
+      _log('$id still no fresh URL after $reconnectRetries tries: waiting');
+      return;
+    }
+    _reconnectAttempts[id] = attempt;
+    final delay = reconnectRetryBaseDelay * (1 << (attempt - 1));
+    _log('$id fresh URL failed -> retry $attempt in ${delay.inSeconds}s');
+    _retryTimers.remove(id)?.cancel();
+    _retryTimers[id] = Timer(delay, () {
+      _retryTimers.remove(id);
+      if (_disposed) return;
+      unawaited(
+        _serial(() async {
+          final d = await _store.get(id);
+          if (d != null && d.isWaitingForConnection) {
+            await _resume(id, automatic: true);
+          }
+        }),
+      );
+    });
   }
 
   /// Runs [DownloadsJanitor] to remove stray temp files, half-written videos,
   /// orphan subtitles and empty folders (docs/DOWNLOADS.md §5.7).
-  Future<JanitorReport> _sweep() async {
+  ///
+  /// [exclude]: rows whose engine task was just cancelled for a restart, so
+  /// their old temp file doesn't keep a slot.
+  Future<JanitorReport> _sweep({Set<String> exclude = const {}}) async {
     try {
       final rows = await _store.all();
       final tempDirs = await _downloader.tempDirs();
       final root = await _root();
-      final roots = <String>{if (root.baseDirectory == 'root') root.directory};
+      // The root as an absolute folder (iOS names it by base directory).
+      final rootDir = root.baseDirectory == 'root'
+          ? root.directory
+          : p.dirname(
+              await _downloader.pathOf(
+                FileSpot(root.baseDirectory, root.directory, 'x'),
+              ),
+            );
+      final legacy = _legacyRoot;
+      final protectedTemp = await _downloader.protectedTempFiles({
+        for (final d in rows)
+          if (d.status.isActive) d.videoId,
+      });
       return await _janitor.sweep(
         rows: rows,
         tempDirs: tempDirs,
-        downloadRoots: roots,
+        downloadRoots: {rootDir},
+        privateRoots: [?legacy],
         pathOf: (d) => _downloader.pathOf(_spot(d)),
         canResume: _downloader.canResume,
+        exclude: exclude,
+        protectedTemp: protectedTemp,
       );
     } on Object catch (e) {
       _log('janitor error: $e');
@@ -515,37 +768,49 @@ class DownloadsRepository {
       }
 
       // Safety net if a task finished while backgrounded and its status event
-      // wasn't delivered before reconcile: the destination file is only moved
-      // into place once the download completes.
-      if (state != DownloaderState.running) {
-        final videoPath = await _downloader.pathOf(_spot(row));
-        final videoFile = File(videoPath);
-        if (videoFile.existsSync()) {
-          final size = videoFile.lengthSync();
-          if (size > 0 && (row.totalBytes == null || size == row.totalBytes)) {
+      // wasn't delivered before reconcile: the destination file only appears
+      // once the download completes. Only a file of exactly the expected size
+      // counts: one of unknown size may be a half-written copy (§3.4).
+      if (state != DownloaderState.running && row.totalBytes != null) {
+        try {
+          final videoFile = File(await _downloader.pathOf(_spot(row)));
+          if (videoFile.existsSync() &&
+              videoFile.lengthSync() == row.totalBytes) {
             await _complete(row);
             continue;
           }
+        } on FileSystemException {
+          // Gone while checking: not finished.
         }
       }
 
-      if (row.status == DownloadStatus.failed) {
-        // Engine recovered it while we were away.
-        if (state == DownloaderState.running) {
-          _log('${row.videoId} reconcile failed -> running');
-          await _store.put(
-            row.copyWith(
-              status: DownloadStatus.running,
-              pausedByUser: false,
-              clearProblem: true,
-              updatedAt: now,
-            ),
-          );
-        }
+      // The engine's own state wins, except moments after the app paused it
+      // (rule 2): a task resumed from the notification, or rescheduled after
+      // a reconcile marked it interrupted, is downloading again.
+      final engineActive =
+          state == DownloaderState.running || state == DownloaderState.queued;
+      if (engineActive &&
+          (row.status == DownloadStatus.failed ||
+              row.status == DownloadStatus.paused) &&
+          !_stopping(row.videoId)) {
+        final next = state == DownloaderState.running
+            ? DownloadStatus.running
+            : DownloadStatus.queued;
+        _clearTimers(row.videoId);
+        _log('${row.videoId} reconcile ${row.status.name} -> ${next.name}');
+        await _store.put(
+          row.copyWith(
+            status: next,
+            pausedByUser: false,
+            clearProblem: true,
+            updatedAt: now,
+          ),
+        );
         continue;
       }
+      if (row.status == DownloadStatus.failed) continue;
 
-      if (state == null) {
+      if (state == null || state == DownloaderState.canceled) {
         // User-paused holding-queue tasks and connectivity-paused tasks are
         // allowed to have no active engine task.
         if (row.status == DownloadStatus.paused) continue;
@@ -577,54 +842,43 @@ class DownloadsRepository {
             DownloaderStatus(row.videoId, DownloaderState.failed);
         await _failFromStatus(row, failure);
       } else if (state == DownloaderState.paused) {
-        if (row.pausedByUser || row.isWaitingForConnection) {
-          if (row.status != DownloadStatus.paused) {
-            await _store.put(
-              row.copyWith(status: DownloadStatus.paused, updatedAt: now),
-            );
-          }
+        if (row.status == DownloadStatus.paused) {
+          if (row != d) await _store.put(row.copyWith(updatedAt: now));
         } else {
-          // Non-user pause (e.g. WorkManager timeout): keep running + guard.
+          // Paused in the engine, not by the app (rule 4): the notification's
+          // Pause once nothing ran again for a while, else keep running and
+          // let the guard check again.
           final stale =
               row.updatedAt != null &&
               now.difference(row.updatedAt!) >= stallGuardDuration;
           if (stale) {
             _setProgress(row.videoId, null);
+            _clearTimers(row.videoId);
             _log(
-              '${row.videoId} reconcile ${row.status.name} -> failed '
-              'reason=interrupted (stale engine pause) '
+              '${row.videoId} reconcile ${row.status.name} -> paused '
+              '(outside the app) '
               'bytes=${row.downloadedBytes}/${row.totalBytes ?? "?"}',
             );
-            await _fail(row, DownloadProblem.interrupted);
+            await _store.put(
+              row.copyWith(
+                status: DownloadStatus.paused,
+                pausedByUser: true,
+                updatedAt: now,
+              ),
+            );
           } else {
-            if (row.downloadedBytes != d.downloadedBytes ||
-                row.totalBytes != d.totalBytes) {
-              await _store.put(row.copyWith(updatedAt: now));
-            }
+            if (row != d) await _store.put(row.copyWith(updatedAt: now));
             _armStallGuard(row.videoId);
           }
         }
       } else if (state == DownloaderState.running) {
-        if (!row.pausedByUser && row.status != DownloadStatus.running) {
+        // (A paused row the app is still stopping stays paused.)
+        if (row.status == DownloadStatus.queued) {
           _clearTimers(row.videoId);
           _log('${row.videoId} reconcile ${row.status.name} -> running');
           await _store.put(
             row.copyWith(
               status: DownloadStatus.running,
-              pausedByUser: false,
-              clearProblem: true,
-              updatedAt: now,
-            ),
-          );
-        }
-      } else if (state == DownloaderState.queued) {
-        if (!row.pausedByUser &&
-            row.status != DownloadStatus.queued &&
-            row.status != DownloadStatus.running) {
-          _log('${row.videoId} reconcile ${row.status.name} -> queued');
-          await _store.put(
-            row.copyWith(
-              status: DownloadStatus.queued,
               pausedByUser: false,
               clearProblem: true,
               updatedAt: now,
@@ -647,6 +901,7 @@ class DownloadsRepository {
       });
     } else if (!hasPendingUnknown) {
       await _sweep();
+      await _continueFailed(initial ? 'app started' : 're-check');
     }
   }
 
@@ -703,9 +958,14 @@ class DownloadsRepository {
     Episode? episode,
     required VideoSource source,
     int? bytes,
-  }) => _serial(
-    () => _download(item, episode: episode, source: source, bytes: bytes),
-  );
+  }) async {
+    // Android 7–9 asks for shared storage first (§5.6), outside the queue:
+    // the dialog waits for the user, and engine events must not.
+    await _downloader.askForStorage();
+    await _serial(
+      () => _download(item, episode: episode, source: source, bytes: bytes),
+    );
+  }
 
   Future<void> _download(
     MediaItem item, {
@@ -718,11 +978,11 @@ class DownloadsRepository {
     if (existing != null && existing.status != DownloadStatus.failed) return;
 
     // Rule 1: a new attempt removes any old task, resume data and temp file.
+    _forget(videoId);
     if (existing != null) {
-      await _downloader.cancel(videoId);
+      await _cancelTask(videoId);
+      await _sweep(exclude: {videoId});
     }
-    _clearTimers(videoId);
-    _clearRetryCounters(videoId);
 
     final root = await _root();
     final folder = p.join(
@@ -781,7 +1041,8 @@ class DownloadsRepository {
   }
 
   /// Queues every episode in [episodes] that isn't downloaded yet, each in
-  /// the quality closest to [height]. Returns how many were queued.
+  /// the quality closest to [height], with its own size (for the progress
+  /// and the notification). Returns how many were queued.
   Future<int> downloadEpisodes(
     MediaItem series,
     List<Episode> episodes,
@@ -801,10 +1062,24 @@ class DownloadsRepository {
       }
       final source = pickQuality(sources, height);
       if (source == null) continue;
-      await download(series, episode: e, source: source);
+      await download(
+        series,
+        episode: e,
+        source: source,
+        bytes: await sizeOf(source),
+      );
       queued++;
     }
     return queued;
+  }
+
+  /// [source]'s file size from the CDN, or `null` when it doesn't say.
+  Future<int?> sizeOf(VideoSource source) async {
+    try {
+      return await _api.contentLength(source.url);
+    } on Object {
+      return null;
+    }
   }
 
   /// The CDN serves ranges (206, strong ETag) but sends no `Accept-Ranges`
@@ -822,10 +1097,14 @@ class DownloadsRepository {
       headers: {...ApiClient.defaultHeaders, ..._wholeFile},
       spot: FileSpot(d.baseDirectory, d.directory, d.fileName),
       displayName: name,
+      quality: d.quality,
       notice: _taskNotice(d, name),
     );
   }
 
+  /// The notification texts of [d] (§5.9). The failed text stays generic:
+  /// background_downloader fixes it when the task is queued and has no
+  /// placeholder for the reason; the app shows the reason.
   DownloadTaskNotice? _taskNotice(Download d, String displayName) {
     final n = _notices;
     if (n == null) return null;
@@ -919,45 +1198,39 @@ class DownloadsRepository {
 
   Future<void> pause(String videoId) => _serial(() async {
     final d = await _store.get(videoId);
-    if (d == null || !d.status.isActive || d.status == DownloadStatus.failed) {
+    if (d == null ||
+        (d.status != DownloadStatus.running &&
+            d.status != DownloadStatus.queued)) {
       return;
     }
     _clearTimers(videoId);
     final done = _currentBytes(d);
     _pendingUserPause.add(videoId);
     try {
-      if (await _downloader.pause(videoId)) {
-        _log(
-          '$videoId ${d.status.name} -> paused (user) '
-          'bytes=$done/${d.totalBytes ?? "?"}',
-        );
-        await _store.put(
-          d.copyWith(
-            status: DownloadStatus.paused,
-            pausedByUser: true,
-            downloadedBytes: done,
-            updatedAt: _clock(),
-          ),
-        );
-        _setProgress(videoId, null);
-      } else if (d.status == DownloadStatus.queued) {
-        // Holding-queue task: engine pause returns false, so cancel it and
-        // mark pausedByUser; Resume will enqueue it (docs/DOWNLOADS.md §5.2).
-        await _downloader.cancel(videoId);
-        _log(
-          '$videoId queued -> paused (user, holding-queue cancel) '
-          'bytes=$done/${d.totalBytes ?? "?"}',
-        );
-        await _store.put(
-          d.copyWith(
-            status: DownloadStatus.paused,
-            pausedByUser: true,
-            downloadedBytes: done,
-            updatedAt: _clock(),
-          ),
-        );
-        _setProgress(videoId, null);
+      final paused = await _downloader.pause(videoId);
+      if (!paused) {
+        // Not running in the engine: in the holding queue (nothing saved
+        // yet), or between retries, which the engine can't pause. Cancel it
+        // and mark it paused; Resume enqueues it (docs/DOWNLOADS.md §5.2).
+        // One between retries loses its resume data that way, and Resume
+        // says "Started over".
+        await _cancelTask(videoId);
       }
+      _userPausedAt[videoId] = _elapsed();
+      _lastProgressSavedAt.remove(videoId);
+      _log(
+        '$videoId ${d.status.name} -> paused (user${paused ? '' : ', engine cancel'}) '
+        'bytes=$done/${d.totalBytes ?? "?"}',
+      );
+      await _store.put(
+        d.copyWith(
+          status: DownloadStatus.paused,
+          pausedByUser: true,
+          downloadedBytes: done,
+          updatedAt: _clock(),
+        ),
+      );
+      _setProgress(videoId, null);
     } finally {
       _pendingUserPause.remove(videoId);
     }
@@ -989,26 +1262,8 @@ class DownloadsRepository {
     _clearTimers(videoId);
 
     if (switchTo != null) {
-      // User confirmed switching quality: cancel old task (Rule 1), sweep
-      // old partial file, and start over from 0 in the new quality.
-      await _downloader.cancel(videoId);
-      final moved = d.copyWith(
-        quality: switchTo.label,
-        status: DownloadStatus.queued,
-        downloadedBytes: 0,
-        pausedByUser: false,
-        startedOver: d.downloadedBytes > 0,
-        clearProblem: true,
-        updatedAt: _clock(),
-      );
-      await _store.put(moved);
-      await _sweep();
-      _log('$videoId quality ${d.quality} -> ${switchTo.label} (confirmed)');
-      if (!await _downloader.enqueue(_job(moved, switchTo.url))) {
-        await _fail(moved, DownloadProblem.unknown);
-        return const ResumeFailed(DownloadProblem.unknown);
-      }
-      return ResumeStarted(startedOver: moved.startedOver);
+      // The user confirmed another quality: start over in it (rule 1).
+      return _restartIn(d, switchTo);
     }
 
     final String url;
@@ -1017,11 +1272,7 @@ class DownloadsRepository {
       final exact = sources.where((s) => s.label == d.quality).firstOrNull;
       if (exact == null) {
         final fallback = pickQuality(sources, _height(d.quality));
-        if (fallback == null) {
-          await _fail(d, DownloadProblem.unavailable);
-          return const ResumeFailed(DownloadProblem.unavailable);
-        }
-        if (automatic) {
+        if (fallback == null || automatic) {
           // Never switch quality silently on an automatic retry.
           await _fail(d, DownloadProblem.unavailable);
           return const ResumeFailed(DownloadProblem.unavailable);
@@ -1037,9 +1288,15 @@ class DownloadsRepository {
       }
       url = exact.url;
     } on Object {
+      if (automatic && d.isWaitingForConnection) {
+        // The network is back but the API isn't reachable yet.
+        _retryReconnect(videoId);
+        return const ResumeFailed(DownloadProblem.network);
+      }
       await _fail(d, DownloadProblem.network);
       return const ResumeFailed(DownloadProblem.network);
     }
+    _reconnectAttempts.remove(videoId);
 
     final queued = d.copyWith(
       status: DownloadStatus.queued,
@@ -1048,8 +1305,14 @@ class DownloadsRepository {
       updatedAt: _clock(),
     );
     await _store.put(queued);
+    _userPausedAt.remove(videoId);
 
-    if (!forceRestart && await _downloader.resume(videoId, url)) {
+    if (!forceRestart &&
+        await _downloader.resume(
+          videoId,
+          url,
+          notice: _taskNotice(queued, _displayName(queued)),
+        )) {
       _log(
         '$videoId ${d.status.name} -> queued (resume) '
         'bytes=${queued.downloadedBytes}/${queued.totalBytes ?? "?"}',
@@ -1057,9 +1320,9 @@ class DownloadsRepository {
       return const ResumeStarted(startedOver: false);
     }
 
-    // Rule 1: no resume data (or forced restart) -> remove old task/temp file
-    // first, then enqueue from 0.
-    await _downloader.cancel(videoId);
+    // Rule 1: no resume data (or forced restart) -> remove the old task and
+    // its temp file first, then enqueue from 0.
+    await _cancelTask(videoId);
     final hadProgress = d.downloadedBytes > 0;
     final restarted = queued.copyWith(
       downloadedBytes: 0,
@@ -1067,6 +1330,7 @@ class DownloadsRepository {
       updatedAt: _clock(),
     );
     await _store.put(restarted);
+    await _sweep(exclude: {videoId});
     _log(
       '$videoId ${d.status.name} -> queued (restart, startedOver=${restarted.startedOver})',
     );
@@ -1077,26 +1341,135 @@ class DownloadsRepository {
     return ResumeStarted(startedOver: restarted.startedOver);
   }
 
-  /// Re-downloads a `complete` row whose file was deleted outside the app,
-  /// using the same quality and location (docs/DOWNLOADS.md §5.8).
-  Future<ResumeOutcome> redownload(String videoId) => _serial(() async {
-    final d = await _store.get(videoId);
-    if (d == null) return const ResumeFailed();
-    _clearMissing(videoId);
-    _clearTimers(videoId);
-    _clearRetryCounters(videoId);
-    await _downloader.cancel(videoId);
-    final reset = d.copyWith(
-      status: DownloadStatus.failed,
+  /// Starts [d] over from 0 in [source]'s quality: a new file name for the
+  /// quality (its subtitles renamed to match, so players still pair them),
+  /// the new size, and the old task and temp file gone (rule 1).
+  Future<ResumeOutcome> _restartIn(
+    Download d,
+    VideoSource source, {
+    bool startedOver = true,
+  }) async {
+    final videoId = d.videoId;
+    await _cancelTask(videoId);
+    final bytes = await sizeOf(source);
+    var moved = d;
+    if (source.label != d.quality) {
+      final oldStem = p.basenameWithoutExtension(d.fileName);
+      final ext = p.extension(d.fileName);
+      // "Title 1080p (2)" -> "Title 720p", then made unique again.
+      final bare = oldStem.replaceFirst(RegExp(r' \(\d+\)$'), '');
+      final at = bare.lastIndexOf(d.quality);
+      final newBase = at < 0
+          ? '$bare ${source.label}'
+          : bare.replaceRange(at, at + d.quality.length, source.label);
+      final dir = p.dirname(await _downloader.pathOf(_spot(d)));
+      final stem = d.baseDirectory == 'root'
+          ? uniqueFileStem(dir, newBase, ext: ext)
+          : newBase;
+      final subtitles = <DownloadedSubtitle>[];
+      for (final s in d.subtitles) {
+        final name = s.fileName.startsWith(oldStem)
+            ? '$stem${s.fileName.substring(oldStem.length)}'
+            : s.fileName;
+        try {
+          if (name != s.fileName) {
+            await File(p.join(dir, s.fileName)).rename(p.join(dir, name));
+          }
+          subtitles.add(
+            DownloadedSubtitle(
+              language: s.language,
+              fileName: name,
+              format: s.format,
+            ),
+          );
+        } on FileSystemException {
+          // Gone: without this one.
+        }
+      }
+      moved = d.copyWith(
+        quality: source.label,
+        fileName: '$stem$ext',
+        subtitles: subtitles,
+      );
+    }
+    final next = moved.copyWith(
+      status: DownloadStatus.queued,
       downloadedBytes: 0,
+      totalBytes: bytes,
+      clearTotalBytes: bytes == null,
       pausedByUser: false,
-      startedOver: false,
+      startedOver: startedOver && d.downloadedBytes > 0,
       clearProblem: true,
       updatedAt: _clock(),
     );
-    await _store.put(reset);
-    return _resume(videoId, forceRestart: true);
-  });
+    await _store.put(next);
+    _userPausedAt.remove(videoId);
+    await _sweep(exclude: {videoId});
+    _log(
+      '$videoId quality ${d.quality} -> ${source.label} (restart) '
+      'bytes=0/${bytes ?? "?"}',
+    );
+    if (!await _downloader.enqueue(_job(next, source.url))) {
+      await _fail(next, DownloadProblem.unknown);
+      return const ResumeFailed(DownloadProblem.unknown);
+    }
+    return ResumeStarted(startedOver: next.startedOver);
+  }
+
+  /// Downloads again a finished download whose file was removed outside the
+  /// app, in the same quality and place, with its subtitles saved again
+  /// (docs/DOWNLOADS.md §5.8). The row stays as it is until the download
+  /// can start: when its quality is gone it returns [ResumeQualityGone] so
+  /// the UI can ask, then pass the user's pick as [switchTo].
+  Future<ResumeOutcome> redownload(String videoId, {VideoSource? switchTo}) =>
+      _serial(() async {
+        final d = await _store.get(videoId);
+        if (d == null) return const ResumeFailed();
+        if (d.status != DownloadStatus.complete) {
+          _clearRetryCounters(videoId);
+          return _resume(videoId, switchTo: switchTo);
+        }
+        final VideoSource source;
+        if (switchTo != null) {
+          source = switchTo;
+        } else {
+          final List<VideoSource> sources;
+          try {
+            sources = await _media.streams(videoId, fresh: true);
+          } on Object {
+            return const ResumeFailed(DownloadProblem.network);
+          }
+          final exact = sources.where((s) => s.label == d.quality).firstOrNull;
+          if (exact == null) {
+            final fallback = pickQuality(sources, _height(d.quality));
+            if (fallback == null) {
+              return const ResumeFailed(DownloadProblem.unavailable);
+            }
+            return ResumeQualityGone(
+              previousQuality: d.quality,
+              fallback: fallback,
+              available: sources,
+            );
+          }
+          source = exact;
+        }
+        _forget(videoId);
+        _clearMissing(videoId);
+        // Subtitles removed with the video come back now, not after it.
+        final path = await _downloader.pathOf(_spot(d));
+        final stem = p.basenameWithoutExtension(d.fileName);
+        final dir = p.dirname(path);
+        final lost = d.subtitles.any(
+          (s) => !File(p.join(dir, s.fileName)).existsSync(),
+        );
+        var row = d;
+        if (lost || d.subtitles.isEmpty) {
+          final saved = await _saveSubtitles(videoId, _spot(d), stem);
+          if (saved.isNotEmpty) row = d.copyWith(subtitles: saved);
+        }
+        _log('$videoId complete (file removed) -> downloading again');
+        return _restartIn(row, source, startedOver: false);
+      });
 
   /// Stops a download that isn't finished and removes it.
   Future<void> cancel(String videoId) => delete(videoId);
@@ -1108,14 +1481,12 @@ class DownloadsRepository {
   Future<void> _delete(String videoId) async {
     final d = await _store.get(videoId);
     if (d == null) return;
-    _clearTimers(videoId);
-    _clearRetryCounters(videoId);
+    _forget(videoId);
     _clearMissing(videoId);
-    _lastProgressSavedAt.remove(videoId);
-    if (d.status.isActive) await _downloader.cancel(videoId);
+    if (d.status.isActive) await _cancelTask(videoId);
     _setProgress(videoId, null);
     await _store.remove(videoId);
-    _log('$videoId ${d.status.name} -> deleted');
+    _log('${d.videoId} ${d.status.name} -> deleted');
     final video = await _downloader.pathOf(_spot(d));
     final dir = p.dirname(video);
     for (final path in [
@@ -1196,6 +1567,7 @@ class DownloadsRepository {
     var total = 0;
     for (final d in await _store.all()) {
       if (d.status == DownloadStatus.complete) {
+        if (_missing.contains(d.videoId)) continue;
         total += d.totalBytes ?? 0;
       } else {
         total += _currentBytes(d);
@@ -1207,23 +1579,39 @@ class DownloadsRepository {
   // ---------------------------------------------------------------------------
   // Engine events
 
+  /// Whether the engine runs [d] again although the row says it stopped:
+  /// resumed from the notification, or rescheduled (rule 2). Not moments
+  /// after the app paused it, when its last events still arrive, and, for a
+  /// progress event, only when it's past the saved bytes (a late one from
+  /// before the stop never is).
+  bool _runsAgain(Download d, {int? done}) {
+    if (d.status != DownloadStatus.paused &&
+        d.status != DownloadStatus.failed) {
+      return false;
+    }
+    if (_stopping(d.videoId)) return false;
+    // Waiting for connection: any sign of life counts.
+    if (d.isWaitingForConnection) return true;
+    return done == null || done > d.downloadedBytes;
+  }
+
   Future<void> _onEvent(DownloaderEvent event) async {
     final d = await _store.get(event.taskId);
     if (d == null) return;
     switch (event) {
       case DownloaderProgress():
-        // Rule 2 & §5.2: progress arriving means running, except when complete,
-        // failed, or paused by the user.
-        if (d.status == DownloadStatus.complete ||
-            d.status == DownloadStatus.failed ||
-            (d.status == DownloadStatus.paused && d.pausedByUser)) {
-          return;
-        }
-        _stallTimers.remove(d.videoId)?.cancel();
         final total = event.expectedBytes ?? d.totalBytes;
         final done = total != null && total > 0
             ? (total * event.fraction).round().clamp(0, total)
             : d.downloadedBytes;
+        // Rule 2 & §5.2: progress arriving means running, except when
+        // complete, or stopped and not running again.
+        if (d.status == DownloadStatus.complete) return;
+        final stopped =
+            d.status == DownloadStatus.failed ||
+            d.status == DownloadStatus.paused;
+        if (stopped && !_runsAgain(d, done: done)) return;
+        _stallTimers.remove(d.videoId)?.cancel();
         _setProgress(
           d.videoId,
           DownloadProgress(
@@ -1244,9 +1632,12 @@ class DownloadsRepository {
                     now.difference(lastSave) >= progressSaveInterval));
         if (shouldPersist) {
           _lastProgressSavedAt[d.videoId] = now;
+          // Data flows again: the next failure starts the slow retries over.
+          _slowRetries.remove(d.videoId);
           if (d.status != DownloadStatus.running) {
             _log(
-              '${d.videoId} ${d.status.name} -> running (progress) '
+              '${d.videoId} ${d.status.name} -> running (progress'
+              '${stopped ? ', resumed outside the app' : ''}) '
               'bytes=$done/${total ?? "?"}',
             );
           }
@@ -1266,7 +1657,8 @@ class DownloadsRepository {
         switch (state) {
           case DownloaderState.queued:
             if (d.status == DownloadStatus.queued ||
-                d.status == DownloadStatus.running) {
+                d.status == DownloadStatus.running ||
+                _runsAgain(d)) {
               final done = _currentBytes(d);
               if (d.status != DownloadStatus.queued ||
                   done != d.downloadedBytes) {
@@ -1278,6 +1670,8 @@ class DownloadsRepository {
                   d.copyWith(
                     status: DownloadStatus.queued,
                     downloadedBytes: done,
+                    pausedByUser: false,
+                    clearProblem: true,
                     updatedAt: _clock(),
                   ),
                 );
@@ -1286,7 +1680,7 @@ class DownloadsRepository {
           case DownloaderState.running:
             if (d.status == DownloadStatus.queued ||
                 d.status == DownloadStatus.running ||
-                (d.status == DownloadStatus.paused && !d.pausedByUser)) {
+                _runsAgain(d)) {
               _stallTimers.remove(d.videoId)?.cancel();
               if (d.status != DownloadStatus.running) {
                 _log(
@@ -1309,7 +1703,8 @@ class DownloadsRepository {
               return;
             }
             final done = _currentBytes(d);
-            if (d.pausedByUser || _pendingUserPause.contains(d.videoId)) {
+            if (_pendingUserPause.contains(d.videoId) ||
+                (d.status == DownloadStatus.paused && d.pausedByUser)) {
               _clearTimers(d.videoId);
               _setProgress(d.videoId, null);
               await _store.put(
@@ -1333,12 +1728,13 @@ class DownloadsRepository {
                 ),
               );
             } else {
-              // Rule 4 (§5.2): engine's time-limit `paused` is not a user
-              // pause. Stay `running`, persist saved bytes, and arm the 60 s
-              // guard in case the next run never arrives.
+              // Rule 4 (§5.2): a `paused` the app didn't ask for. Either the
+              // engine's time limit (the next run follows within seconds) or
+              // the notification's Pause: stay `running`, save the bytes, and
+              // let the guard ask the engine again.
               _log(
-                '${d.videoId} engine paused without user pause -> keeping running '
-                '(60s guard armed) bytes=$done/${d.totalBytes ?? "?"}',
+                '${d.videoId} engine paused, not by the app -> keeping running '
+                '(guard armed) bytes=$done/${d.totalBytes ?? "?"}',
               );
               await _store.put(
                 d.copyWith(
@@ -1355,6 +1751,7 @@ class DownloadsRepository {
           case DownloaderState.canceled:
             _clearTimers(d.videoId);
             _setProgress(d.videoId, null);
+            await _onCanceled(d);
           case DownloaderState.failed:
             _clearTimers(d.videoId);
             final done = _currentBytes(d);
@@ -1364,11 +1761,22 @@ class DownloadsRepository {
     }
   }
 
+  /// A `canceled` the app didn't cause is the notification's Cancel: the
+  /// user threw the download away, so it's removed like an in-app cancel.
+  /// The engine is asked first, so a task that runs again (a new attempt
+  /// under the same ID) is never removed.
+  Future<void> _onCanceled(Download d) async {
+    if (!d.status.isActive) return;
+    if (_within(_internalCancelAt, d.videoId, internalCancelWindow)) return;
+    final state = (await _downloader.known())[d.videoId]?.state;
+    if (state != null && state != DownloaderState.canceled) return;
+    _log('${d.videoId} canceled outside the app -> removing');
+    await _delete(d.videoId);
+  }
+
   Future<void> _complete(Download d) async {
     _setProgress(d.videoId, null);
-    _clearTimers(d.videoId);
-    _clearRetryCounters(d.videoId);
-    _lastProgressSavedAt.remove(d.videoId);
+    _forget(d.videoId);
     _clearMissing(d.videoId);
     final videoPath = await _downloader.pathOf(_spot(d));
     int? size;
@@ -1397,6 +1805,12 @@ class DownloadsRepository {
 
   Future<void> _failed(Download d, DownloaderStatus e) async {
     final code = e.httpCode;
+
+    // The user paused it: no automatic retry overrides that.
+    if (d.status == DownloadStatus.paused && d.pausedByUser) {
+      await _failFromStatus(d, e);
+      return;
+    }
 
     // HTTP 401/403 (expired signed link): fetch fresh URL and resume once.
     if ((code == 401 || code == 403) && _autoRetried.add(d.videoId)) {
@@ -1473,6 +1887,8 @@ class DownloadsRepository {
     DownloadProblem problem, {
     String? detail,
   }) async {
+    _clearTimers(d.videoId);
+    _lastProgressSavedAt.remove(d.videoId);
     _log(
       '${d.videoId} ${d.status.name} -> failed reason=${problem.name} '
       'bytes=${d.downloadedBytes}/${d.totalBytes ?? "?"}'
@@ -1488,6 +1904,7 @@ class DownloadsRepository {
       ),
     );
     await _sweep();
+    if (passingProblems.contains(problem)) _scheduleSlowRetry(d.videoId);
   }
 
   static FileSpot _spot(Download d) =>

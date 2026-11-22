@@ -631,10 +631,6 @@
       }
     }
   },
-  "noticeWaitingSlot": "Waiting for a slot",
-  "@noticeWaitingSlot": {
-    "description": "System notification when a download is queued in the holding queue"
-  },
   "noticeDownloadedFolder": "Downloaded · {size} · Movies/Cinemakom",
   "@noticeDownloadedFolder": {
     "description": "Android notification when a download finishes in Movies/Cinemakom",

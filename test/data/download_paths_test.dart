@@ -188,7 +188,7 @@ void main() {
             status: DownloadStatus.complete,
             addedAt: DateTime(2026, 11, 20),
           ),
-          // Active (unfinished) legacy rows are NOT moved.
+          // An unfinished Phase 6 row starts over in the new folder.
           Download(
             videoId: 'm2',
             titleId: 'm2',
@@ -203,15 +203,23 @@ void main() {
         ]);
 
         final scanned = <String>[];
+        final cancelled = <String>[];
         final moved = await migrateLegacyDownloads(
           store: store,
           legacyRoot: legacyRoot,
           targetRoot: targetRoot,
           pathOf: (d) async => p.join(d.directory, d.fileName),
           onMoved: (path) async => scanned.add(path),
+          cancelTask: (id) async => cancelled.add(id),
         );
 
-        expect(moved, 1);
+        expect(moved.moved, 1);
+        expect(moved.restarted, ['m2']);
+        expect(cancelled, ['m2']);
+        final active = (await store.get('m2'))!;
+        expect(active.directory, p.join(targetRoot, 'Active'));
+        expect(active.fileName, 'Active 720p.mp4');
+        expect(active.status, DownloadStatus.failed);
         final row = (await store.get('m1'))!;
         expect(row.directory, existingTarget);
         expect(row.fileName, 'The Odyssey 1080p (2).mp4');

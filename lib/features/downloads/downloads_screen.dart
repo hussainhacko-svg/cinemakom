@@ -76,20 +76,20 @@ class _Lists extends ConsumerWidget {
         ref.watch(downloadProgressProvider).value ??
         const <String, DownloadProgress>{};
     final storage = ref.watch(downloadStorageInfoProvider).value;
-    final rowUsed = downloadUsedBytes(all, progress);
-    final finishedBytes = done.fold<int>(0, (a, d) => a + (d.totalBytes ?? 0));
-    final diskPartial = storage?.tempBytes ?? 0;
-    final used = rowUsed > finishedBytes + diskPartial
-        ? rowUsed
-        : finishedBytes + diskPartial;
+    final used = downloadUsedBytes(
+      all,
+      progress,
+      missing: ref.watch(downloadMissingProvider).value ?? const {},
+      tempBytes: storage?.tempBytes ?? 0,
+    );
     final free = storage?.freeBytes;
     final storageLine = free != null
         ? l10n.downloadsStorageLine(
-            formatBytes(l10n, used),
-            formatBytes(l10n, free),
+            context.isolate(formatBytes(l10n, used)),
+            context.isolate(formatBytes(l10n, free)),
           )
         : used > 0
-        ? l10n.downloadsUsed(formatBytes(l10n, used))
+        ? l10n.downloadsUsed(context.isolate(formatBytes(l10n, used)))
         : null;
     return ListView(
       padding: EdgeInsetsDirectional.fromSTEB(
@@ -348,8 +348,7 @@ class _TitleRow extends ConsumerWidget {
         else if (missingMovie)
           IconButton(
             tooltip: l10n.downloadAgain,
-            onPressed: () =>
-                ref.read(downloadsRepositoryProvider).redownload(first.videoId),
+            onPressed: () => redownloadMissing(context, ref, first),
             icon: const Icon(
               Icons.refresh_rounded,
               size: 22,

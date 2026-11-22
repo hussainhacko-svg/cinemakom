@@ -43,7 +43,6 @@ DownloadNotices buildDownloadNotices(AppLocalizations l10n) => DownloadNotices(
   complete: l10n.noticeDownloaded,
   failed: l10n.noticeFailed,
   paused: l10n.noticePaused,
-  waiting: l10n.noticeWaitingSlot,
   formatSize: (bytes) => formatBytes(l10n, bytes),
   downloadedFolder: l10n.noticeDownloadedFolder,
   downloadedSize: l10n.noticeDownloadedSize,
@@ -171,16 +170,54 @@ String? downloadSizesLabel(
   return l10n.downloadOf(formatBytes(l10n, done), formatBytes(l10n, total));
 }
 
-/// Bytes used by finished downloads plus saved partial bytes of active ones.
+/// What downloads take on disk (§5.7): finished files (not those removed
+/// outside the app, in [missing]) and what unfinished ones saved, or the
+/// engine's temp files ([tempBytes]) when those say more.
 int downloadUsedBytes(
   List<Download> all,
-  Map<String, DownloadProgress> progress,
-) {
-  var used = 0;
+  Map<String, DownloadProgress> progress, {
+  Set<String> missing = const {},
+  int tempBytes = 0,
+}) {
+  var finished = 0;
+  var saved = 0;
   for (final d in all) {
-    used += downloadDoneBytes(d, progress[d.videoId]);
+    if (d.status == DownloadStatus.complete) {
+      if (!missing.contains(d.videoId)) finished += d.totalBytes ?? 0;
+    } else {
+      saved += downloadDoneBytes(d, progress[d.videoId]);
+    }
   }
-  return used;
+  return finished + (tempBytes > saved ? tempBytes : saved);
+}
+
+/// The free space a download of [d] still needs and doesn't have (rule 10),
+/// or 0 when it fits or a size is unknown. A resume needs only the rest;
+/// [bytes] overrides the size (another quality, which starts over).
+Future<int> downloadSpaceShortfall(
+  WidgetRef ref,
+  Download d, {
+  int? bytes,
+}) async {
+  final free = await ref.read(downloadFreeSpaceProvider)();
+  return downloadSpaceDeficit(
+    bytes ?? d.totalBytes,
+    free,
+    downloadedBytes: bytes == null && d.status != DownloadStatus.complete
+        ? d.downloadedBytes
+        : 0,
+  );
+}
+
+/// How many of [season] a season download would queue: those not on the
+/// device or on their way (a failed one is tried again).
+int seasonEpisodesToQueue(WidgetRef ref, List<Episode> season) {
+  final all = ref.read(downloadsProvider).value ?? const <Download>[];
+  final have = {
+    for (final d in all)
+      if (d.status != DownloadStatus.failed) d.videoId,
+  };
+  return season.where((e) => !have.contains(e.id)).length;
 }
 
 String problemText(AppLocalizations l10n, DownloadProblem? problem) =>

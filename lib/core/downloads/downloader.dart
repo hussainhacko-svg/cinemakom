@@ -48,6 +48,7 @@ class DownloadJob {
     required this.headers,
     required this.spot,
     required this.displayName,
+    this.quality,
     this.notice,
   });
 
@@ -59,6 +60,10 @@ class DownloadJob {
 
   /// Shown in the system notification.
   final String displayName;
+
+  /// The stream's quality label ("1080p"), so the engine can fetch a fresh
+  /// URL in the same quality when this one is about to expire.
+  final String? quality;
 
   /// Per-task notification configuration (Android/iOS, §5.9).
   final DownloadTaskNotice? notice;
@@ -163,7 +168,6 @@ class DownloadNotices {
     required this.complete,
     required this.failed,
     required this.paused,
-    this.waiting,
     this.formatSize,
     this.downloadedFolder,
     this.downloadedSize,
@@ -173,7 +177,6 @@ class DownloadNotices {
   final String complete;
   final String failed;
   final String paused;
-  final String? waiting;
   final String Function(int bytes)? formatSize;
   final String Function(String size)? downloadedFolder;
   final String Function(String size)? downloadedSize;
@@ -201,17 +204,25 @@ abstract interface class Downloader {
   /// Asks for the notification permission where one is needed.
   Future<void> askToNotify();
 
+  /// Asks for permission to write to shared storage where one is needed
+  /// (`WRITE_EXTERNAL_STORAGE` on Android 7–9, docs/DOWNLOADS.md §5.6).
+  /// Elsewhere it does nothing.
+  Future<void> askForStorage();
+
   Future<bool> enqueue(DownloadJob job);
 
   Future<bool> pause(String taskId);
 
   /// Continues [taskId] from its partial file with [url] (a fresh signed
-  /// URL). `false` when there's nothing to continue from.
-  Future<bool> resume(String taskId, String url);
+  /// URL), showing [notice] in its notification (the per-task texts are
+  /// lost when the app restarts). `false` when there's nothing to continue
+  /// from.
+  Future<bool> resume(String taskId, String url, {DownloadTaskNotice? notice});
 
   Future<void> cancel(String taskId);
 
-  /// Whether the engine currently has resume data for [taskId].
+  /// Whether [taskId] can continue from its partial file: the engine has
+  /// resume data for it, or kept it from a failure that cleared it.
   Future<bool> canResume(String taskId);
 
   /// Delivers any status/progress updates accumulated while backgrounded.
@@ -224,6 +235,11 @@ abstract interface class Downloader {
   /// Directories where the engine stores temporary partial download files
   /// (`com.bbflight.background_downloader*`), used by [DownloadsJanitor].
   Future<List<String>> tempDirs();
+
+  /// The partial file each task in [taskIds] can still continue from, by
+  /// task ID: the janitor never deletes them. Kept data of any other task is
+  /// forgotten.
+  Future<Map<String, String>> protectedTempFiles(Set<String> taskIds);
 
   /// The absolute path of [spot].
   Future<String> pathOf(FileSpot spot);

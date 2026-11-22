@@ -94,7 +94,14 @@ class _TvDownloadsScreenState extends ConsumerState<TvDownloadsScreen> {
       for (final group in titles.values)
         (i) => _TitleRow(index: i, downloads: group),
     ];
-    final used = downloadUsedBytes(all, progress);
+    // As on the phone: files removed outside the app don't count, and the
+    // engine's temp files do (§5.7).
+    final used = downloadUsedBytes(
+      all,
+      progress,
+      missing: ref.watch(downloadMissingProvider).value ?? const {},
+      tempBytes: ref.watch(downloadStorageInfoProvider).value?.tempBytes ?? 0,
+    );
 
     return TvScreen(
       order: 1,
@@ -320,7 +327,7 @@ class _TitleRow extends ConsumerWidget {
               : l10n.tvDelete,
           onSelect: () async {
             if (missingMovie) {
-              await repo.redownload(first.videoId);
+              await tvRedownload(context, ref, first);
               return;
             }
             if (await tvConfirm(
@@ -446,7 +453,7 @@ class TvSavedSeriesScreen extends ConsumerWidget {
                           label: missing ? l10n.downloadAgain : l10n.tvDelete,
                           onSelect: () async {
                             if (missing) {
-                              await repo.redownload(d.videoId);
+                              await tvRedownload(context, ref, d);
                               return;
                             }
                             if (await tvConfirm(

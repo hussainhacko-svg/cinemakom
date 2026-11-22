@@ -31,6 +31,7 @@ fvm flutter test integration_test/tv_screenshots_test.dart -d linux  # the TV UI
 fvm flutter test integration_test/player_engine_test.dart -d linux  # live player check (real media_kit)
 fvm flutter test integration_test/player_test.dart -d linux  # the player end to end (live API, real engine)
 fvm flutter test integration_test/downloads_test.dart -d linux  # downloads end to end (live CDN, ~50 MB): pause, resume, offline play
+fvm flutter test integration_test/downloads_recovery_test.dart -d linux  # a final failure then Retry continues from its bytes; an expiring URL is refreshed (live CDN, ~50 MB)
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/player_perf_test.dart  # 4K player frame times and memory on the phone. Also wipes the app's data
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/scroll_perf_test.dart  # frame times on the phone at 120 Hz. Uninstalls the app first, wiping its data
 fvm flutter drive --profile --no-dds -d <tv-ip:port> --driver=test_driver/perf_driver.dart --target=integration_test/tv_perf_test.dart  # the TV UI's frame times (Home rows held, the 4K player) and memory on the TV. Uninstalls the app at the end, wiping its data

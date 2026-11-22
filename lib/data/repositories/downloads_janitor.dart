@@ -84,12 +84,21 @@ class DownloadsJanitor {
 
   /// Removes stray temp files, half-written videos, orphan subtitles and empty
   /// directories. Logs a single `[downloads]` line when anything is removed.
+  ///
+  /// [privateRoots] are app-private download folders (the Phase 6
+  /// `Android/data/<pkg>/files/Downloads`): the user can't see or manage
+  /// them, so there a video or subtitle no row claims is removed too.
+  /// [exclude] lists rows whose temp file was just discarded (a restart), so
+  /// they don't keep a temp-file slot.
   Future<JanitorReport> sweep({
     required List<Download> rows,
     required Iterable<String> tempDirs,
     required Iterable<String> downloadRoots,
     required Future<String> Function(Download) pathOf,
     required Future<bool> Function(String videoId) canResume,
+    Iterable<String> privateRoots = const [],
+    Set<String> exclude = const {},
+    Map<String, String> protectedTemp = const {},
   }) async {
     var removedTemp = 0;
     var removedVideos = 0;
@@ -99,9 +108,16 @@ class DownloadsJanitor {
 
     // 1. Stray temp files.
     final tempResult = await _sweepTempFiles(
-      rows: rows,
+      rows: [
+        for (final d in rows)
+          if (!exclude.contains(d.videoId)) d,
+      ],
       tempDirs: tempDirs,
       canResume: canResume,
+      protectedTemp: {
+        for (final e in protectedTemp.entries)
+          if (!exclude.contains(e.key)) e.key: e.value,
+      },
     );
     removedTemp += tempResult.$1;
     reclaimed += tempResult.$2;
@@ -113,6 +129,7 @@ class DownloadsJanitor {
     final failedVideos = <String>{};
     final keptRowVideos = <String>{};
     final rowVideoPaths = <String, String>{};
+    final claimedSubtitles = <String>{};
     for (final d in rows) {
       final videoPath = _norm(await pathOf(d));
       rowVideoPaths[d.videoId] = videoPath;
@@ -121,17 +138,22 @@ class DownloadsJanitor {
       } else {
         keptRowVideos.add(videoPath);
       }
+      for (final s in d.subtitles) {
+        claimedSubtitles.add(_norm(p.join(p.dirname(videoPath), s.fileName)));
+      }
     }
     // Two rows can share a path (a failed attempt, then a new one): keep it.
     failedVideos.removeAll(keptRowVideos);
 
     final normalizedTempDirs = {for (final t in tempDirs) _norm(t)};
+    final private = {for (final r in privateRoots) _norm(r)};
 
     // 2. Half-written / orphaned videos and 3. Orphan subtitles + empty dirs.
-    for (final rootPath in downloadRoots.toSet()) {
+    for (final rootPath in {...downloadRoots, ...privateRoots}) {
       final root = Directory(rootPath);
       if (!root.existsSync()) continue;
       final normRoot = _norm(rootPath);
+      final isPrivate = private.contains(normRoot);
 
       final allFiles = <File>[];
       final subDirs = <Directory>[];
@@ -162,7 +184,8 @@ class DownloadsJanitor {
         final ext = p.extension(file.path).toLowerCase();
         if (!_videoExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        if (!failedVideos.contains(norm)) {
+        final orphanInPrivate = isPrivate && !keptRowVideos.contains(norm);
+        if (!failedVideos.contains(norm) && !orphanInPrivate) {
           survivingVideos.add(norm);
           continue;
         }
@@ -196,7 +219,8 @@ class DownloadsJanitor {
         final ext = p.extension(file.path).toLowerCase();
         if (!_subtitleExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        if (droppedSubtitles.contains(norm)) {
+        final orphanInPrivate = isPrivate && !claimedSubtitles.contains(norm);
+        if (droppedSubtitles.contains(norm) || orphanInPrivate) {
           final size = _safeLengthSync(file);
           if (_deleteFileSync(file)) {
             removedSubs++;
@@ -240,24 +264,39 @@ class DownloadsJanitor {
     required List<Download> rows,
     required Iterable<String> tempDirs,
     required Future<bool> Function(String videoId) canResume,
+    required Map<String, String> protectedTemp,
   }) async {
-    final activeRows = rows.where((d) => d.status.isActive).toList();
-    final runningCount = activeRows
-        .where((d) => d.status == DownloadStatus.running)
-        .length;
-    var resumableOtherCount = 0;
-    for (final d in activeRows) {
-      // Only paused or failed rows can have stored resume data. Never query
-      // `canResume` on queued holding-queue tasks (background_downloader's
-      // `taskCanResume` blocks on an uncompleted Completer until a task starts).
-      if (d.status != DownloadStatus.paused &&
-          d.status != DownloadStatus.failed) {
-        continue;
-      }
-      if (await canResume(d.videoId)) {
-        resumableOtherCount++;
+    // Files the engine's resume data names exactly are kept, and their rows
+    // need no slot below.
+    final protectedPaths = {
+      for (final path in protectedTemp.values) _norm(path),
+    };
+    // Each unfinished download owns at most one temp file (rule 1). Running
+    // and queued rows each keep a slot: a queued row may be waiting to
+    // retry from its partial file (up to 512 s between tries), or be the
+    // holding queue's next task, started natively moments before Dart
+    // hears of it (PR #4 review, critical 2). A paused or failed row keeps
+    // one only while the engine can still resume it.
+    var slots = 0;
+    for (final d in rows) {
+      if (protectedTemp.containsKey(d.videoId)) continue;
+      switch (d.status) {
+        case DownloadStatus.running || DownloadStatus.queued:
+          slots++;
+        case DownloadStatus.paused || DownloadStatus.failed:
+          // Never asked of queued tasks: background_downloader's
+          // `taskCanResume` blocks until a task starts.
+          if (await canResume(d.videoId)) slots++;
+        case DownloadStatus.complete:
+          break;
       }
     }
+    // Only a running or queued download writes to a temp file.
+    final anyLive = rows.any(
+      (d) =>
+          d.status == DownloadStatus.running ||
+          d.status == DownloadStatus.queued,
+    );
 
     final entries = <({File file, DateTime modified, int size})>[];
     for (final dirPath in tempDirs.toSet()) {
@@ -283,26 +322,19 @@ class DownloadsJanitor {
       }
     }
 
+    entries.removeWhere((e) => protectedPaths.contains(_norm(e.file.path)));
     if (entries.isEmpty) return (0, 0);
 
-    // Newest first.
+    // Newest first: the engine writes to the live ones. Which file is whose
+    // isn't known (§5.7), so the newest [slots] stay, and so does any file
+    // written in the last [activeTempWindow] while a download runs or waits.
     entries.sort((a, b) => b.modified.compareTo(a.modified));
-
+    final now = _clock();
     final keep = <String>{};
-    if (runningCount > 0 || resumableOtherCount > 0) {
-      final now = _clock();
-      var runningLeft = runningCount;
-      var resumableLeft = resumableOtherCount;
-      for (final e in entries) {
-        final age = now.difference(e.modified);
-        if (runningLeft > 0 && age <= activeTempWindow) {
-          keep.add(_norm(e.file.path));
-          runningLeft--;
-        } else if (resumableLeft > 0) {
-          keep.add(_norm(e.file.path));
-          resumableLeft--;
-        }
-      }
+    for (var i = 0; i < entries.length; i++) {
+      final e = entries[i];
+      final recent = now.difference(e.modified) <= activeTempWindow;
+      if (i < slots || (anyLive && recent)) keep.add(_norm(e.file.path));
     }
 
     var removed = 0;

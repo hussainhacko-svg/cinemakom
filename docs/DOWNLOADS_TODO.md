@@ -14,7 +14,7 @@
   - **Fix:** Never sweep unknown video files inside public user-owned folders (`Movies/Cinemakom`, `~/Videos/Cinemakom`). Only delete files explicitly owned by failed/cancelled/incomplete rows (or inside app-private legacy `Android/data/<pkg>/files/Downloads`), and do not delete a `complete` row's file on size mismatch.
   - **Test:** Add janitor unit tests verifying renamed/untracked videos in a public root are never deleted and a `complete` row's file is preserved.
 
-- [ ] **2. Stop `DownloadsJanitor._sweepTempFiles` from deleting active and `waitingToRetry` `.partial` files**
+- [x] **2. Stop `DownloadsJanitor._sweepTempFiles` from deleting active and `waitingToRetry` `.partial` files** *(fixed 2026-11-22: every running or queued row has a slot, a recent file stays while one runs or waits, a restart sweeps with its row excluded; janitor and repository tests)*
   - **Where:** `lib/data/repositories/downloads_janitor.dart` (`_sweepTempFiles`, lines 247–319), `lib/core/downloads/background_file_downloader.dart` (line 126)
   - **Problem:** `_sweepTempFiles()` only counts `status == running` for `runningCount` and only checks `canResume` on `paused`/`failed`:
     - `TaskStatus.waitingToRetry` maps to `DownloadStatus.queued`; while waiting up to 512 s to retry from its partial file (`retries: 10`), any sweep deletes its `.partial` file.
@@ -22,7 +22,7 @@
   - **Fix:** Account for `queued` rows (including `waitingToRetry` and holding-queue handoff): keep recent temp files while any `running` or `queued` row exists, and keep temp slots for tasks waiting to retry.
   - **Test:** Add janitor & repository tests covering `queued`/`waitingToRetry` temp files and holding-queue handoff during `_complete()`.
 
-- [ ] **3. Fix `BackgroundFileDownloader.known()` overwriting `paused` tasks as `queued`**
+- [x] **3. Fix `BackgroundFileDownloader.known()` overwriting `paused` tasks as `queued`** *(fixed 2026-11-22: a paused record keeps its state; test: "Waiting for connection" survives reconcile and auto-resumes)*
   - **Where:** `lib/core/downloads/background_file_downloader.dart` (`known`, lines 253–265)
   - **Problem:** `_fd.allTasks(allGroups: true)` in `background_downloader-9.6.6` (`base_downloader.dart:537`, `native_downloader.dart:308`) explicitly includes paused tasks (`getPausedTasks()`). Overwriting `existing.state == DownloaderState.paused` with `DownloaderState.queued`:
     - Flips *"Waiting for connection"* (`paused`, `pausedByUser: false`) rows back to `queued` on reconcile, breaking auto-resume when network returns.
@@ -30,7 +30,7 @@
   - **Fix:** Only insert `DownloaderState.queued` from `allTasks()` when `existing == null`; never overwrite an existing `paused` record.
   - **Test:** Add tests verifying paused tasks stay `paused` through `known()` + `reconcile()`, *"Waiting for connection"* survives reconcile and auto-resumes, and the 60 s stall guard fires when the engine remains paused.
 
-- [ ] **4. Handle Android notification Pause, Resume, and Cancel actions properly**
+- [x] **4. Handle Android notification Pause, Resume, and Cancel actions properly** *(fixed 2026-11-22: an unasked `paused` settles as the user's pause after 8 s if the engine stays paused; progress past the saved bytes or `running` resumes a user-paused or failed row except within 3 s of the app's own pause; a `canceled` the app didn't cause in the last 30 s, with the engine no longer having the task, removes the row; tests for each)*
   - **Where:** `lib/data/repositories/downloads_repository.dart` (`_reconcile` lines 608–619, `_onEvent` lines 1214–1358)
   - **Problem:** `background_downloader`'s `NotificationReceiver` executes Pause/Resume/Cancel natively without going through `DownloadsRepository`:
     - **Notification Pause:** `_pendingUserPause` and `d.pausedByUser` are both false, so `_onEvent(DownloaderState.paused)` treats it as a WorkManager time-limit pause, keeps the row showing *"Downloading"*, arms the 60 s guard, and turns the user's paused download into *"Stopped: interrupted"*.
@@ -46,7 +46,7 @@
 
 ## High
 
-- [ ] **5. Harden `ConnectivityStreamHandler` and connectivity auto-resume**
+- [x] **5. Harden `ConnectivityStreamHandler` and connectivity auto-resume** *(fixed 2026-11-22: `INTERNET` without `VALIDATED`, main-thread state and a nullable sink, 1.5 s debounce; a failed fresh URL keeps the row waiting and retries 5 s to 80 s; offline only pauses running rows and leaves one the engine can't pause, never cancels queued ones; the listener starts after the engine)*
   - **Where:** `android/app/src/main/kotlin/io/github/sharon_xa/cinemakom/MainActivity.kt` (lines 169–221), `lib/data/repositories/downloads_repository.dart` (`_onConnectivity`, lines 370–412)
   - **Problems:**
     1. Requiring `NET_CAPABILITY_VALIDATED` relies on Google's connectivity probe, which can false-offline users on Iraqi ISP / Shabakaty local routing, VPNs, or captive/local networks even when Cinemana CDN is reachable.
@@ -59,19 +59,19 @@
     - If `pause()` returns `false` for a `running` task during offline transition, cancel or leave state accurate rather than desyncing DB from engine.
   - **Test:** Add repository tests for transient stream-fetch error on network return and failed `pause()` on offline drop.
 
-- [ ] **6. Check free space and pass file sizes for season downloads**
+- [x] **6. Check free space and pass file sizes for season downloads** *(fixed 2026-11-22: phone and TV check size × episodes still to queue; each episode gets its own `contentLength`)*
   - **Where:** `lib/features/downloads/download_actions.dart` (`startSeasonDownload`, lines 84–120), `lib/data/repositories/downloads_repository.dart` (`downloadEpisodes`, lines 785–808)
   - **Problem:** `startSeasonDownload` skips `downloadSpaceDeficit`, and `downloadEpisodes` calls `download()` without `bytes`, leaving `totalBytes: null` at enqueue time so season episode notifications omit file sizes (including on completion).
   - **Fix:** Check estimated free space (`picked.bytes * unqueuedCount`) before starting, and pass per-episode `bytes` (e.g., `contentLength` or `picked.bytes` for the first episode).
   - **Test:** Add widget/repository tests verifying season free-space check and `totalBytes` population.
 
-- [ ] **7. Guard and tighten `_reconcile` on-disk completion safety net**
+- [x] **7. Guard and tighten `_reconcile` on-disk completion safety net** *(fixed 2026-11-22)*
   - **Where:** `lib/data/repositories/downloads_repository.dart` (`_reconcile`, lines 520–530)
   - **Problem:** When `row.totalBytes == null`, any non-empty file at `videoPath` (including a half-written copy) satisfies `size > 0 && row.totalBytes == null` and is marked `complete`. Also `videoFile.lengthSync()` is outside `try / on FileSystemException`, so a concurrent delete aborts the whole reconcile loop.
   - **Fix:** Wrap file stat calls in `try / on FileSystemException`, and only auto-complete from disk when `row.totalBytes != null && size == row.totalBytes`.
   - **Test:** Add reconcile test verifying an unknown-size partial file is not marked `complete`.
 
-- [ ] **8. Fix `redownload()`, quality-switch (`switchTo`), and `_resume()` restart edge cases**
+- [x] **8. Fix `redownload()`, quality-switch (`switchTo`), and `_resume()` restart edge cases** *(fixed 2026-11-22: `redownload` leaves the row alone until it can start, returns `ResumeQualityGone`, takes `switchTo`, re-saves lost subtitles, isn't "Started over"; UI helpers `redownloadMissing` / `tvRedownload` check space; a quality switch renames the file and subtitles and takes the new size; restarts sweep first)*
   - **Where:** `lib/data/repositories/downloads_repository.dart` (lines 991–1099), `lib/features/downloads/downloads_screen.dart` (line 352), `lib/features/downloads/download_actions.dart` (line 194), `lib/tv/screens/downloads/tv_downloads_screen.dart` (lines 323, 449), `lib/tv/widgets/tv_downloads.dart` (line 289)
   - **Problems:**
     1. `redownload()` overwrites `status = failed` before calling `_resume()`, and every UI caller ignores the returned `ResumeOutcome` — if the quality is gone (`ResumeQualityGone`), tapping **Download again** silently leaves a failed row with no prompt.
@@ -88,12 +88,12 @@
 
 ## Medium
 
-- [ ] **9. Fix `StatFs` failing on fresh installs before `Movies/Cinemakom` exists**
+- [x] **9. Fix `StatFs` failing on fresh installs before `Movies/Cinemakom` exists** *(fixed 2026-11-22)*
   - **Where:** `android/app/src/main/kotlin/io/github/sharon_xa/cinemakom/MainActivity.kt` (`freeBytes`, lines 65–71)
   - **Problem:** `StatFs(path)` throws `IllegalArgumentException` if `/storage/emulated/0/Movies/Cinemakom` has not been created yet, returning `null` and disabling the pre-enqueue free-space check on the very first download.
   - **Fix:** Walk up `File(path)` to the first existing ancestor directory before calling `StatFs`.
 
-- [ ] **10. Close per-task notification gaps against `docs/DOWNLOADS.md §5.9`**
+- [x] **10. Close per-task notification gaps against `docs/DOWNLOADS.md §5.9`** *(2026-11-22: `resume` re-applies the per-task texts; the dead `waiting` text removed; the failed text can't carry the reason in background_downloader, documented in §5.9)*
   - **Where:** `lib/data/repositories/downloads_repository.dart` (`_taskNotice`, lines 829–859), `lib/core/downloads/background_file_downloader.dart` (lines 181–214)
   - **Problems:**
     - `DownloadTaskNotice.errorBody` is static at enqueue time (`"Download failed"`), so failed notifications never show the specific failure reason (e.g. *"Storage full: 12 GB more needed"*).
@@ -101,19 +101,19 @@
     - `BackgroundFileDownloader.resume(taskId, url)` after a cold app restart does not re-apply `configureNotificationForTask`, so resumed tasks lose their per-task size/quality text and fall back to the global template.
   - **Fix:** Re-apply `configureNotificationForTask` in `resume()` (pass `DownloadTaskNotice?` or rebuild on resume), update/show failure notification text when a task fails (if supported by `background_downloader`), and either wire `waiting` or remove the dead field if `background_downloader` has no holding-queue notification hook.
 
-- [ ] **11. Finish Phase 6 legacy migration & janitor roots**
+- [x] **11. Finish Phase 6 legacy migration & janitor roots** *(fixed 2026-11-22: unfinished Phase 6 rows move to the new folder and start over; the legacy folder is swept as app-private; the iOS root is resolved)*
   - **Where:** `lib/data/repositories/downloads_repository.dart` (`start` lines 347–358, `_sweep` lines 416–429), `lib/data/repositories/download_paths.dart` (`migrateLegacyDownloads`, lines 188–269)
   - **Problems:**
     - Unfinished Phase 6 rows still point to `Android/data/<pkg>/files/Downloads` instead of restarting into `Movies/Cinemakom` (§5.6).
     - `_sweep()` doesn't include `legacyAndroidDownloadRoot()` (leaving old Phase 6 half-written files uncleaned) and passes empty `downloadRoots` on iOS (`applicationDocuments` instead of `root`).
   - **Fix:** Migrate/restart unfinished Phase 6 rows into the new root on first start, include `legacyAndroidDownloadRoot()` in `_sweep()` (where orphan cleanup is safe since it's app-private), and resolve iOS `applicationDocuments/Downloads` for subtitle/empty-dir cleanup.
 
-- [ ] **12. Request `WRITE_EXTERNAL_STORAGE` on Android 7–9 (API 24–28)**
+- [x] **12. Request `WRITE_EXTERNAL_STORAGE` on Android 7–9 (API 24–28)** *(fixed 2026-11-22: `Downloader.askForStorage` before each download, through background_downloader's `androidSharedStorage` permission; untested on a device)*
   - **Where:** `android/app/src/main/kotlin/io/github/sharon_xa/cinemakom/MainActivity.kt` (lines 84–90), `lib/data/repositories/download_paths.dart` (line 138)
   - **Problem:** `hasLegacyStoragePermission()` checks the permission without ever requesting it, so API 24–28 devices always silently fall back to the private app folder instead of asking first (§5.6).
   - **Fix:** Request `WRITE_EXTERNAL_STORAGE` before the first download on API 24–28 (falling back to the app folder if denied).
 
-- [ ] **13. Fix UI, RTL, overflow, and missing-file display bugs (phone & TV)**
+- [ ] **13. Fix UI, RTL, overflow, and missing-file display bugs (phone & TV)** *(2026-11-22: all done except the TV Downloads row's Details, which changes what OK does on a row and needs the owner's call against the TV designs)*
   - **Where:**
     - `lib/features/downloads/download_actions.dart`:
       - Wrap `showDownloadDetails` `AlertDialog.content` `Column` (lines 270–299) in `SingleChildScrollView` to prevent RenderFlex overflow on long engine errors / paths.
@@ -131,6 +131,6 @@
 
 ## Low / Cleanup
 
-- [ ] **14. Minor hygiene**
+- [x] **14. Minor hygiene** *(2026-11-22: cleared on fail and pause; `contentUri` kept for the MediaStore fallback, DOWNLOADS.md §12)*
   - Clear `_lastProgressSavedAt` on `_fail()` and `pause()` in `lib/data/repositories/downloads_repository.dart`.
   - Decide whether to keep `Download.contentUri` (schema 4) for future MediaStore fallback or document why it remains unused now that `Files.move` into `Movies/Cinemakom` succeeded on Android 15.

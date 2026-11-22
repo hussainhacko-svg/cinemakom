@@ -338,4 +338,180 @@ void main() {
     expect(ep2Video.existsSync(), isTrue);
     expect(report.removedVideos, 0);
   });
+
+  group('PR #4 review, critical 2: temp files of queued downloads', () {
+    Future<JanitorReport> sweep(List<Download> rows, {Set<String>? exclude}) =>
+        DownloadsJanitor(clock: () => now).sweep(
+          rows: rows,
+          tempDirs: [tempDir.path],
+          downloadRoots: [dlRoot.path],
+          pathOf: (d) async => p.join(d.directory, d.fileName),
+          canResume: (_) async => false,
+          exclude: exclude ?? const {},
+        );
+
+    test('a download waiting to retry keeps its old partial file', () async {
+      // Written 6 minutes ago, before the connection dropped; the engine
+      // waits up to 512 s between tries.
+      final waiting = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}wait'),
+        900,
+        modified: now.subtract(const Duration(minutes: 6)),
+      );
+      final stray = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}old'),
+        300,
+        modified: now.subtract(const Duration(hours: 3)),
+      );
+      final report = await sweep([
+        _row(
+          'a',
+          dir: dlRoot.path,
+          fileName: 'a.mp4',
+          status: DownloadStatus.queued,
+        ),
+      ]);
+      expect(waiting.existsSync(), isTrue);
+      expect(stray.existsSync(), isFalse);
+      expect(report.removedTempFiles, 1);
+    });
+
+    test('the holding queue\'s next task, started natively before Dart '
+        'knows, keeps its new file when another finishes', () async {
+      final ep2 = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}ep2'),
+        800,
+        modified: now.subtract(const Duration(seconds: 5)),
+      );
+      final ep3 = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}ep3'),
+        10,
+        modified: now.subtract(const Duration(seconds: 1)),
+      );
+      await sweep([
+        _row('e1', dir: dlRoot.path, fileName: 'e1.mp4'),
+        _row(
+          'e2',
+          dir: dlRoot.path,
+          fileName: 'e2.mp4',
+          status: DownloadStatus.running,
+        ),
+        _row(
+          'e3',
+          dir: dlRoot.path,
+          fileName: 'e3.mp4',
+          status: DownloadStatus.queued,
+        ),
+      ]);
+      expect(ep2.existsSync(), isTrue);
+      expect(ep3.existsSync(), isTrue);
+    });
+
+    test('a restart (excluded) frees its slot; a failed one keeps no recent '
+        'file', () async {
+      final old = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}old'),
+        400,
+        modified: now.subtract(const Duration(seconds: 20)),
+      );
+      final queued = _row(
+        'a',
+        dir: dlRoot.path,
+        fileName: 'a.mp4',
+        status: DownloadStatus.queued,
+      );
+      await sweep([queued], exclude: {'a'});
+      expect(old.existsSync(), isFalse);
+
+      final failedTemp = _write(
+        p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}f'),
+        400,
+        modified: now.subtract(const Duration(seconds: 5)),
+      );
+      await sweep([
+        _row(
+          'b',
+          dir: dlRoot.path,
+          fileName: 'b.mp4',
+          status: DownloadStatus.failed,
+        ),
+      ]);
+      expect(failedTemp.existsSync(), isFalse);
+    });
+  });
+
+  test('an app-private root (Phase 6 Downloads) loses what no row claims, '
+      'never what a row does', () async {
+    final legacy = Directory(p.join(root.path, 'legacy'))..createSync();
+    final title = p.join(legacy.path, 'Movie (2020)');
+    final orphan = _write(p.join(title, 'Movie 1080p.mp4'), 1000);
+    final orphanSub = _write(p.join(title, 'Movie 1080p.ar.srt'), 10);
+    final keptDir = p.join(legacy.path, 'Kept (2021)');
+    final kept = _write(p.join(keptDir, 'Kept 720p.mp4'), 500);
+    final keptSub = _write(p.join(keptDir, 'Kept 720p.en.srt'), 10);
+    // The user's public folder is never swept that way.
+    final mine = _write(p.join(dlRoot.path, 'Mine', 'renamed.mp4'), 700);
+
+    final report = await DownloadsJanitor(clock: () => now).sweep(
+      rows: [
+        _row(
+          'k',
+          dir: keptDir,
+          fileName: 'Kept 720p.mp4',
+          subtitles: const [
+            DownloadedSubtitle(
+              language: 'en',
+              fileName: 'Kept 720p.en.srt',
+              format: 'srt',
+            ),
+          ],
+        ),
+      ],
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      privateRoots: [legacy.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      canResume: (_) async => false,
+    );
+    expect(orphan.existsSync(), isFalse);
+    expect(orphanSub.existsSync(), isFalse);
+    expect(Directory(title).existsSync(), isFalse);
+    expect(kept.existsSync(), isTrue);
+    expect(keptSub.existsSync(), isTrue);
+    expect(mine.existsSync(), isTrue);
+    expect(report.removedVideos, 1);
+  });
+
+  test('a partial file named by resume data is kept exactly, and its row '
+      'takes no guessed slot', () async {
+    // A failed download's partial file, hours old, kept for Retry.
+    final kept = _write(
+      p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}kept'),
+      900,
+      modified: now.subtract(const Duration(hours: 5)),
+    );
+    final stray = _write(
+      p.join(tempDir.path, '${DownloadsJanitor.tempFilePrefix}stray'),
+      100,
+      modified: now.subtract(const Duration(hours: 1)),
+    );
+    await DownloadsJanitor(clock: () => now).sweep(
+      rows: [
+        _row(
+          'f',
+          dir: dlRoot.path,
+          fileName: 'f.mp4',
+          status: DownloadStatus.failed,
+        ),
+      ],
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      // Would give the failed row a slot (and keep the newer stray).
+      canResume: (_) async => true,
+      protectedTemp: {'f': kept.path},
+    );
+    expect(kept.existsSync(), isTrue);
+    expect(stray.existsSync(), isFalse);
+  });
 }

@@ -17,11 +17,18 @@ class FakeDownloader implements Downloader {
   final enqueued = <DownloadJob>[];
   final paused = <String>[];
   final resumed = <(String, String)>[];
+
+  /// The notification each [resume] was given, by task ID.
+  final resumeNotices = <String, DownloadTaskNotice?>{};
+  int storageAsks = 0;
   final canceled = <String>[];
   final knownStates = <String, DownloaderState>{};
   final knownFailures = <String, DownloaderStatus>{};
   final knownProgress = <String, (double, int?)>{};
   final tempDirectories = <String>[];
+
+  /// What [protectedTempFiles] reports, by task ID.
+  final protectedFiles = <String, String>{};
   int syncCalls = 0;
   bool started = false;
   DownloadNotices? notices;
@@ -74,6 +81,9 @@ class FakeDownloader implements Downloader {
   Future<void> askToNotify() async {}
 
   @override
+  Future<void> askForStorage() async => storageAsks++;
+
+  @override
   Future<bool> enqueue(DownloadJob job) async {
     enqueued.add(job);
     knownStates[job.taskId] = DownloaderState.queued;
@@ -89,8 +99,13 @@ class FakeDownloader implements Downloader {
   }
 
   @override
-  Future<bool> resume(String taskId, String url) async {
+  Future<bool> resume(
+    String taskId,
+    String url, {
+    DownloadTaskNotice? notice,
+  }) async {
     resumed.add((taskId, url));
+    resumeNotices[taskId] = notice;
     final ok = resumable[taskId] ?? resumeAllowed;
     if (ok) knownStates[taskId] = DownloaderState.queued;
     return ok;
@@ -124,6 +139,12 @@ class FakeDownloader implements Downloader {
 
   @override
   Future<List<String>> tempDirs() async => List.of(tempDirectories);
+
+  @override
+  Future<Map<String, String>> protectedTempFiles(Set<String> taskIds) async => {
+    for (final e in protectedFiles.entries)
+      if (taskIds.contains(e.key)) e.key: e.value,
+  };
 
   @override
   Future<String> pathOf(FileSpot spot) async => spot.baseDirectory == 'root'

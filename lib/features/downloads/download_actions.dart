@@ -115,6 +115,19 @@ Future<void> startSeasonDownload(
     ],
   );
   if (picked == null || !context.mounted) return;
+  // Rule 10 for the whole season: every episode still to download, at about
+  // the first one's size.
+  final count = seasonEpisodesToQueue(ref, season);
+  final free = await ref.read(downloadFreeSpaceProvider)();
+  if (!context.mounted) return;
+  final deficit = downloadSpaceDeficit(
+    picked.bytes == null ? null : picked.bytes! * count,
+    free,
+  );
+  if (deficit > 0) {
+    _say(context, l10n.downloadSpaceNeeded(formatBytes(l10n, deficit)));
+    return;
+  }
   final queued = await queueSeason(ref, series, season, picked);
   if (context.mounted) _say(context, l10n.downloadSeasonQueued(queued));
 }
@@ -156,8 +169,10 @@ Future<void> showDownloadMenu(
   final action = await showChoicePicker<_Action?>(
     context,
     title: d.isEpisode
-        ? '${context.titleOf(d.item)} · '
-              '${l10n.seasonEpisodeShort(d.season!, d.episode!)}'
+        ? context.joinMeta([
+            context.titleOf(d.item),
+            l10n.seasonEpisodeShort(d.season!, d.episode!),
+          ])
         : context.titleOf(d.item),
     selected: null,
     choices: [
@@ -191,7 +206,7 @@ Future<void> showDownloadMenu(
     case _Action.play:
       openPlayer(context, d.request);
     case _Action.redownload:
-      await repo.redownload(d.videoId);
+      await redownloadMissing(context, ref, d);
     case _Action.pause:
       await repo.pause(d.videoId);
     case _Action.resume:
@@ -216,9 +231,9 @@ Future<void> showDownloadMenu(
   }
 }
 
-/// Resumes or retries [d]. If the stored quality is no longer offered by the
-/// server, asks the user before switching quality and starting over
-/// (docs/DOWNLOADS.md §5.5).
+/// Resumes or retries [d], when the rest of it fits (rule 10). If the
+/// stored quality is no longer offered by the server, asks the user before
+/// switching quality and starting over (docs/DOWNLOADS.md §5.5).
 Future<void> resumeDownload(
   BuildContext context,
   WidgetRef ref,
@@ -226,19 +241,13 @@ Future<void> resumeDownload(
 ) async {
   final l10n = AppLocalizations.of(context);
   final repo = ref.read(downloadsRepositoryProvider);
+  if (!await _fits(context, ref, d)) return;
   final outcome = await repo.resume(d.videoId);
   if (!context.mounted) return;
   switch (outcome) {
     case ResumeQualityGone(:final previousQuality, :final fallback):
-      final sure = await showChoicePicker<bool>(
-        context,
-        title: l10n.downloadQualityGoneTitle(previousQuality),
-        selected: false,
-        choices: [
-          Choice(true, l10n.downloadSwitchQuality(qualityChipLabel(fallback))),
-        ],
-      );
-      if (sure == true && context.mounted) {
+      if (await _confirmSwitch(context, ref, d, previousQuality, fallback) &&
+          context.mounted) {
         await repo.resume(d.videoId, switchTo: fallback);
       }
     case ResumeStarted(startedOver: true):
@@ -246,6 +255,73 @@ Future<void> resumeDownload(
     case ResumeStarted() || ResumeFailed():
       break;
   }
+}
+
+/// Downloads again a finished download whose file was removed outside the
+/// app (§5.8), asking first when its quality is gone. Until it starts, the
+/// row stays as it was.
+Future<void> redownloadMissing(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final repo = ref.read(downloadsRepositoryProvider);
+  if (!await _fits(context, ref, d)) return;
+  final outcome = await repo.redownload(d.videoId);
+  if (!context.mounted) return;
+  switch (outcome) {
+    case ResumeQualityGone(:final previousQuality, :final fallback):
+      if (await _confirmSwitch(context, ref, d, previousQuality, fallback) &&
+          context.mounted) {
+        await repo.redownload(d.videoId, switchTo: fallback);
+      }
+    case ResumeFailed(:final problem?):
+      _say(context, problemText(l10n, problem));
+    case ResumeStarted() || ResumeFailed():
+      break;
+  }
+}
+
+/// Whether what [d] still needs fits on the disk (another quality's
+/// [bytes] when given); says how much is missing when it doesn't.
+Future<bool> _fits(
+  BuildContext context,
+  WidgetRef ref,
+  Download d, {
+  int? bytes,
+}) async {
+  final deficit = await downloadSpaceShortfall(ref, d, bytes: bytes);
+  if (deficit <= 0) return true;
+  if (context.mounted) {
+    final l10n = AppLocalizations.of(context);
+    _say(context, l10n.downloadSpaceNeeded(formatBytes(l10n, deficit)));
+  }
+  return false;
+}
+
+/// Asks before switching [d] to [fallback] (starting over), and checks the
+/// new quality fits.
+Future<bool> _confirmSwitch(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+  String previousQuality,
+  VideoSource fallback,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final sure = await showChoicePicker<bool>(
+    context,
+    title: l10n.downloadQualityGoneTitle(previousQuality),
+    selected: false,
+    choices: [
+      Choice(true, l10n.downloadSwitchQuality(qualityChipLabel(fallback))),
+    ],
+  );
+  if (sure != true || !context.mounted) return false;
+  final bytes = await ref.read(downloadsRepositoryProvider).sizeOf(fallback);
+  if (!context.mounted) return false;
+  return _fits(context, ref, d, bytes: bytes);
 }
 
 /// Shows a download's reason, engine message, saved progress and file path
@@ -267,35 +343,38 @@ Future<void> showDownloadDetails(
     builder: (context) => AlertDialog(
       backgroundColor: MarqueeColors.booth,
       title: Text(l10n.downloadDetails, style: text.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (d.status == DownloadStatus.failed) ...[
-            Text(l10n.downloadDetailReason, style: text.caption),
+      // Long engine messages and paths scroll rather than overflow.
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (d.status == DownloadStatus.failed) ...[
+              Text(l10n.downloadDetailReason, style: text.caption),
+              const SizedBox(height: 2),
+              Text(
+                problemText(l10n, d.problem),
+                style: text.body.copyWith(color: MarqueeColors.ember),
+              ),
+              const SizedBox(height: MarqueeSpace.m),
+            ],
+            if (d.problemDetail case final detail? when detail.isNotEmpty) ...[
+              Text(l10n.downloadDetailEngine, style: text.caption),
+              const SizedBox(height: 2),
+              Text(detail, style: text.caption),
+              const SizedBox(height: MarqueeSpace.m),
+            ],
+            if (sizes != null) ...[
+              Text(l10n.downloadDetailProgress, style: text.caption),
+              const SizedBox(height: 2),
+              Text(sizes, style: text.body),
+              const SizedBox(height: MarqueeSpace.m),
+            ],
+            Text(l10n.downloadDetailPath, style: text.caption),
             const SizedBox(height: 2),
-            Text(
-              problemText(l10n, d.problem),
-              style: text.body.copyWith(color: MarqueeColors.ember),
-            ),
-            const SizedBox(height: MarqueeSpace.m),
+            SelectableText(path, style: text.caption),
           ],
-          if (d.problemDetail case final detail? when detail.isNotEmpty) ...[
-            Text(l10n.downloadDetailEngine, style: text.caption),
-            const SizedBox(height: 2),
-            Text(detail, style: text.caption),
-            const SizedBox(height: MarqueeSpace.m),
-          ],
-          if (sizes != null) ...[
-            Text(l10n.downloadDetailProgress, style: text.caption),
-            const SizedBox(height: 2),
-            Text(sizes, style: text.body),
-            const SizedBox(height: MarqueeSpace.m),
-          ],
-          Text(l10n.downloadDetailPath, style: text.caption),
-          const SizedBox(height: 2),
-          SelectableText(path, style: text.caption),
-        ],
+        ),
       ),
       actions: [
         if (isDesktop && d.status == DownloadStatus.complete)
@@ -351,8 +430,14 @@ Widget downloadIcon(
   Download? d,
   DownloadProgress? progress, {
   double size = 20,
+  bool missing = false,
 }) => switch (d?.status) {
   null => Icon(Icons.download_rounded, size: size),
+  DownloadStatus.complete when missing => Icon(
+    Icons.error_outline_rounded,
+    size: size,
+    color: MarqueeColors.ember,
+  ),
   DownloadStatus.complete => Icon(
     Icons.download_done_rounded,
     size: size,
@@ -384,8 +469,10 @@ class DownloadPill extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final d = ref.watch(downloadOfProvider(item.id));
     final progress = ref.watch(progressOfProvider(item.id));
+    final missing = ref.watch(isDownloadMissingProvider(item.id));
     final label = switch (d?.status) {
       null => l10n.download,
+      DownloadStatus.complete when missing => l10n.downloadFileRemoved,
       DownloadStatus.complete => l10n.downloaded,
       DownloadStatus.paused =>
         d!.isWaitingForConnection
@@ -396,14 +483,16 @@ class DownloadPill extends ConsumerWidget {
       DownloadStatus.running =>
         progress == null && d!.downloadedBytes == 0
             ? l10n.downloadingStatus
-            : '${l10n.downloadingStatus} · '
-                  '${(downloadFraction(d!, progress) * 100).floor()}%',
+            : context.joinMeta([
+                l10n.downloadingStatus,
+                '${(downloadFraction(d!, progress) * 100).floor()}%',
+              ]),
     };
     return OutlinedButton.icon(
       onPressed: () => d == null
           ? startDownload(context, ref, item)
           : showDownloadMenu(context, ref, d),
-      icon: downloadIcon(d, progress, size: 18),
+      icon: downloadIcon(d, progress, size: 18, missing: missing),
       label: Text(label),
     );
   }
@@ -426,11 +515,12 @@ class EpisodeDownloadButton extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final d = ref.watch(downloadOfProvider(episode.id));
     final progress = ref.watch(progressOfProvider(episode.id));
+    final missing = ref.watch(isDownloadMissingProvider(episode.id));
     return IconButton(
       tooltip: d == null
           ? l10n.downloadEpisode
           : d.status == DownloadStatus.complete
-          ? l10n.downloaded
+          ? (missing ? l10n.downloadFileRemoved : l10n.downloaded)
           : d.status == DownloadStatus.failed
           ? problemText(l10n, d.problem)
           : l10n.downloadingStatus,
@@ -438,7 +528,7 @@ class EpisodeDownloadButton extends ConsumerWidget {
           ? startDownload(context, ref, series, episode: episode)
           : showDownloadMenu(context, ref, d),
       style: IconButton.styleFrom(fixedSize: const Size.square(40)),
-      icon: downloadIcon(d, progress),
+      icon: downloadIcon(d, progress, missing: missing),
     );
   }
 }

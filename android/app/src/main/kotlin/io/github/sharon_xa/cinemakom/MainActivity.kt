@@ -61,10 +61,14 @@ open class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isTv" -> result.success(isTv)
-                // Free bytes where downloads go (docs/TV.md §7.4).
+                // Free bytes where downloads go (docs/TV.md §7.4). The folder
+                // may not exist yet (Movies/Cinemakom before the first
+                // download): ask its nearest existing parent, same volume.
                 "freeBytes" -> result.success(
                     try {
-                        StatFs(call.argument<String>("path")!!).availableBytes
+                        var dir: File? = File(call.argument<String>("path")!!)
+                        while (dir != null && !dir.exists()) dir = dir.parentFile
+                        dir?.let { StatFs(it.path).availableBytes }
                     } catch (e: Exception) {
                         null
                     },
@@ -162,55 +166,78 @@ open class MainActivity : FlutterActivity() {
 }
 
 /**
- * Emits `true` when the default network has validated internet access, `false`
- * otherwise (docs/DOWNLOADS.md §5.5: pause downloads while offline so their
- * resume data is preserved, and resume when the network returns).
+ * Emits `true` when the default network offers internet, `false` when there
+ * is none (docs/DOWNLOADS.md §5.5: pause downloads while offline so their
+ * resume data is kept, and resume when the network returns).
+ *
+ * Internet, not *validated* internet: validation is Google's connectivity
+ * probe, which fails on networks that reach the Cinemana CDN fine (local ISP
+ * routing without international access, VPNs). A wrong "offline" would pause
+ * every download for nothing; a wrong "online" only lets the engine retry.
+ *
+ * Callbacks arrive on a binder thread: everything is handled on the main
+ * thread, and each change is debounced so a network switch (Wi-Fi to mobile)
+ * or `onLost` reading the network it just lost doesn't flap.
  */
 private class ConnectivityStreamHandler(
     private val context: Context,
 ) : EventChannel.StreamHandler {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var callback: ConnectivityManager.NetworkCallback? = null
+    private var sink: EventChannel.EventSink? = null
     private var lastOnline: Boolean? = null
+    private val check = Runnable { checkNow() }
+
+    private fun checkNow() {
+        val events = sink ?: return
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+        val online = try {
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (_: Exception) {
+            true
+        }
+        if (online == lastOnline) return
+        lastOnline = online
+        events.success(online)
+    }
+
+    /** Checks again once things settle (main thread, debounced). */
+    private fun schedule() {
+        mainHandler.removeCallbacks(check)
+        mainHandler.postDelayed(check, DEBOUNCE_MS)
+    }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return
-        fun emit(online: Boolean) {
-            if (online == lastOnline) return
-            lastOnline = online
-            mainHandler.post { events.success(online) }
-        }
-        fun checkNow() {
-            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
-            val online = caps != null &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            emit(online)
-        }
+        sink = events
         checkNow()
         val cb = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = checkNow()
-            override fun onLost(network: Network) = checkNow()
+            override fun onAvailable(network: Network) = schedule()
+            override fun onLost(network: Network) = schedule()
             override fun onCapabilitiesChanged(
                 network: Network,
                 networkCapabilities: NetworkCapabilities,
-            ) = checkNow()
-            override fun onUnavailable() = emit(false)
+            ) = schedule()
+            override fun onUnavailable() = schedule()
         }
         callback = cb
         try {
             cm.registerDefaultNetworkCallback(cb)
         } catch (_: Exception) {
-            // Permission or OS quirk; leave default online state.
+            // Permission or OS quirk; the first answer stays.
         }
     }
 
     override fun onCancel(arguments: Any?) {
+        mainHandler.removeCallbacks(check)
+        sink = null
+        lastOnline = null
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         val cb = callback
         callback = null
-        lastOnline = null
         if (cm != null && cb != null) {
             try {
                 cm.unregisterNetworkCallback(cb)
@@ -218,5 +245,9 @@ private class ConnectivityStreamHandler(
                 // Already unregistered.
             }
         }
+    }
+
+    companion object {
+        private const val DEBOUNCE_MS = 1500L
     }
 }

@@ -145,6 +145,8 @@ Future<void> tvStartSeasonDownload(
     context,
     offer,
     free,
+    // The whole season must fit (rule 10), at about the first one's size.
+    count: seasonEpisodesToQueue(ref, season),
     title: l10n.downloadSeason,
     subtitle: context.joinMeta([
       context.titleOf(series),
@@ -162,6 +164,7 @@ Future<void> tvStartSeasonDownload(
 
 /// The quality panel: each quality with its size ("about … each" for a
 /// season), opened on the preferred one; one that wouldn't fit is "Too big".
+/// [count] episodes of a season must all fit.
 Future<DownloadChoice?> _pickQuality(
   BuildContext context,
   DownloadOffer offer,
@@ -169,12 +172,15 @@ Future<DownloadChoice?> _pickQuality(
   required String title,
   required String subtitle,
   bool each = false,
+  int count = 1,
 }) async {
   final l10n = AppLocalizations.of(context);
   String size(DownloadChoice c) => context.isolate(formatBytes(l10n, c.bytes!));
+  bool fits(DownloadChoice c) =>
+      downloadFits(c.bytes == null ? null : c.bytes! * count, free);
   final fitting = [
     for (final c in offer.choices)
-      if (downloadFits(c.bytes, free)) c,
+      if (fits(c)) c,
   ];
   final freeLine = free == null
       ? null
@@ -202,10 +208,10 @@ Future<DownloadChoice?> _pickQuality(
         TvChoice(
           c,
           qualityChipLabel(c.source),
-          enabled: downloadFits(c.bytes, free),
+          enabled: fits(c),
           caption: c.bytes == null
               ? null
-              : !downloadFits(c.bytes, free)
+              : !fits(c)
               ? l10n.tvTooBig(size(c))
               : each
               ? l10n.tvAboutEach(size(c))
@@ -286,7 +292,7 @@ Future<void> tvDownloadMenu(
     case _Action.play:
       tvOpenPlayer(context, d.request);
     case _Action.redownload:
-      await repo.redownload(d.videoId);
+      await tvRedownload(context, ref, d);
     case _Action.pause:
       await repo.pause(d.videoId);
     case _Action.resume || _Action.retry:
@@ -331,28 +337,90 @@ Future<void> tvDownloadMenu(
   }
 }
 
-/// Resumes or retries [d] on TV. If the stored quality is gone, asks the user
-/// before switching quality and starting over (docs/DOWNLOADS.md §5.5).
+/// Resumes or retries [d] on TV, when the rest of it fits (rule 10). If the
+/// stored quality is gone, asks the user before switching quality and
+/// starting over (docs/DOWNLOADS.md §5.5).
 Future<void> tvResumeDownload(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+) async {
+  final repo = ref.read(downloadsRepositoryProvider);
+  if (!await _tvFits(context, ref, d)) return;
+  final outcome = await repo.resume(d.videoId);
+  if (!context.mounted) return;
+  if (outcome case ResumeQualityGone(:final previousQuality, :final fallback)) {
+    if (await _tvConfirmSwitch(context, ref, d, previousQuality, fallback) &&
+        context.mounted) {
+      await repo.resume(d.videoId, switchTo: fallback);
+    }
+  }
+}
+
+/// Downloads again a finished download whose file was removed outside the
+/// app (§5.8), asking first when its quality is gone.
+Future<void> tvRedownload(
   BuildContext context,
   WidgetRef ref,
   Download d,
 ) async {
   final l10n = AppLocalizations.of(context);
   final repo = ref.read(downloadsRepositoryProvider);
-  final outcome = await repo.resume(d.videoId);
+  if (!await _tvFits(context, ref, d)) return;
+  final outcome = await repo.redownload(d.videoId);
   if (!context.mounted) return;
-  if (outcome case ResumeQualityGone(:final previousQuality, :final fallback)) {
-    final sure = await tvConfirm(
-      context,
-      l10n.downloadSwitchQuality(qualityChipLabel(fallback)),
-      l10n.downloadQualityGoneTitle(previousQuality),
-      l10n.tvKeepIt,
-    );
-    if (sure && context.mounted) {
-      await repo.resume(d.videoId, switchTo: fallback);
-    }
+  switch (outcome) {
+    case ResumeQualityGone(:final previousQuality, :final fallback):
+      if (await _tvConfirmSwitch(context, ref, d, previousQuality, fallback) &&
+          context.mounted) {
+        await repo.redownload(d.videoId, switchTo: fallback);
+      }
+    case ResumeFailed(:final problem?):
+      await _say(context, l10n.downloadAgain, problemText(l10n, problem));
+    case ResumeStarted() || ResumeFailed():
+      break;
   }
+}
+
+/// Whether what [d] still needs fits on the TV (another quality's [bytes]
+/// when given); says how much is missing when it doesn't.
+Future<bool> _tvFits(
+  BuildContext context,
+  WidgetRef ref,
+  Download d, {
+  int? bytes,
+}) async {
+  final deficit = await downloadSpaceShortfall(ref, d, bytes: bytes);
+  if (deficit <= 0) return true;
+  if (context.mounted) {
+    final l10n = AppLocalizations.of(context);
+    await _say(
+      context,
+      l10n.download,
+      l10n.downloadSpaceNeeded(formatBytes(l10n, deficit)),
+    );
+  }
+  return false;
+}
+
+Future<bool> _tvConfirmSwitch(
+  BuildContext context,
+  WidgetRef ref,
+  Download d,
+  String previousQuality,
+  VideoSource fallback,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final sure = await tvConfirm(
+    context,
+    l10n.downloadSwitchQuality(qualityChipLabel(fallback)),
+    l10n.downloadQualityGoneTitle(previousQuality),
+    l10n.tvKeepIt,
+  );
+  if (!sure || !context.mounted) return false;
+  final bytes = await ref.read(downloadsRepositoryProvider).sizeOf(fallback);
+  if (!context.mounted) return false;
+  return _tvFits(context, ref, d, bytes: bytes);
 }
 
 /// Asks before something that can't be undone. Opens on [keep], so a
@@ -373,12 +441,14 @@ Future<bool> tvConfirm(
     false;
 
 /// "Downloading · 42%", "Waiting", "Paused", "Waiting for connection", the
-/// problem, or "Downloaded".
+/// problem, "File removed" ([missing]) or "Downloaded".
 String tvDownloadStatus(
   AppLocalizations l10n,
   Download d,
-  DownloadProgress? progress,
-) => switch (d.status) {
+  DownloadProgress? progress, {
+  bool missing = false,
+}) => switch (d.status) {
+  DownloadStatus.complete when missing => l10n.downloadFileRemoved,
   DownloadStatus.queued => l10n.downloadQueued,
   DownloadStatus.running => l10n.tvDownloadingPercent(
     (downloadFraction(d, progress) * 100).round(),
@@ -415,6 +485,7 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
     final text = MarqueeTvText.of(context);
     final d = ref.watch(downloadOfProvider(episode.id));
     final progress = ref.watch(progressOfProvider(episode.id));
+    final missing = ref.watch(isDownloadMissingProvider(episode.id));
     final what = episodeLabel(l10n, episode.numbering);
     return ValueListenableBuilder(
       valueListenable: _preparing,
@@ -422,7 +493,7 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
         index: index,
         label: d == null
             ? '${l10n.downloadEpisode}, $what'
-            : '$what, ${tvDownloadStatus(l10n, d, progress)}',
+            : '$what, ${tvDownloadStatus(l10n, d, progress, missing: missing)}',
         onSelect: () => d == null
             ? tvStartDownload(context, ref, series, episode: episode)
             : tvDownloadMenu(context, ref, d),
@@ -469,6 +540,11 @@ class TvEpisodeDownloadButton extends ConsumerWidget {
                 ],
               ),
               DownloadStatus.failed => const Icon(
+                Icons.error_outline,
+                size: 22,
+                color: MarqueeColors.ember,
+              ),
+              DownloadStatus.complete when missing => const Icon(
                 Icons.error_outline,
                 size: 22,
                 color: MarqueeColors.ember,
@@ -521,12 +597,15 @@ class TvMovieDownloadButton extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final d = ref.watch(downloadOfProvider(item.id));
     final progress = ref.watch(progressOfProvider(item.id));
+    final missing = ref.watch(isDownloadMissingProvider(item.id));
     return TvButton(
       index: index,
-      icon: d?.status == DownloadStatus.complete
+      icon: d?.status == DownloadStatus.complete && !missing
           ? Icons.check
           : Icons.download_rounded,
-      label: d == null ? l10n.download : tvDownloadStatus(l10n, d, progress),
+      label: d == null
+          ? l10n.download
+          : tvDownloadStatus(l10n, d, progress, missing: missing),
       onSelect: () => d == null
           ? tvStartDownload(context, ref, item)
           : tvDownloadMenu(context, ref, d),

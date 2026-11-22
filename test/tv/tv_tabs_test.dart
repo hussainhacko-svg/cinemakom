@@ -18,6 +18,7 @@ import 'package:cinemakom/tv/screens/details/tv_details_screen.dart';
 import 'package:cinemakom/tv/tv_app.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_downloader.dart';
 import 'reachability.dart';
 import 'tv_driver.dart';
 
@@ -90,6 +91,7 @@ Future<TvDriver> _openTab(
   MemoryLibraryRepository? library,
   MemoryDownloadStore? downloads,
   int? freeSpace,
+  FakeDownloader? downloader,
 }) async {
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
     SystemChannels.platform,
@@ -105,6 +107,7 @@ Future<TvDriver> _openTab(
     tv: true,
     library: library,
     downloads: downloads,
+    downloader: downloader,
     freeSpace: freeSpace,
     store: MemoryPreferenceStore({
       PreferenceKeys.language: arabic ? 'ar' : 'en',
@@ -293,7 +296,15 @@ void main() {
           addedAt: DateTime(2026, 11, 20),
         ),
       ]);
-      await _openTab(tester, 3, downloads: store, freeSpace: 50 * gb);
+      await _openTab(
+        tester,
+        3,
+        downloads: store,
+        freeSpace: 50 * gb,
+        // Its partial file is gone, so it waits for the user's Retry rather
+        // than continuing by itself.
+        downloader: FakeDownloader()..resumeAllowed = false,
+      );
       expect(find.textContaining('3.6 GB of 27 GB'), findsOneWidget);
       expect(find.textContaining('Stopped: interrupted'), findsOneWidget);
       expect(find.textContaining('1.0 GB of 4.0 GB'), findsOneWidget);

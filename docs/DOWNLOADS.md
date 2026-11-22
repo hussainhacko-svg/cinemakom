@@ -1,6 +1,6 @@
 # Downloads: the reliability plan
 
-> **Status (2026-11-21):** D0 findings confirmed; D1–D6 code & automated tests implemented on `downloads-fix`; awaiting on-device phone verification (D1 30-min check, D5 rename spike/verification on phone, D6 notification check, D7 release checklist). **Read it before touching `lib/core/downloads`, `downloads_repository.dart`, `download_store.dart` or the Downloads screens.**
+> **Status (2026-11-22):** D0 findings confirmed; D1–D6 merged (PR #4); its review list (`docs/DOWNLOADS_TODO.md`) fixed except the TV Details item (13, a design question). Awaiting on-device phone verification (D1 30-min check, D5 on the phone, D6 notification check, D7 release checklist). **Read it before touching `lib/core/downloads`, `downloads_repository.dart`, `download_store.dart` or the Downloads screens.**
 
 The goal: **a download the user starts always finishes**, whether the app is open, in the background or killed, and whatever happens to the network. When it can't finish, the app says why, shows how much is saved, and continues from there. The app never leaves stray files behind, and the finished video is the user's: they can see it in their file manager and do what they like with it.
 
@@ -75,7 +75,7 @@ These are the contract. Each one gets a test (§9).
 1. **One download = one row = at most one engine task = at most one partial file.** A new attempt removes the old task, its resume data and its temp file first.
 2. **The shown state follows the engine, except for what the user decided.** Progress arriving means *downloading*, unless the user pressed Pause. Only the user, or a final failure, makes a download stop.
 3. **Saved progress is never lost.** Downloaded bytes and the total are stored, and every state shows them ("Paused · 3.6 of 27 GB").
-4. **The engine's time-limit `paused` is not a pause.** If the user didn't ask for it, it's shown as *downloading* (the next run follows within seconds), and a guard turns it into a real problem if no progress arrives within 60 s.
+4. **A `paused` the app didn't ask for is not a pause yet.** It's shown as *downloading* (after the engine's time limit the next run follows within seconds), and a guard asks the engine again after 8 s: still paused means the notification's Pause (the user's pause, resumable); unknown to the engine means *interrupted*. *(Changed 2026-11-22: was 60 s and always "interrupted", which turned every notification Pause into a failure; PR #4 review, critical 4.)*
 5. **Retry continues from the partial file** if one is valid, with a fresh signed URL. Starting over only happens when the server refuses the range or the ETag changed, and the UI then says "Started over".
 6. **Every failure has its real reason**: no connection, link expired, not available, storage full, can't write, interrupted, server error.
 7. **Nothing is left behind.** After a delete, a cancel, a final failure, a quality change or a finish, the only files left are the finished video and its subtitles. Startup and app resume sweep away anything stray.
@@ -107,16 +107,18 @@ Statuses stay `queued`, `running`, `paused`, `failed` and `complete`. Two fields
 | User taps Download | none, `failed` | `queued` |
 | Engine `enqueued` / `waitingToRetry` | `queued`, `running` | `queued` (keeps the saved bytes) |
 | Engine `running`, or **any progress** | `queued`, `running`, `paused` with `pausedByUser = false` | `running` |
-| Progress while `paused` with `pausedByUser = true` | | ignored (the engine is still stopping) |
+| Engine `running`, or progress **past the saved bytes**, while `paused` with `pausedByUser = true` or `failed` | | `running` (resumed from the notification, or rescheduled), except within 3 s of the app's own pause, while the engine stops |
+| Engine `queued` while `paused` by the user or `failed` (same 3 s exception) | | `queued` |
 | Engine `paused`, and the user asked | any active | `paused`, `pausedByUser = true` |
-| Engine `paused`, and the user didn't (time limit) | `running` | stays `running`; starts the 60 s guard (rule 4) |
-| Guard fires with no progress | `running` | ask the engine (`taskForId`, records). If nothing runs, `failed` (`interrupted`) |
-| User taps Pause on a task in the holding queue | `queued` | cancel it in the engine, `paused`, `pausedByUser = true` (no partial file, Resume enqueues it) |
-| Connectivity: no network (§5.5) | `running`, `queued` | engine pause, `paused`, `pausedByUser = false`, shown as "Waiting for connection" |
+| Engine `paused`, and the app didn't ask (time limit or the notification's Pause) | `running` | stays `running`; starts the 8 s guard (rule 4) |
+| Guard fires with no progress | `running` | ask the engine. Running or queued: stays. Paused: `paused`, `pausedByUser = true`. Unknown: `failed` (`interrupted`) |
+| User taps Pause on a task the engine can't pause (holding queue, or between retries) | `queued` | cancel it in the engine, `paused`, `pausedByUser = true`. Resume enqueues it; one that was between retries loses its partial file and says "Started over" |
+| Connectivity: no network (§5.5) | `running` | engine pause, `paused`, `pausedByUser = false`, shown as "Waiting for connection". If the engine can't pause it, it stays as it is. `queued` rows are left to the engine: cancelling one waiting to retry would throw its resume data away |
 | Connectivity: network back | `paused` with `pausedByUser = false` | Retry with a fresh URL (resume) |
 | Engine `complete` | any | `complete` (after the file checks in §5.6) |
 | Engine `failed` (final) | any active | `failed` with a reason (§5.5) |
-| Engine `canceled` | | ignored unless the row is being deleted |
+| Engine `canceled`, within 30 s of the app's own cancel (rule 1, holding-queue pause, restart) | | ignored |
+| Any other engine `canceled` (the notification's Cancel), when the engine no longer has the task | any active | removed like an in-app cancel (§5.7) |
 | User deletes | any | row and files removed (§5.7) |
 
 Engine events, user actions, reconcile and cleanup still run one at a time (`_serial`), as today.
@@ -162,9 +164,12 @@ Runs at startup, on `AppLifecycleState.resumed`, and when Downloads opens, throu
 
 **The hard part: a final failure loses the resume data.** The library clears it in `processStatusUpdate` before our listener sees the `failed` (§3.2), so after a final failure there's nothing to continue from. The partial file is still on disk, but nothing refers to it. The plan is therefore to **keep network trouble from becoming a final failure**:
 1. `retries: 10`, the library's maximum. Each retry resumes from the partial file, with backoff growing from 2 s to 512 s, which covers about 17 minutes without a connection.
-2. **No network means a pause, not a failure.** When connectivity reports no network, the repository pauses its running tasks itself (`pausedByUser = false`, shown as "Waiting for connection · X of Y"). A paused task keeps its resume data indefinitely. When the network returns, it resumes them with a fresh URL.
+2. **No network means a pause, not a failure.** When connectivity reports no network, the repository pauses its running tasks itself (`pausedByUser = false`, shown as "Waiting for connection · X of Y"). A paused task keeps its resume data indefinitely. When the network returns, it resumes them with a fresh URL; if that URL can't be fetched yet (DNS not ready, API down), the row keeps waiting and asks again 5 s, 10 s, 20 s, 40 s and 80 s later, then waits for the next network change or the user. "No network" is Android's `NET_CAPABILITY_INTERNET`, **not** `VALIDATED`: Google's validation probe fails on networks that reach the Cinemana CDN fine (local ISP routing without international access, VPNs), and a wrong "offline" would pause everything. Changes are debounced 1.5 s on the main thread (`MainActivity.kt`).
 3. **Only real failures become final**: storage, not available, link refused twice. Those have no useful partial file anyway, or their partial file is deleted (rule 7).
-4. If a final failure still happens with a partial file on disk, Retry starts over and says so ("Started over"). D3 checks whether the resume data can be read safely before it's cleared (the plugin's stored record, or a library option). If not, the start-over stays as the honest fallback and the case is reported upstream (§11).
+4. **A final failure no longer loses the partial file** *(2026-11-22)*. The app gives background_downloader its own storage (`PersistentStorage`, public API) wrapped with an in-memory mirror of the resume data. The engine clears that data synchronously just before it sends a final `failed`, so the mirror still has it when the update arrives, and `KeptResumeStore` (`lib/core/downloads/kept_resume_store.dart`, a JSON file in app support) keeps it. Retry gives it back when the partial file is still at least as long as the saved bytes, then resumes with a fresh URL and every retry again. Checked on Linux against the live CDN (`integration_test/downloads_recovery_test.dart`): paused at 11.8%, a final failure cleared the engine's data, and Retry continued from 12.6% and finished at the exact size. Only a missing or short partial file still starts over ("Started over"). iOS keeps URLSession's own resume data, which isn't a path, so it isn't covered.
+5. **Passing failures continue by themselves** (network, interrupted, server, link expired), from their partial file: 2, 5, 10, 20, then every 30 minutes while the app runs (up to 12 times, about 5 h; progress resets the count), when the app comes to the front (Android also lets background work run again then, see §12), and when the network returns. At most once a minute each. One that could only start over with bytes saved waits for the user's Retry.
+6. **Engine retries get fresh URLs.** A fresh URL has at least 6 hours left, but on a slow connection a 27 GB file takes longer (7.5 h at 1 MB/s), and the engine's own retries, the tasks it reschedules after the app was killed, and the run after a system stop all reuse the URL they started with. Each task carries background_downloader's `Auth` hook with the "token" expiry set 1 hour before the URL's `Expires`. Before every run the native side compares it and, only when it's due, calls `refreshSignedUrl` (a top-level entry point; on Android in a background isolate, so it builds its own `ApiClient`), which fetches the same quality again (`download_url_refresh.dart`). Any problem keeps the old URL, and the 403 handling above is the fallback. A run that has started keeps going past the expiry: the signature is checked when the request arrives. Checked on Linux: a URL due to expire, pointing at an address nothing answers, was replaced and downloaded.
+7. **The exception type isn't trusted alone.** On desktop a refused connection arrives as a `TaskFileSystemException` ("ClientException with SocketException …"), which would have read "Couldn't save the file" and never continued, so network errors in the description count as connection errors (`BackgroundFileDownloader.statusFrom`).
 
 D3 tests all of this against the real plugin on Linux (cut the network mid-download) and on the phone (airplane mode, §10).
 
@@ -193,8 +198,8 @@ D3 tests all of this against the real plugin on Linux (cut the network mid-downl
 ### 5.7 Cleanup (`DownloadsJanitor`, a small class beside the repository)
 
 Runs after each reconcile, after delete, cancel and final failures, and after a quality change.
-1. **Temp files.** List `com.bbflight.background_downloader*` in every folder the engine uses: internal `files`, external `files`, desktop `.partial`. A file is **kept** only if it belongs to a task that is running (written to within the last 2 minutes) or paused or failed with resume data. Since the library doesn't expose which temp file belongs to which task, we match by count and age: keep at most one per resumable task, the most recent first. **Everything else is deleted.** If there are no unfinished tasks at all, every temp file goes.
-2. **A failed download's leftover video**, at that download's own path (an interrupted copy), is deleted. **Nothing else in a download folder is:** the folders are the user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video no row claims (renamed, from an earlier install or before the app's data was cleared, put there by hand) and a finished download's video, whatever its size, always stay. *(Changed 2026-11-22: the first version deleted every unclaimed video and any size mismatch, which would have deleted renamed files and every earlier download; PR #4 review, critical 1.)*
+1. **Temp files.** List `com.bbflight.background_downloader*` in every folder the engine uses: internal `files`, external `files` and its `.partial`, desktop `.partial`. Since the library doesn't say which temp file is whose, we match by count and age: every **running or queued** row has a slot (a queued one may be waiting to retry from its partial file, up to 512 s between tries, or be the holding queue's next task, started natively before Dart hears of it), and so does a paused or failed row the engine can still resume. The newest files fill the slots, and any file written in the last 2 minutes stays while a row is running or queued. A partial file the engine's resume data (or the kept data, §5.5) names is kept **exactly**, and its row needs no slot; kept data of a download that's gone is forgotten. **Everything else is deleted.** A restart sweeps with its own row excluded, so its old file goes at once. If there are no unfinished tasks at all, every temp file goes. *(Changed 2026-11-22: queued rows had no slot, so a sweep deleted the partial file of a download waiting to retry; PR #4 review, critical 2.)*
+2. **A failed download's leftover video**, at that download's own path (an interrupted copy), is deleted. In the app-private Phase 6 folder (`Android/data/<pkg>/files/Downloads`), which the user can't manage, a video or subtitle no row claims goes too. **Nothing else in a download folder is:** the folders are the user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video no row claims (renamed, from an earlier install or before the app's data was cleared, put there by hand) and a finished download's video, whatever its size, always stay. *(Changed 2026-11-22: the first version deleted every unclaimed video and any size mismatch, which would have deleted renamed files and every earlier download; PR #4 review, critical 1.)*
 3. **Subtitles** of a failed download whose video is gone are deleted; a finished download's subtitles stay even if its video was renamed, and a subtitle no row lists is never touched. Then empty folders.
 4. Each run logs what it removed and how many bytes (`debugPrint`), so a phone check can see it in logcat.
 
@@ -223,6 +228,9 @@ Configured **per task** (`configureNotificationForTask`), so the total size and 
 | Finished | title | `Downloaded · 27 GB · Movies/Cinemakom` | none | opens Downloads (offline play is one tap from there) |
 
 - The library can't show the downloaded bytes ("3.6 of 27 GB"), only `{progress}` in percent, so the body pairs the percent with the total.
+- The failed text is fixed when the task is queued, and the library has no placeholder for the reason, so the notification says "Download failed" and the app shows the reason.
+- The holding queue has no notification in the library, so "Waiting for a slot" isn't shown (the string was removed).
+- Per-task texts live in the library's memory only: `resume` sets them again (after a restart they'd fall back to the global ones).
 - Pause and Resume buttons come from the `paused` configuration (notifications.md). Their labels follow the system language on Android. D6 checks whether they can be localized and documents it if not.
 - With foreground mode the notification stays up for the whole download (one per task). The time-limit `paused` (§3.1) no longer happens.
 - Tap handling: `FileDownloader().registerCallbacks(taskNotificationTapCallback: …)` opens the Downloads tab through go_router.
@@ -300,13 +308,15 @@ Order: D0 → D1 → D2 → D3 → D4 → D5 → D6 → D7. D2 to D4 don't need 
 
 **Integration on Linux (`integration_test/downloads_test.dart`, live CDN, extended):** pause and resume (as today); a failure mid-download, then Retry continues from the same bytes; delete during a download leaves no `.partial` files; a finished file deleted by hand shows "File removed".
 
+**Recovery on Linux (`integration_test/downloads_recovery_test.dart`, live CDN):** a final failure, then Retry continues from the saved bytes; a URL about to expire is replaced before the run starts. Needs `WAYLAND_DISPLAY`/`DISPLAY` set in a shell without them.
+
 ## 10. Phone checklist (release APK, OnePlus, Android 15)
 
 Logcat runs during all of it (`adb logcat | grep -E '\[downloads\]|BackgroundDownloader|TaskRunner'`).
 
 1. Start a 4K movie, leave the app at once, screen off for 30 minutes. It never shows "Paused". The notification stays and updates, and logcat shows no timeouts.
 2. Pause and Resume from the notification and from the app: the bytes continue.
-3. Airplane mode for 2 minutes mid-download: "No connection · X of Y". Network back: it continues by itself from X.
+3. Airplane mode for 2 minutes mid-download: "Waiting for connection · X of Y". Network back: it continues by itself from X. Then a slow or flaky network (a weak signal, or throttled in developer options) for 30 minutes: it never starts over, and continues by itself.
 4. Force-stop mid-download, reopen: it continues, or shows "Interrupted · X of Y" and Retry continues from X.
 5. Delete a running, a paused and a failed download. Settings → Apps → Cinemakom → Storage drops by the matching amount every time.
 6. A finished download is in `Movies/Cinemakom` in the file manager, plays in another player with its subtitles, and plays offline in the app with subtitles.
@@ -316,6 +326,7 @@ Logcat runs during all of it (`adb logcat | grep -E '\[downloads\]|BackgroundDow
 10. The notification in Arabic, every state.
 11. The first start after updating from the Phase 6 build: the 11.5 GB of strays are removed, and finished downloads moved to `Movies/Cinemakom` still play.
 12. TV (TCL): one movie download with the app in the background, then offline play.
+13. One download longer than 6 hours with the app in the background (Android 15's limit, §12), or a 4K title on a throttled network: it finishes, or stops and continues from its bytes when the app is opened.
 
 ## 11. Libraries considered *(2026-11-21)*
 
@@ -336,3 +347,6 @@ If D0–D3 show a bug inside the library itself (not in our setup), report it up
 - **Temp-file matching is by count and age** (§5.7), because the library doesn't say which file is whose. A wrong guess would delete a paused task's partial file, so that task starts over. That costs time but never leaves junk. D4 checks whether the resume data path can be read safely instead.
 - **Very large files (27 GB)** strain storage on phones and TVs. The space check is up front, and the quality picker already shows sizes.
 - **iOS** background limits (URLSession) are still untested on a device (PLAN.md Phase 6).
+- **Android 15 limits `dataSync` foreground services to 6 hours a day** (the app targets SDK 36, so it applies). A download longer than that (27 GB below ~1.3 MB/s, normal on a slow connection) is stopped by the system when WorkManager runs it; a UIDT job (used when Android allows it, `TransferHint.userInitiated`) has no such limit. A stopped run counts as a failure and is retried from its partial file; if Android won't start the service again, the retries run out and the failure is final. Since 2026-11-22 that no longer costs anything: the resume data is kept (§5.5 point 4), and the download continues as soon as the app comes to the front (Android resets the quota then) or on the next slow retry. Not yet seen on the phone: D7 should include one download of more than 6 hours with the app in the background.
+- **Signed URLs expire during long downloads**: handled by the `Auth` refresh (§5.5 point 6). It's marked experimental in background_downloader; if a library update changes it, the 403 handling and kept resume data still continue the download.
+- **`Download.contentUri`** (schema 4) is unused: the D5 rename into `Movies/Cinemakom` worked on Android 15, so no MediaStore copy is needed. It's kept for that fallback, should an OEM refuse the rename.
