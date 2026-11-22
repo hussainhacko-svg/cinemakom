@@ -96,7 +96,7 @@ Start a movie from Details (Play), and an episode from a series.
 
 ## 11. Settings
 
-- [ ] Rows: Language, Default quality, Default subtitles, Subtitle size, About and licenses. Groups are General · Playback · Help (the artboard says App · Playback · About: say which you prefer).
+- [ ] Rows: Language, Default quality, Default subtitles, Subtitle size, Report a bug, Cinemakom on GitHub, About and licenses. Groups are General · Playback · Help (the artboard says App · Playback · About: say which you prefer).
 - [ ] OK opens a panel on the current value; picking saves it.
 - [ ] **Language → العربية**: the app flips to RTL at once and focus stays on the Language row. Then do the **(AR)** checks above, and switch back.
 - [ ] **Report a bug** (new): a panel with two QR codes, By email and On GitHub, OK focused. Scan each with your phone: the email opens addressed to me@sharon-xa.com with the questions and the TV's model filled in; GitHub opens the bug form with the version and device filled in. **Cinemakom on GitHub**: one code, the project page. Back returns to the row, and the rows below stay on screen.
