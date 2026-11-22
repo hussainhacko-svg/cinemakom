@@ -409,15 +409,25 @@ class DownloadsRepository {
     });
   }
 
+  /// A download this far along is finishing: the engine is moving the file
+  /// into place and its last events are due.
+  static const _endFraction = 0.99;
+
   Future<void> _onStallGuard(String id) async {
     final d = await _store.get(id);
     if (d == null || d.status != DownloadStatus.running) return;
+    final ending = (_progress[id]?.fraction ?? 0) >= _endFraction;
+    // Status updates the engine couldn't hand over (it keeps them natively):
+    // they arrive as events, after this check.
+    if (ending) await _downloader.sync();
     final info = (await _downloader.known())[id];
     final state = info?.state;
     final done = _currentBytes(d);
     switch (state) {
       case DownloaderState.running || DownloaderState.queued:
         _log('$id stall-guard check: engine still ${state!.name}');
+        // Moving a big file can take a while: keep asking until it ends.
+        if (ending) _armStallGuard(id);
       case DownloaderState.paused:
         // Nothing ran again: paused outside the app (the notification's
         // Pause). It keeps its resume data, so it's the user's pause.
@@ -1612,6 +1622,10 @@ class DownloadsRepository {
             d.status == DownloadStatus.paused;
         if (stopped && !_runsAgain(d, done: done)) return;
         _stallTimers.remove(d.videoId)?.cancel();
+        // The last percent: if the engine goes quiet now, its `complete` may
+        // be stuck on the native side (seen on the TCL: 99% until the
+        // Downloads tab's reconcile fetched it). The guard asks for it.
+        if (event.fraction >= _endFraction) _armStallGuard(d.videoId);
         _setProgress(
           d.videoId,
           DownloadProgress(

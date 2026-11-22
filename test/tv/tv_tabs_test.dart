@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/core/downloads/downloader.dart';
 import 'package:cinemakom/data/models/download.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
 import 'package:cinemakom/data/models/watch_progress.dart';
@@ -309,6 +310,45 @@ void main() {
       expect(find.textContaining('3.6 GB of 27 GB'), findsOneWidget);
       expect(find.textContaining('Stopped: interrupted'), findsOneWidget);
       expect(find.textContaining('1.0 GB of 4.0 GB'), findsOneWidget);
+    });
+
+    testWidgets('a download that finishes on screen turns into its row', (
+      tester,
+    ) async {
+      final store = MemoryDownloadStore([
+        _download('3119279', status: DownloadStatus.running, createFile: false),
+      ]);
+      final downloader = FakeDownloader();
+      final tv = await _openTab(
+        tester,
+        3,
+        downloads: store,
+        downloader: downloader,
+      );
+      expect(tv.focused, startsWith('Eve of Destruction'));
+      downloader.send(
+        const DownloaderProgress(
+          '3119279',
+          fraction: 0.99,
+          expectedBytes: 2 * 1024 * 1024 * 1024,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('99%'), findsOneWidget);
+      await tester.runAsync(() async {
+        File(p.join(_dir, '3119279.mp4')).writeAsBytesSync(const [0]);
+        downloader.knownStates['3119279'] = DownloaderState.complete;
+        downloader.send(
+          const DownloaderStatus('3119279', DownloaderState.complete),
+        );
+        for (var i = 0; i < 20; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+      expect(find.textContaining('99%'), findsNothing);
+      expect(find.text('Delete'), findsOneWidget);
     });
 
     testWidgets(

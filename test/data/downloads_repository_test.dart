@@ -593,6 +593,47 @@ void main() {
     }
 
     test(
+      'at 99% with no complete event, the guard fetches it from the engine',
+      () async {
+        final e = Env(
+          routes: [
+            FakeApiClient.path('translationFiles/', const <String, Object?>{}),
+          ],
+          stallGuardDuration: const Duration(milliseconds: 30),
+        );
+        addTearDown(() {
+          e.repo.dispose();
+          e.dir.deleteSync(recursive: true);
+        });
+        await e.start();
+        await e.repo.download(
+          movie,
+          source: const VideoSource(url: 'https://x/v.mp4', resolution: '720p'),
+          bytes: 10000,
+        );
+        e.downloader.knownStates[movie.id] = DownloaderState.running;
+        e.downloader.send(
+          const DownloaderProgress(
+            '3119279',
+            fraction: 0.995,
+            expectedBytes: 10000,
+          ),
+        );
+        final syncs = e.downloader.syncCalls;
+
+        // Still moving the file: the guard asks the engine, and keeps asking.
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        expect(e.downloader.syncCalls, greaterThan(syncs + 1));
+        expect((await e.store.get(movie.id))!.status, DownloadStatus.running);
+
+        // Done, but its event never came: the next check finishes it.
+        e.downloader.knownStates[movie.id] = DownloaderState.complete;
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        expect((await e.store.get(movie.id))!.status, DownloadStatus.complete);
+      },
+    );
+
+    test(
       'pause while in holding queue cancels engine task and Resume enqueues it',
       () async {
         await env.start();
