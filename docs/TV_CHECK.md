@@ -80,34 +80,34 @@ Start a movie from Details (Play), and an episode from a series.
 
 ## 9. Library
 
-- [ ] Down from the tab → the **Continue watching · Favorites** segment; moving onto Favorites shows them (no OK needed).
-- [ ] Continue rows: **OK resumes**, **Details** opens the title, **Remove** hides it and focus stays on the row that moved up (on the last row: the one above).
-- [ ] Down keeps the column (Remove → Remove).
-- [ ] Favorites: a grid of posters; OK opens Details. Empty shelves say what goes there.
+- [x] Down from the tab → the **Continue watching · Favorites** segment; moving onto Favorites shows them (no OK needed).
+- [x] Continue rows: **OK resumes**, **Details** opens the title, **Remove** hides it and focus stays on the row that moved up (on the last row: the one above).
+- [x] Down keeps the column (Remove → Remove).
+- [x] Favorites: a grid of posters; OK opens Details. Empty shelves say what goes there.
 
 ## 10. Downloads
 
-- [ ] The top line: "4.0 GB used by Cinemakom" and "3.5 GB free on this TV" (no storage bar: the artboard had one).
-- [ ] A running download: "42% · 1080p · 3.2 MB/s · 4 min left" and a `bulb` bar; **Pause** → Resume; **Cancel** asks first, opening on "Keep downloading".
-- [ ] A **failed** download (e.g. Wi-Fi off until it gives up): Try again · **Details** · Cancel. Details says why (the reason, the engine's message, what's saved), opening on Try again; Back returns to Details.
-- [ ] A finished movie: OK plays it; **Delete** asks first ("Keep it" focused).
-- [ ] A series: one row "3 episodes · 1.8 GB" with a chevron; OK opens its episodes (OK plays one, Delete each, Delete all episodes at the bottom); Back comes back to the series row.
-- [ ] Nothing downloaded: the message and **Browse Home**.
+- [x] The top line: "4.0 GB used by Cinemakom" and "3.5 GB free on this TV" (no storage bar: the artboard had one).
+- [x] A running download: "42% · 1080p · 3.2 MB/s · 4 min left" and a `bulb` bar; **Pause** → Resume; **Cancel** asks first, opening on "Keep downloading".
+- [x] A **failed** download (e.g. Wi-Fi off until it gives up): Try again · **Details** · Cancel. Details says why (the reason, the engine's message, what's saved), opening on Try again; Back returns to Details.
+- [x] A finished movie: OK plays it; **Delete** asks first ("Keep it" focused).
+- [x] A series: one row "3 episodes · 1.8 GB" with a chevron; OK opens its episodes (OK plays one, Delete each, Delete all episodes at the bottom); Back comes back to the series row.
+- [x] Nothing downloaded: the message and **Browse Home**.
 
 ## 11. Settings
 
-- [ ] Rows: Language, Default quality, Default subtitles, Subtitle size, Report a bug, Cinemakom on GitHub, About and licenses. Groups are General · Playback · Help (the artboard says App · Playback · About: say which you prefer).
-- [ ] OK opens a panel on the current value; picking saves it.
-- [ ] **Language → العربية**: the app flips to RTL at once and focus stays on the Language row. Then do the **(AR)** checks above, and switch back.
-- [ ] **Report a bug** (new): a panel with two QR codes, By email and On GitHub, OK focused. Scan each with your phone: the email opens addressed to me@sharon-xa.com with the questions and the TV's model filled in; GitHub opens the bug form with the version and device filled in. **Cinemakom on GitHub**: one code, the project page. Back returns to the row, and the rows below stay on screen.
-- [ ] **About and licenses**: a list of packages; OK shows a licence, Up/Down scroll it, Back closes.
+- [x] Rows: Language, Default quality, Default subtitles, Subtitle size, Report a bug, Cinemakom on GitHub, About and licenses. Groups are General · Playback · Help (the artboard says App · Playback · About: say which you prefer).
+- [x] OK opens a panel on the current value; picking saves it.
+- [x] **Language → العربية**: the app flips to RTL at once and focus stays on the Language row. Then do the **(AR)** checks above, and switch back.
+- [x] **Report a bug** (new): a panel with two QR codes, By email and On GitHub, OK focused. Scan each with your phone: the email opens addressed to me@sharon-xa.com with the questions and the TV's model filled in; GitHub opens the bug form with the version and device filled in. **Cinemakom on GitHub**: one code, the project page. Back returns to the row, and the rows below stay on screen.
+- [x] **About and licenses**: a list of packages; OK shows a licence, Up/Down scroll it, Back closes.
 
 ## 12. Everywhere
 
-- [ ] No focus trap anywhere: every button can be reached, and Back always does something (panel → page → tab bar → Home → exit).
-- [ ] Focus is never lost (nothing focused after a load, a delete or a removal).
+- [x] No focus trap anywhere: every button can be reached, and Back always does something (panel → page → tab bar → Home → exit).
+- [x] Focus is never lost (nothing focused after a load, a delete or a removal).
 - [ ] Holding an arrow along a row and down Home stays smooth.
-- [ ] **Focus rings are never cut** (fixed 2026-11-22; the tests now check every ring): on a genre page, open Sort, Kind and Audio and move through every row; the ring shows whole on all four sides. Same in the other panels (player quality, speed, fit, subtitles with Sync and Reset; Settings; downloads) and on every screen.
+- [x] **Focus rings are never cut** (fixed 2026-11-22; the tests now check every ring): on a genre page, open Sort, Kind and Audio and move through every row; the ring shows whole on all four sides. Same in the other panels (player quality, speed, fit, subtitles with Sync and Reset; Settings; downloads) and on every screen.
 
 ## 13. TV-6, with the TV connected to this machine
 
