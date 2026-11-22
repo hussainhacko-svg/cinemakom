@@ -32,9 +32,6 @@ final bugReportInfoProvider = FutureProvider<BugReportInfo>((ref) async {
   if (Platform.isAndroid) {
     final a = await info.androidInfo;
     device = '${a.manufacturer} ${a.model} · Android ${a.version.release}';
-  } else if (Platform.isIOS) {
-    final i = await info.iosInfo;
-    device = '${i.utsname.machine} · ${i.systemName} ${i.systemVersion}';
   } else if (Platform.isLinux) {
     device = (await info.linuxInfo).prettyName;
   } else if (Platform.isWindows) {

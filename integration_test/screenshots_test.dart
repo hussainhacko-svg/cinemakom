@@ -34,7 +34,7 @@ import 'package:cinemakom/features/player/widgets/seek_bar.dart';
 import '../test/helpers/fake_downloader.dart';
 
 final _dir = Directory(
-  Platform.isAndroid || Platform.isIOS
+  Platform.isAndroid
       ? '${Directory.systemTemp.path}/screenshots'
       : Platform.environment['SCREENSHOT_DIR'] ?? 'build/screenshots',
 )..createSync(recursive: true);

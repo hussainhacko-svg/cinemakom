@@ -666,7 +666,8 @@ class DownloadsRepository {
       final rows = await _store.all();
       final tempDirs = await _downloader.tempDirs();
       final root = await _root();
-      // The root as an absolute folder (iOS names it by base directory).
+      // The root as an absolute folder (the fallback names it by base
+      // directory).
       final rootDir = root.baseDirectory == 'root'
           ? root.directory
           : p.dirname(

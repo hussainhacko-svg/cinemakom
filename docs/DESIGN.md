@@ -126,8 +126,6 @@ Use it sparingly. It is never a divider between every section.
 |---|---|
 | Masters | `branding/*.svg`, `branding/store/play-store-512.png` |
 | Android | adaptive icon (Night background, ticket scaled into the 66 dp safe zone), **monochrome** layer (themed icons), legacy mipmaps, Android TV home-screen banner (`drawable-xhdpi/tv_banner.png`, 640×360: the English lockup on Night, its names set in the bundled fonts), Android 12+ splash (`values-v31`) and the older launch background. There is one theme only, so no `values-night` |
-| macOS | the full AppIcon set (rounded Night tile, 16–1024 px) |
-| iOS | the full AppIcon set (opaque, square: iOS rounds it) and LaunchImage on a Night launch screen |
 | Windows | `windows/runner/resources/app_icon.ico`: 16, 24, 32, 48, 64, 128 and 256 px, transparent, no tile |
 | Linux | `linux/packaging/icons/hicolor/**` (16–512 px + scalable SVG), `linux/packaging/io.github.sharon_xa.cinemakom.desktop`, and the window icon `assets/brand/app_icon_256.png` (set in `linux/runner/my_application.cc`) |
 | Flutter | `lib/app/brand/brand_paths.g.dart` |

@@ -115,7 +115,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onResume: () => _session.play(),
       );
       unawaited(_audio!.start());
-      // Either landscape side; Android and iOS only flip between them when
+      // Either landscape side; Android only flips between them when
       // the device's auto-rotate allows it.
       setPlayerOrientation();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);

@@ -13,7 +13,7 @@ import 'downloader.dart';
 import 'kept_resume_store.dart';
 
 /// [Downloader] on background_downloader: WorkManager / UIDT on Android,
-/// URLSession on iOS, an isolate on desktop. The only file that imports it.
+/// an isolate on desktop. The only file that imports it.
 ///
 /// Two additions for slow connections and huge files (docs/DOWNLOADS.md
 /// §5.5): resume data survives a final failure ([KeptResumeStore]), and a
@@ -259,8 +259,7 @@ class BackgroundFileDownloader implements Downloader {
   }
 
   /// Keeps the resume data a final failure cleared (see [KeptResumeStore]).
-  /// Only a partial file on disk can be continued: iOS's resume data is
-  /// URLSession's own and isn't a path.
+  /// Only a partial file on disk can be continued.
   Future<void> _keep(ResumeData d) => _kept.keep(
     d.task.taskId,
     d.toJson(),

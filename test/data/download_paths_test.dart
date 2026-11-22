@@ -16,7 +16,6 @@ void main() {
         final root = resolvePlatformDownloadRoot(
           isDesktopPlatform: false,
           isAndroidPlatform: true,
-          isIosPlatform: false,
           androidSdkInt: sdk,
           publicMoviesDir: '/storage/emulated/0/Movies/Cinemakom',
           externalAppDir: '/storage/emulated/0/Android/data/pkg/files',
@@ -32,7 +31,6 @@ void main() {
         final granted = resolvePlatformDownloadRoot(
           isDesktopPlatform: false,
           isAndroidPlatform: true,
-          isIosPlatform: false,
           androidSdkInt: 28,
           publicMoviesDir: '/storage/emulated/0/Movies/Cinemakom',
           hasLegacyStorage: true,
@@ -43,7 +41,6 @@ void main() {
         final denied = resolvePlatformDownloadRoot(
           isDesktopPlatform: false,
           isAndroidPlatform: true,
-          isIosPlatform: false,
           androidSdkInt: 28,
           publicMoviesDir: '/storage/emulated/0/Movies/Cinemakom',
           hasLegacyStorage: false,
@@ -56,21 +53,10 @@ void main() {
       },
     );
 
-    test('iOS uses Documents/Downloads for the Files app', () {
-      final root = resolvePlatformDownloadRoot(
-        isDesktopPlatform: false,
-        isAndroidPlatform: false,
-        isIosPlatform: true,
-      );
-      expect(root.baseDirectory, 'applicationDocuments');
-      expect(root.directory, 'Downloads');
-    });
-
     test('desktop uses chosen folder or default ~/Videos/Cinemakom', () {
       final custom = resolvePlatformDownloadRoot(
         isDesktopPlatform: true,
         isAndroidPlatform: false,
-        isIosPlatform: false,
         desktopFolder: '/data/movies',
       );
       expect(custom.baseDirectory, 'root');
@@ -79,7 +65,6 @@ void main() {
       final def = resolvePlatformDownloadRoot(
         isDesktopPlatform: true,
         isAndroidPlatform: false,
-        isIosPlatform: false,
       );
       expect(def.directory, defaultDesktopFolder());
     });

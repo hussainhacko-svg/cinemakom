@@ -85,7 +85,6 @@ String uniqueFileStem(String directory, String stem, {String ext = '.mp4'}) {
 DownloadRoot resolvePlatformDownloadRoot({
   required bool isDesktopPlatform,
   required bool isAndroidPlatform,
-  required bool isIosPlatform,
   String? desktopFolder,
   int? androidSdkInt,
   String? publicMoviesDir,
@@ -112,23 +111,18 @@ DownloadRoot resolvePlatformDownloadRoot({
       );
     }
   }
-  if (isIosPlatform) {
-    // Visible in the iOS Files app with UIFileSharingEnabled (§5.6).
-    return (baseDirectory: 'applicationDocuments', directory: 'Downloads');
-  }
   return (baseDirectory: 'applicationSupport', directory: 'Downloads');
 }
 
 /// Where new downloads go on this platform (docs/DOWNLOADS.md §5.6):
 /// public `Movies/Cinemakom` on Android (falling back to app external storage
-/// on API 24–28 without storage permission), `Documents/Downloads` on iOS,
-/// and the chosen folder on desktop.
+/// on API 24–28 without storage permission) and the chosen folder on
+/// desktop.
 Future<DownloadRoot> platformDownloadRoot(String? desktopFolder) async {
   if (isDesktop) {
     return resolvePlatformDownloadRoot(
       isDesktopPlatform: true,
       isAndroidPlatform: false,
-      isIosPlatform: false,
       desktopFolder: desktopFolder,
     );
   }
@@ -140,7 +134,6 @@ Future<DownloadRoot> platformDownloadRoot(String? desktopFolder) async {
     return resolvePlatformDownloadRoot(
       isDesktopPlatform: false,
       isAndroidPlatform: true,
-      isIosPlatform: false,
       androidSdkInt: sdk,
       publicMoviesDir: movies,
       hasLegacyStorage: legacyOk,
@@ -150,7 +143,6 @@ Future<DownloadRoot> platformDownloadRoot(String? desktopFolder) async {
   return resolvePlatformDownloadRoot(
     isDesktopPlatform: false,
     isAndroidPlatform: false,
-    isIosPlatform: isMobile,
   );
 }
 

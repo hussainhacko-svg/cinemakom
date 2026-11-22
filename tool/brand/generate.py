@@ -16,14 +16,12 @@ Outputs (all regenerated, never edit them by hand):
   branding/*.svg                         masters (with and without the tile)
   lib/app/brand/brand_paths.g.dart       paths for the in-app CinemakomMark
   android/app/src/main/res/...           adaptive, monochrome, legacy, splash, TV banner
-  ios/Runner/Assets.xcassets/...         AppIcon set, LaunchImage
   windows/runner/resources/app_icon.ico  16–256 px
   linux/packaging/icons/...              hicolor PNGs + scalable SVG
   assets/brand/app_icon_256.png          Linux window icon (bundled)
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import subprocess
@@ -239,7 +237,7 @@ def png(svg_text, px, dest, *, opaque=False):
         f.write(svg_text)
     try:
         subprocess.run(['rsvg-convert', '-w', str(px), '-h', str(px), f.name, '-o', str(dest)], check=True)
-        if opaque:  # iOS rejects icons with an alpha channel.
+        if opaque:  # Store icons go without an alpha channel.
             subprocess.run(['magick', str(dest), '-background', NIGHT, '-alpha', 'remove', '-alpha', 'off', str(dest)], check=True)
     finally:
         os.unlink(f.name)
@@ -369,32 +367,6 @@ def tv_banner(dest):
                         '-alpha', 'remove', '-alpha', 'off', str(dest)], check=True)
 
 
-# ---- iOS ----------------------------------------------------------------------
-
-def ios():
-    icons = ROOT / 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
-    for image in json.loads((icons / 'Contents.json').read_text())['images']:
-        px = round(float(image['size'].split('x')[0]) * int(image['scale'][0]))
-        png(svg(detail_for(px), tile=True, scale=0.86), px, icons / image['filename'], opaque=True)
-    launch = ROOT / 'ios/Runner/Assets.xcassets/LaunchImage.imageset'
-    for name, px in [('LaunchImage.png', 120), ('LaunchImage@2x.png', 240), ('LaunchImage@3x.png', 360)]:
-        png(svg('full'), px, launch / name)
-    board = ROOT / 'ios/Runner/Base.lproj/LaunchScreen.storyboard'
-    r, g, b = (int(NIGHT[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    text = re.sub(r'<color key="backgroundColor"[^>]*/>',
-                  f'<color key="backgroundColor" red="{r:.4f}" green="{g:.4f}" blue="{b:.4f}" alpha="1" '
-                  'colorSpace="custom" customColorSpace="sRGB"/>', board.read_text())
-    board.write_text(text)
-
-
-def macos():
-    icons = ROOT / 'macos/Runner/Assets.xcassets/AppIcon.appiconset'
-    if not icons.exists():
-        return
-    for px in (16, 32, 64, 128, 256, 512, 1024):
-        png(svg(detail_for(px), tile=True, scale=0.8, tile_radius=22), px, icons / f'app_icon_{px}.png')
-
-
 # ---- Windows and Linux --------------------------------------------------------
 
 def windows():
@@ -500,7 +472,7 @@ def main():
     for detail in DETAIL:
         (out / f'mark-{detail}.svg').write_text(svg(detail))
     (out / 'app-icon.svg').write_text(svg('full', tile=True, scale=0.86))
-    for step in (android, ios, macos, windows, linux, dart):
+    for step in (android, windows, linux, dart):
         step()
         print('✓', step.__name__)
     print(f'kaf width: full {KAF_FULL_W:.1f}, small {KAF_SMALL_W:.1f} (main field is 56 wide)')

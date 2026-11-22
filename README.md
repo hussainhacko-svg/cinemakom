@@ -1,6 +1,6 @@
 # Cinemakom
 
-A cross-platform streaming frontend (Android, iOS, Linux, Windows) for the Cinemana API, written in Flutter.
+A cross-platform streaming frontend (Android, Android TV, Linux, Windows; no Apple platforms) for the Cinemana API, written in Flutter.
 English and Arabic are supported. English is the default, and Arabic switches the layout to RTL.
 
 - `AGENTS.md`: rules for contributors and AI agents (read first)

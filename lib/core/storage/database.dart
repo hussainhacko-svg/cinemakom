@@ -66,7 +66,7 @@ class ContinueHidden extends Table {
 /// A downloaded (or downloading) movie or episode (PLAN.md Phase 6,
 /// docs/DOWNLOADS.md §5.3). The file's place is stored the way
 /// background_downloader names it: a base directory, a folder in it, and a
-/// file name, so app sandboxes that move between launches (iOS) still resolve.
+/// file name, so it still resolves if the app's folders move.
 /// Saved progress (`downloadedBytes`) is persisted here so paused and failed
 /// rows never drop to 0; live speed and time left stay in memory.
 @DataClassName('DownloadRow')

@@ -29,8 +29,8 @@ class EngineSubtitle {
   final bool styled;
 }
 
-/// The video player, without any UI. `MediaKitEngine` (mpv) runs on desktop
-/// and iOS, `ExoPlayerEngine` on Android; tests use a fake. Only the engine
+/// The video player, without any UI. `MediaKitEngine` (mpv) runs on desktop,
+/// `ExoPlayerEngine` on Android; tests use a fake. Only the engine
 /// implementations know about their packages.
 ///
 /// The streams are broadcast streams that survive [open], even when the
