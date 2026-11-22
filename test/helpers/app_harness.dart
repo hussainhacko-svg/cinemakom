@@ -1,3 +1,5 @@
+import 'package:cinemakom/features/settings/report_flow.dart';
+
 import 'dart:io';
 
 import 'package:cinemakom/core/downloads/connectivity_monitor.dart';
@@ -140,6 +142,9 @@ Future<void> pumpApp(
           const AlwaysOnlineConnectivity(),
         ),
         downloadFreeSpaceProvider.overrideWithValue(() async => freeSpace),
+        bugReportInfoProvider.overrideWith(
+          (ref) async => (version: '1.0.0 (1)', device: 'Test device'),
+        ),
         downloadRootProvider.overrideWithValue(
           () async => (
             baseDirectory: 'root',

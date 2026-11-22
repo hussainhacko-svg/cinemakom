@@ -234,5 +234,15 @@
   "tvPercent": "{percent}٪",
   "tvCancel": "إلغاء",
   "tvDelete": "حذف",
-  "tvMovie": "فيلم"
+  "tvMovie": "فيلم",
+  "settingsReportBug": "الإبلاغ عن مشكلة",
+  "settingsGithub": "Cinemakom على GitHub",
+  "bugReportByEmail": "عبر البريد الإلكتروني (الأسهل)",
+  "bugReportOnGithub": "على GitHub (يتطلب حسابًا)",
+  "bugReportSubject": "الإبلاغ عن مشكلة في Cinemakom",
+  "bugReportWhatHappened": "ماذا حدث؟",
+  "bugReportWhatDoing": "ماذا كنت تفعل عندما حدث ذلك؟ أرفق لقطة شاشة إن أمكن.",
+  "bugReportLanguage": "لغة التطبيق: العربية",
+  "bugReportNoApp": "تعذّر فتح تطبيق لذلك. راسلنا على {address}",
+  "tvScanWithPhone": "امسح الرمز بكاميرا هاتفك"
 }

@@ -10,6 +10,7 @@ import '../../../app/theme/marquee_colors.dart';
 import '../../../app/theme/marquee_text.dart';
 import '../../../app/widgets/bulb_loader.dart';
 import '../../../core/storage/preferences.dart';
+import '../../../features/settings/report_flow.dart';
 import '../../../features/settings/settings_labels.dart';
 import '../../focus/tv_focusable.dart';
 import '../../focus/tv_panel.dart';
@@ -20,11 +21,13 @@ import '../../theme/tv_text.dart';
 import '../../widgets/tv_choice_panel.dart';
 import '../../widgets/tv_focus_look.dart';
 import '../../widgets/tv_list_row.dart';
+import '../../widgets/tv_qr_panel.dart';
 import '../../widgets/tv_shelf.dart';
 
 /// Settings on TV (docs/TV.md §7.8, the TV Settings design): one column of
 /// rows in groups (App: Language; Playback: Default quality, Default
-/// subtitles, Subtitle size; About: Licenses), zone 0. OK opens a panel on
+/// subtitles, Subtitle size; Help: Report a bug and GitHub, which show QR
+/// codes to scan with a phone, then Licenses), zone 0. OK opens a panel on
 /// the current value. Changing the language turns the app RTL or LTR in
 /// place, focus staying on the Language row. Screen rotation isn't here:
 /// TVs don't rotate.
@@ -144,6 +147,41 @@ class TvSettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _Heading(l10n.settingsHelp),
+                  settingsRow(l10n.settingsReportBug, null, () async {
+                    final info = await ref.read(bugReportInfoProvider.future);
+                    if (!context.mounted) return;
+                    await showTvQrPanel(
+                      context,
+                      title: l10n.settingsReportBug,
+                      codes: [
+                        (
+                          label: l10n.bugReportByEmail,
+                          data: '${bugReportEmailUri(l10n, info, tv: true)}',
+                          short: bugReportEmail,
+                        ),
+                        (
+                          label: l10n.bugReportOnGithub,
+                          data: '${bugReportGithubUri(info, tv: true)}',
+                          short: '$projectUrlShort/issues',
+                        ),
+                      ],
+                    );
+                  }),
+                  settingsRow(
+                    l10n.settingsGithub,
+                    null,
+                    () => showTvQrPanel(
+                      context,
+                      title: l10n.settingsGithub,
+                      codes: [
+                        (
+                          label: l10n.settingsGithub,
+                          data: projectUrl,
+                          short: projectUrlShort,
+                        ),
+                      ],
+                    ),
+                  ),
                   settingsRow(
                     l10n.settingsAbout,
                     null,

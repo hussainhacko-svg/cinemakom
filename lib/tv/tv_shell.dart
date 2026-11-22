@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../data/repositories/downloads_repository.dart';
 import 'focus/tv_nav.dart';
+import 'focus/tv_reveal.dart';
 import 'focus/tv_scopes.dart';
 import 'focus/tv_screen.dart';
 import 'theme/tv_space.dart';
@@ -62,9 +63,27 @@ class _TvShellState extends ConsumerState<TvShell> {
   void _focusChanged() {
     final focus = FocusManager.instance.primaryFocus;
     if (focus is! TvItemNode || focus.zone == null) return;
+    // A panel over the page: the bar stays as it is under it, so the page
+    // doesn't move behind the panel and back when it closes.
+    final context = focus.context;
+    if (context != null && ModalRoute.of(context) is PopupRoute) return;
     final zone = focus.zone!;
     final shown = zone == _tabs || zone == _page?.firstZone;
     if (shown != _barShown && mounted) setState(() => _barShown = shown);
+  }
+
+  /// The bar has slid back in, so the page is shorter than when focus last
+  /// scrolled it: bring the focused item back into view (coming back from a
+  /// page to a long Settings list, its last rows were under the screen's
+  /// edge). Sliding away makes the page taller, which hides nothing.
+  void _revealFocus() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus is! TvItemNode) return;
+    final zone = focus.zone;
+    final index = zone?.remembered;
+    final context = focus.context;
+    if (zone == null || index == null || context == null) return;
+    tvReveal(context, zone, index);
   }
 
   bool _back() {
@@ -106,6 +125,7 @@ class _TvShellState extends ConsumerState<TvShell> {
                     heightFactor: showBar ? 1 : 0,
                     duration: still ? Duration.zero : TvFocusStyle.duration,
                     curve: TvFocusStyle.curve,
+                    onEnd: showBar ? _revealFocus : null,
                     child: ExcludeFocus(
                       excluding: !widget.atRoot,
                       child: Padding(

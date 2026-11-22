@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
@@ -420,6 +421,26 @@ void main() {
       expect(find.text('ABOUT AND LICENSES'), findsOneWidget);
       await tv.back();
       expect(tv.focused, 'About and licenses');
+    });
+
+    testWidgets('Report a bug shows the email and GitHub codes; Back returns', (
+      tester,
+    ) async {
+      final tv = await _openTab(tester, 4);
+      await tv.focusLabel('Report a bug');
+      await tv.ok();
+      expect(find.text("Scan with your phone's camera"), findsOneWidget);
+      expect(find.byType(QrImageView), findsNWidgets(2));
+      expect(find.text('me@sharon-xa.com'), findsOneWidget);
+      expect(tv.focused, 'OK');
+      await tv.back();
+      expect(tv.focused, 'Report a bug');
+      await tv.down();
+      expect(tv.focused, 'Cinemakom on GitHub');
+      await tv.ok();
+      expect(find.byType(QrImageView), findsOneWidget);
+      await tv.ok();
+      expect(tv.focused, 'Cinemakom on GitHub');
     });
   });
 

@@ -1,0 +1,40 @@
+# The app opens this form from Settings → Help → Report a bug, with the
+# version and device filled in (lib/features/settings/report_flow.dart).
+# Keep the `version` and `device` ids: the app's link sets them.
+name: Report a bug · الإبلاغ عن مشكلة
+description: Something doesn't work in Cinemakom · شيء لا يعمل في Cinemakom
+title: "Bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for telling us. Write in English or Arabic, whichever is easier.
+        شكرًا لإبلاغنا. اكتب بالعربية أو بالإنجليزية، أيهما أسهل لك.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? · ماذا حدث؟
+      description: What went wrong, and what you expected instead. · ما الخطأ الذي حدث، وما الذي توقعته.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What were you doing? · ماذا كنت تفعل؟
+      description: The screen you were on and what you pressed, if you remember. · الشاشة التي كنت فيها وما ضغطت عليه، إن كنت تتذكر.
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or a video · لقطات شاشة أو فيديو
+      description: Drag them here. · اسحبها إلى هنا.
+  - type: input
+    id: version
+    attributes:
+      label: App version · إصدار التطبيق
+      description: Filled in by the app. · يملؤه التطبيق.
+  - type: input
+    id: device
+    attributes:
+      label: Device · الجهاز
+      description: Filled in by the app. · يملؤه التطبيق.

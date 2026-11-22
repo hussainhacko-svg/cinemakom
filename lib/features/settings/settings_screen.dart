@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/brand/cinemakom_mark.dart';
 import '../../app/l10n/app_localizations.dart';
@@ -10,11 +11,13 @@ import '../../app/router.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../../app/theme/marquee_text.dart';
 import '../../app/widgets/choice_picker.dart';
+import '../../app/widgets/media_text.dart';
 import '../../app/widgets/tab_page.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/storage/preferences.dart';
 import '../../data/repositories/downloads_repository.dart'
     show defaultDesktopFolder;
+import 'report_flow.dart';
 import 'settings_labels.dart';
 import 'widgets/settings_group.dart';
 
@@ -189,6 +192,14 @@ class SettingsScreen extends ConsumerWidget {
                 title: l10n.settingsHelp,
                 rows: [
                   SettingsRow(
+                    label: l10n.settingsReportBug,
+                    onTap: () => _reportBug(context, ref),
+                  ),
+                  SettingsRow(
+                    label: l10n.settingsGithub,
+                    onTap: () => _open(context, Uri.parse(projectUrl)),
+                  ),
+                  SettingsRow(
                     label: l10n.settingsAbout,
                     onTap: () => showLicensePage(
                       context: context,
@@ -227,5 +238,49 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+enum _ReportWay { email, github }
+
+/// Report a bug: by email (first: most users have no GitHub account) or on
+/// GitHub, either way filled in with the version and the device.
+Future<void> _reportBug(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final way = await showChoicePicker<_ReportWay?>(
+    context,
+    title: l10n.settingsReportBug,
+    selected: null,
+    choices: [
+      Choice(_ReportWay.email, l10n.bugReportByEmail),
+      Choice(_ReportWay.github, l10n.bugReportOnGithub),
+    ],
+  );
+  if (way == null || !context.mounted) return;
+  final info = await ref.read(bugReportInfoProvider.future);
+  if (!context.mounted) return;
+  await _open(
+    context,
+    way == _ReportWay.email
+        ? bugReportEmailUri(l10n, info)
+        : bugReportGithubUri(info),
+  );
+}
+
+/// Opens [uri] in another app; if none can, says where to write instead.
+Future<void> _open(BuildContext context, Uri uri) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final fallback = l10n.bugReportNoApp(context.isolate(bugReportEmail));
+  var opened = false;
+  try {
+    opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } on Exception {
+    opened = false;
+  }
+  if (!opened) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(fallback)));
   }
 }
