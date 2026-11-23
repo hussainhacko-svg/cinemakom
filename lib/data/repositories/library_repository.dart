@@ -46,7 +46,10 @@ abstract interface class LibraryRepository {
   Future<Set<String>> titleIds();
 
   /// Rewrites the stored titles, posters, years and genres with [fresh]
-  /// metadata (from `getVideosByIds`). Missing fields keep their old value.
+  /// metadata (from `getVideosByIds`). Missing fields keep their old value,
+  /// each title language on its own. A genre is one English/Arabic pair: a
+  /// fresh genre replaces the old pair whole, so two genres' names never
+  /// mix.
   Future<void> updateTitles(Iterable<MediaItem> fresh);
 }
 
@@ -273,8 +276,8 @@ class DriftLibraryRepository implements LibraryRepository {
               titleAr: keep(item.title.ar),
               posterUrl: keep(poster),
               year: keep(item.year),
-              genreEn: keep(genre?.en),
-              genreAr: keep(genre?.ar),
+              genreEn: genre == null ? const Value.absent() : Value(genre.en),
+              genreAr: genre == null ? const Value.absent() : Value(genre.ar),
             ),
           );
           await (_db.update(_db.watchHistory)..where(
@@ -439,7 +442,7 @@ class MemoryLibraryRepository implements LibraryRepository {
           position: p.position,
           duration: p.duration,
           updatedAt: p.updatedAt,
-          title: item.title.isEmpty ? p.title : item.title,
+          title: _merge(p.title, item.title),
           posterUrl: item.posterUrl ?? item.hdPosterUrl ?? p.posterUrl,
           kind: p.kind,
           finished: p.finished,
@@ -449,7 +452,7 @@ class MemoryLibraryRepository implements LibraryRepository {
       if (old != null) {
         favorites[old.id] = MediaItem(
           id: old.id,
-          title: item.title.isEmpty ? old.title : item.title,
+          title: _merge(old.title, item.title),
           posterUrl: item.posterUrl ?? item.hdPosterUrl ?? old.posterUrl,
           year: item.year ?? old.year,
           kind: old.kind,
@@ -462,3 +465,7 @@ class MemoryLibraryRepository implements LibraryRepository {
     _changes.add(null);
   }
 }
+
+/// [fresh] over [old], one language at a time (as the database does).
+LocalizedText _merge(LocalizedText old, LocalizedText fresh) =>
+    LocalizedText(en: fresh.en ?? old.en, ar: fresh.ar ?? old.ar);

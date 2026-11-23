@@ -266,11 +266,11 @@ List<LocalizedText> parseLocalizedList(Object? json) {
   return out;
 }
 
-/// A duration given in (fractional) seconds.
+/// A length given in (fractional) seconds: positive, or `null`. Checked
+/// after rounding, since `1e-300` is above zero but rounds to it.
 Duration? parseSeconds(Object? value) {
-  final seconds = parseDoubleLoose(value);
-  if (seconds == null || seconds <= 0) return null;
-  return Duration(milliseconds: (seconds * 1000).round());
+  final d = durationFromSeconds(parseDoubleLoose(value));
+  return d == null || d <= Duration.zero ? null : d;
 }
 
 /// Images are on this host. Some fields (banners' `imgMediumThumbObjUrl`)

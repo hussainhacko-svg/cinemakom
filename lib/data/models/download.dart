@@ -183,14 +183,22 @@ class Download {
           id: videoId,
           season: season!,
           episode: episode!,
-          numbering: EpisodeNumbering(
-            episode!,
-            last: episodeLast,
-            isFinale: finale,
-          ),
+          numbering: numbering,
           duration: duration,
         )
       : null;
+
+  /// The episode label's numbers, rebuilt from [episode] (the server's
+  /// `episodeNummer`) and [episodeLast]. A file flagged "N − 1" (`0001`,
+  /// `1001`) was saved with an [episodeLast] below [episode]: it is the
+  /// single episode [episodeLast].
+  EpisodeNumbering get numbering {
+    final n = episode ?? 0;
+    final last = episodeLast;
+    return last != null && last < n
+        ? EpisodeNumbering(last, isFinale: finale)
+        : EpisodeNumbering(n, last: last, isFinale: finale);
+  }
 
   /// What to play: the player finds the downloaded file by itself.
   PlaybackRequest get request =>

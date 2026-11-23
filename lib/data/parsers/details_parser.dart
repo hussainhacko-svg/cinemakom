@@ -124,10 +124,9 @@ SkipRange? _range(Object? start, Object? end, {required double minSeconds}) {
   final s = parseDoubleLoose(start);
   final e = parseDoubleLoose(end);
   if (s == null || e == null || s < 0 || e - s < minSeconds) return null;
-  return SkipRange(
-    Duration(milliseconds: (s * 1000).round()),
-    Duration(milliseconds: (e * 1000).round()),
-  );
+  final from = durationFromSeconds(s);
+  final to = durationFromSeconds(e);
+  return from == null || to == null ? null : SkipRange(from, to);
 }
 
 String? _http(String? url) => isHttpUrl(url) ? url : null;

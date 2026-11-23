@@ -142,7 +142,7 @@ void main() {
   );
 
   test('keeps every video the user owns; removes only a failed download\'s '
-      'leftover, its subtitles and empty folders', () async {
+      'leftover, its subtitles and its emptied folder', () async {
     final goodDir = p.join(dlRoot.path, 'Good Movie');
     final goodVideo = _write(p.join(goodDir, 'Good Movie 1080p.mp4'), 1000);
     final goodSub = _write(p.join(goodDir, 'Good Movie 1080p.ar.srt'), 50);
@@ -173,6 +173,7 @@ void main() {
     final brokenVideo = _write(p.join(brokenDir, 'Broken Movie 720p.mp4'), 300);
     final brokenSub = _write(p.join(brokenDir, 'Broken Movie 720p.ar.srt'), 25);
 
+    // An empty folder no row owns: the user's (it's their folder).
     final emptyDir = Directory(p.join(dlRoot.path, 'Empty'))..createSync();
 
     const arSub = DownloadedSubtitle(
@@ -268,12 +269,12 @@ void main() {
     expect(brokenVideo.existsSync(), isFalse);
     expect(brokenSub.existsSync(), isFalse);
     expect(Directory(brokenDir).existsSync(), isFalse);
-    expect(emptyDir.existsSync(), isFalse);
+    expect(emptyDir.existsSync(), isTrue);
     expect(dlRoot.existsSync(), isTrue);
 
     expect(report.removedVideos, 1);
     expect(report.removedSubtitles, 1);
-    expect(report.removedDirs, 2);
+    expect(report.removedDirs, 1);
     expect(report.reclaimedBytes, 300 + 25);
   });
 

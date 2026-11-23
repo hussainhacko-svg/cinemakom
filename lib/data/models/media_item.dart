@@ -126,8 +126,20 @@ class EpisodeNumbering {
   /// The season's final episode.
   final bool isFinale;
 
+  /// The most episodes one file holds (a triple episode, `0020`).
+  static const maxEpisodesPerFile = 3;
+
   /// Every number this file covers, e.g. `[7, 8]` for a double episode.
-  List<int> get numbers => [for (var n = first; n <= last; n++) n];
+  /// Never empty, and at most [maxEpisodesPerFile] long whatever the server
+  /// sent: `n < last` keeps `n + 1` from wrapping past the largest int, where
+  /// `n <= last` stays true forever.
+  List<int> get numbers {
+    final out = [first];
+    for (var n = first; out.length < maxEpisodesPerFile && n < last;) {
+      out.add(++n);
+    }
+    return out;
+  }
 
   @override
   bool operator ==(Object other) =>

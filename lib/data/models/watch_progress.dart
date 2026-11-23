@@ -39,7 +39,8 @@ class WatchProgress {
   /// Stored "finished"; when null it follows from the position.
   final bool? finished;
 
-  /// Watched to the end: 95%, or less than 2 minutes left.
+  /// Watched to the end: 95%, or less than 2 minutes left past the
+  /// halfway mark (so a video under 4 minutes isn't finished at its start).
   static const finishedShare = 0.95;
   static const finishedLeft = Duration(minutes: 2);
 
@@ -49,7 +50,7 @@ class WatchProgress {
   static bool finishedAt(Duration position, Duration duration) =>
       duration > Duration.zero &&
       (position.inMilliseconds >= duration.inMilliseconds * finishedShare ||
-          duration - position < finishedLeft);
+          (duration - position < finishedLeft && position * 2 >= duration));
 
   bool get isFinished => finished ?? finishedAt(position, duration);
 

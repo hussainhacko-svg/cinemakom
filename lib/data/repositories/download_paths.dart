@@ -24,20 +24,61 @@ String defaultDesktopFolder() {
 }
 
 /// [name] as a safe file/folder name on every platform: no path separators or
-/// characters Windows refuses, no trailing dots or spaces.
-String safeFileName(String name, {required String fallback}) {
-  final cleaned = name
-      .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), ' ')
+/// characters Windows refuses, no leading dots (a hidden file on Linux and
+/// Android, left out of the gallery), no trailing dots or spaces, not one of
+/// Windows' device names (`CON`, `NUL`, `COM1`…), and at most [maxBytes]
+/// bytes of UTF-8 (file systems allow 255; Arabic takes 2 bytes a letter),
+/// leaving room for the ` (2)` and `.ar.srt` the caller may add.
+String safeFileName(
+  String name, {
+  required String fallback,
+  int maxBytes = maxNameBytes,
+}) {
+  var cleaned = name
+      .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F\x7F]'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim()
-      .replaceAll(RegExp(r'[. ]+$'), '');
-  return cleaned.isEmpty ? fallback : cleaned;
+      .replaceAll(RegExp(r'^[. ]+'), '');
+  cleaned = _truncateUtf8(cleaned, maxBytes).replaceAll(RegExp(r'[. ]+$'), '');
+  if (cleaned.isEmpty) return fallback;
+  return _windowsReserved.hasMatch(cleaned) ? '$cleaned _' : cleaned;
+}
+
+/// The longest file or folder name [safeFileName] makes, in bytes.
+const maxNameBytes = 200;
+
+final _windowsReserved = RegExp(
+  r'^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$',
+  caseSensitive: false,
+);
+
+/// [s] cut to at most [maxBytes] bytes of UTF-8, between whole characters.
+String _truncateUtf8(String s, int maxBytes) {
+  var bytes = 0;
+  final out = StringBuffer();
+  for (final rune in s.runes) {
+    final size = rune < 0x80
+        ? 1
+        : rune < 0x800
+        ? 2
+        : rune < 0x10000
+        ? 3
+        : 4;
+    if (bytes + size > maxBytes) break;
+    bytes += size;
+    out.writeCharCode(rune);
+  }
+  return out.toString();
 }
 
 /// Folder name for a movie or series: `<Title> (<Year>)` when year is known,
 /// else `<Title>` (docs/DOWNLOADS.md §5.6).
 String titleFolderName(MediaItem item, {required String fallback}) {
-  final title = item.title.en ?? item.title.ar ?? fallback;
+  final title = safeFileName(
+    item.title.en ?? item.title.ar ?? fallback,
+    fallback: fallback,
+    maxBytes: maxNameBytes - 10,
+  );
   final raw = (item.year != null && item.year! > 0)
       ? '$title (${item.year})'
       : title;
@@ -52,7 +93,12 @@ String videoFileStem(
   required String quality,
   required String fallback,
 }) {
-  final title = item.title.en ?? item.title.ar ?? fallback;
+  // The title gives way first, so the episode and quality always fit.
+  final title = safeFileName(
+    item.title.en ?? item.title.ar ?? fallback,
+    fallback: fallback,
+    maxBytes: maxNameBytes - 40,
+  );
   String two(int n) => n.toString().padLeft(2, '0');
   return safeFileName(
     [

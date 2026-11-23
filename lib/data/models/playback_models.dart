@@ -1,3 +1,4 @@
+import '../../core/json/json_utils.dart' show signedUrlExpiry;
 import 'media_item.dart';
 
 /// One stream quality from `transcoddedFiles`.
@@ -24,13 +25,7 @@ class VideoSource {
 
   /// When the signed URL stops working, from its `Expires` parameter.
   /// `null` when the URL isn't signed.
-  DateTime? get expiresAt {
-    final raw = Uri.tryParse(url)?.queryParameters['Expires'];
-    final seconds = raw == null ? null : int.tryParse(raw);
-    return seconds == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
-  }
+  DateTime? get expiresAt => signedUrlExpiry(url);
 
   /// Whether the URL is still valid for at least [margin] after [now].
   bool isValidFor(Duration margin, {required DateTime now}) {
@@ -43,7 +38,12 @@ class VideoSource {
   /// can be smaller for wide films (a "2160p" file can be 3840×1820).
   int? get height {
     for (final s in [resolution, name]) {
-      final m = s == null ? null : RegExp(r'(\d{3,4})').firstMatch(s);
+      if (s == null) continue;
+      // "1080p" first, then the height of "1920x1080", then any number.
+      final m =
+          RegExp(r'(\d{3,4})p', caseSensitive: false).firstMatch(s) ??
+          RegExp(r'\d{3,4}\s*[x×]\s*(\d{3,4})').firstMatch(s) ??
+          RegExp(r'(\d{3,4})').firstMatch(s);
       if (m != null) return int.parse(m[1]!);
     }
     return (name?.toLowerCase().contains('4k') ?? false) ? 2160 : null;

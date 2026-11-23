@@ -149,11 +149,36 @@ class DownloadsJanitor {
     final private = {for (final r in privateRoots) _norm(r)};
 
     // 2. Half-written / orphaned videos and 3. Orphan subtitles + empty dirs.
-    for (final rootPath in {...downloadRoots, ...privateRoots}) {
+    //
+    // A download root the user can see (the default folder, or one they
+    // chose: it can be ~/Videos, or their home) is never listed or swept as
+    // a whole. Only the failed rows' own files and folders are touched, by
+    // their exact paths.
+    for (final rootPath in {...downloadRoots}) {
+      final normRoot = _norm(rootPath);
+      if (private.contains(normRoot) || !Directory(rootPath).existsSync()) {
+        continue;
+      }
+      final (videos, subs, dirs, bytes) = await _sweepFailedRows(
+        rows: rows,
+        normRoot: normRoot,
+        rowVideoPaths: rowVideoPaths,
+        keptRowVideos: keptRowVideos,
+        normalizedTempDirs: normalizedTempDirs,
+        pathOf: pathOf,
+      );
+      removedVideos += videos;
+      removedSubs += subs;
+      removedDirs += dirs;
+      reclaimed += bytes;
+    }
+
+    // App-private roots (the Phase 6 folder): the user can't see them, so
+    // whatever no row claims goes.
+    for (final rootPath in {...privateRoots}) {
       final root = Directory(rootPath);
       if (!root.existsSync()) continue;
       final normRoot = _norm(rootPath);
-      final isPrivate = private.contains(normRoot);
 
       final allFiles = <File>[];
       final subDirs = <Directory>[];
@@ -178,14 +203,13 @@ class DownloadsJanitor {
         continue;
       }
 
-      // 2a. Videos: only a failed row's leftover.
+      // 2a. Videos: a failed row's leftover, and any video no kept row claims.
       final survivingVideos = <String>{};
       for (final file in allFiles) {
         final ext = p.extension(file.path).toLowerCase();
         if (!_videoExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        final orphanInPrivate = isPrivate && !keptRowVideos.contains(norm);
-        if (!failedVideos.contains(norm) && !orphanInPrivate) {
+        if (!failedVideos.contains(norm) && keptRowVideos.contains(norm)) {
           survivingVideos.add(norm);
           continue;
         }
@@ -196,9 +220,9 @@ class DownloadsJanitor {
         }
       }
 
-      // 3a. The subtitles of a failed row whose video is gone. A finished
-      // row's stay even if its video was renamed (they go with it), and a
-      // subtitle no row lists is the user's: kept.
+      // 3a. The subtitles of a failed row whose video is gone, and any
+      // subtitle no row lists. A finished row's stay even if its video was
+      // renamed (they go with it).
       final keptSubtitles = <String>{};
       final droppedSubtitles = <String>{};
       for (final d in rows) {
@@ -219,8 +243,8 @@ class DownloadsJanitor {
         final ext = p.extension(file.path).toLowerCase();
         if (!_subtitleExts.contains(ext)) continue;
         final norm = _norm(file.path);
-        final orphanInPrivate = isPrivate && !claimedSubtitles.contains(norm);
-        if (droppedSubtitles.contains(norm) || orphanInPrivate) {
+        if (droppedSubtitles.contains(norm) ||
+            !claimedSubtitles.contains(norm)) {
           final size = _safeLengthSync(file);
           if (_deleteFileSync(file)) {
             removedSubs++;
@@ -258,6 +282,75 @@ class DownloadsJanitor {
       );
     }
     return report;
+  }
+
+  /// Step 2 and 3 in a root the user can see: each failed row's leftover
+  /// video, then its subtitles once the video is gone, then its folder when
+  /// that is empty. Never the root itself, and never a path a kept row
+  /// (complete, queued, running, paused) also uses.
+  Future<(int, int, int, int)> _sweepFailedRows({
+    required List<Download> rows,
+    required String normRoot,
+    required Map<String, String> rowVideoPaths,
+    required Set<String> keptRowVideos,
+    required Set<String> normalizedTempDirs,
+    required Future<String> Function(Download) pathOf,
+  }) async {
+    var videos = 0;
+    var subs = 0;
+    var dirs = 0;
+    var bytes = 0;
+    final keptSubtitles = <String>{
+      for (final d in rows)
+        if (d.status != DownloadStatus.failed)
+          for (final s in d.subtitles)
+            _norm(p.join(p.dirname(rowVideoPaths[d.videoId]!), s.fileName)),
+    };
+    final emptiedDirs = <String>{};
+    for (final d in rows) {
+      if (d.status != DownloadStatus.failed) continue;
+      final norm = rowVideoPaths[d.videoId]!;
+      if (keptRowVideos.contains(norm)) continue;
+      if (!_isUnderAny(norm, {normRoot}) || norm == normRoot) continue;
+      if (_isUnderAny(norm, normalizedTempDirs) ||
+          p.split(norm).contains('.partial')) {
+        continue;
+      }
+      final videoPath = await pathOf(d);
+      final video = File(videoPath);
+      if (video.existsSync()) {
+        final size = _safeLengthSync(video);
+        if (!_deleteFileSync(video)) continue;
+        videos++;
+        bytes += size;
+      }
+      final dir = p.dirname(videoPath);
+      for (final s in d.subtitles) {
+        final sub = File(p.join(dir, s.fileName));
+        if (keptSubtitles.contains(_norm(sub.path)) || !sub.existsSync()) {
+          continue;
+        }
+        final size = _safeLengthSync(sub);
+        if (_deleteFileSync(sub)) {
+          subs++;
+          bytes += size;
+        }
+      }
+      if (_norm(dir) != normRoot) emptiedDirs.add(dir);
+    }
+    for (final dir in emptiedDirs) {
+      try {
+        final folder = Directory(dir);
+        if (folder.existsSync() &&
+            folder.listSync(followLinks: false).isEmpty) {
+          folder.deleteSync();
+          dirs++;
+        }
+      } on FileSystemException {
+        // Not empty or already gone.
+      }
+    }
+    return (videos, subs, dirs, bytes);
   }
 
   Future<(int, int)> _sweepTempFiles({

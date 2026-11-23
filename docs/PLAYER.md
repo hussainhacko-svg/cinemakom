@@ -186,7 +186,7 @@ Every error message goes in the ARB files.
   - display metadata: `titleEn`, `titleAr`, `posterUrl`, `kind`
   - Never stream URLs.
 - **Saving:** every 10 s while playing, plus on pause, after a seek, on episode change, on leaving the player, and when the app goes to the background (`AppLifecycleListener`). Writes are cheap upserts.
-- **Finished:** 95% watched, or less than 2 min left. A finished episode resumes the series at the next one.
+- **Finished:** 95% watched, or less than 2 min left once past the halfway mark (a video under 4 min would otherwise be finished from its start; *2026-11-24*). A finished episode resumes the series at the next one.
 - **Resume:** offered when ≥ 30 s were watched and the video isn't finished. The player starts there directly and shows "Resuming from 14:32 · Start over" for 5 s.
 - **Details:** the primary button becomes "Resume · S2 E5 · 14 min left" (DESIGN.md §8), and episode rows show progress and watched numerals (DESIGN.md §5).
 - **Home's Continue watching row** reads the same table: the newest movie or episode of each title. Unfinished ones resume; a finished episode shows its next one as "Up next" (Phase 5, `continueEntriesProvider`, shared with the Library tab). A card plays straight away, and the player resumes by itself.

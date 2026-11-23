@@ -1,6 +1,8 @@
 import '../../core/network/api_client.dart';
 import 'media_repository.dart';
 
+export '../../core/json/json_utils.dart' show signedUrlExpiry;
+
 // Fresh signed URLs for downloads the engine starts by itself: its own
 // retries after a dropped connection, a task rescheduled after the app was
 // killed, the next run after a system stop. A fresh URL from the API has at
@@ -17,16 +19,6 @@ import 'media_repository.dart';
 /// request arrives); only a new run needs a valid URL.
 const downloadUrlRefreshMargin = Duration(hours: 1);
 
-/// When a signed URL stops working, from its `Expires` query parameter
-/// (seconds since the epoch), or `null` when it isn't signed.
-DateTime? signedUrlExpiry(String url) {
-  final raw = Uri.tryParse(url)?.queryParameters['Expires'];
-  final seconds = raw == null ? null : int.tryParse(raw);
-  return seconds == null
-      ? null
-      : DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
-}
-
 /// A fresh URL for [videoId] in [quality] (a `VideoSource.label`), or
 /// `null` when that quality is gone. Throws when the API can't be reached.
 Future<String?> freshDownloadUrl(
@@ -34,8 +26,7 @@ Future<String?> freshDownloadUrl(
   String quality, {
   ApiClient? api,
 }) async {
-  final sources = await MediaRepository(
-    api ?? ApiClient(),
-  ).streams(videoId, fresh: true);
+  final sources = await MediaRepository(api ?? ApiClient())
+      .streams(videoId, fresh: true);
   return sources.where((s) => s.label == quality).firstOrNull?.url;
 }

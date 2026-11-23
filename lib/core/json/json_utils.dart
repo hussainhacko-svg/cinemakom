@@ -47,8 +47,11 @@ int? parseIntLoose(Object? value) {
   if (value is double) return value.isFinite ? value.round() : null;
   final s = readString(value);
   if (s == null) return null;
-  final direct = int.tryParse(s) ?? double.tryParse(s)?.round();
-  if (direct != null) return direct;
+  final asInt = int.tryParse(s);
+  if (asInt != null) return asInt;
+  // "1e400" and "NaN" parse as doubles that can't be rounded.
+  final asDouble = double.tryParse(s);
+  if (asDouble != null) return asDouble.isFinite ? asDouble.round() : null;
   final digits = s.replaceAll(RegExp(r'[^0-9]'), '');
   return digits.isEmpty ? null : int.tryParse(digits);
 }
@@ -113,6 +116,32 @@ String? realImageUrl(String? url) {
   final s = unescapeUrl(url);
   return isHttpUrl(s) && !isPlaceholderImage(s) ? s : null;
 }
+
+/// [seconds] as a [Duration], or `null` when it isn't a real length: not
+/// finite, or so large that [Duration] would overflow (it counts in
+/// microseconds, and a huge value would wrap round to a negative one).
+Duration? durationFromSeconds(double? seconds) {
+  if (seconds == null || !seconds.isFinite) return null;
+  final ms = seconds * 1000;
+  if (!ms.isFinite || ms.abs() > _maxDurationMs) return null;
+  return Duration(milliseconds: ms.round());
+}
+
+/// About 285,000 years, well inside [Duration]'s range.
+const _maxDurationMs = 9e15;
+
+/// When a signed URL stops working, from its `Expires` query parameter
+/// (seconds since the epoch). `null` when the URL isn't signed or the value
+/// isn't a date [DateTime] can hold.
+DateTime? signedUrlExpiry(String url) {
+  final raw = Uri.tryParse(url)?.queryParameters['Expires'];
+  final seconds = raw == null ? null : int.tryParse(raw.trim());
+  if (seconds == null || seconds.abs() > _maxEpochSeconds) return null;
+  return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+}
+
+/// [DateTime]'s limit (±8.64e15 ms), in seconds.
+const _maxEpochSeconds = 8640000000000;
 
 /// An ID: non-blank and not "0" (the API uses 0 for "none").
 String? readId(Object? value) {
