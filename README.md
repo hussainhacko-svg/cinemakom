@@ -18,29 +18,46 @@
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td width="25%"><img src="docs/screenshots/phone-home.webp" alt="Home on a phone"></td>
-    <td width="25%"><img src="docs/screenshots/phone-home-ar.webp" alt="Home on a phone in Arabic, right to left"></td>
-    <td width="50%"><img src="docs/screenshots/desktop-home.webp" alt="Home on the desktop, with the navigation rail"></td>
-  </tr>
-  <tr>
-    <td align="center">Phone</td>
-    <td align="center">Phone, in Arabic</td>
-    <td align="center">Desktop</td>
-  </tr>
-</table>
+**Phone**
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/screenshots/desktop-player.webp" alt="The desktop player, paused, with subtitle, quality and speed chips"></td>
-    <td width="33%"><img src="docs/screenshots/tv-home.webp" alt="Home on Android TV, with tabs across the top"></td>
-    <td width="33%"><img src="docs/screenshots/tv-details.webp" alt="A series on Android TV, with seasons, episodes and download buttons"></td>
+    <td width="33%"><img src="docs/screenshots/phone-home.webp" alt="Home on a phone"></td>
+    <td width="33%"><img src="docs/screenshots/phone-details.webp" alt="A series on a phone, with seasons, episodes and download buttons"></td>
+    <td width="33%"><img src="docs/screenshots/phone-home-ar.webp" alt="Home on a phone in Arabic, right to left"></td>
   </tr>
   <tr>
+    <td align="center">Home</td>
+    <td align="center">A series</td>
+    <td align="center">In Arabic</td>
+  </tr>
+</table>
+
+**Desktop**
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/desktop-home.webp" alt="Home on the desktop, with the navigation rail"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-player.webp" alt="The desktop player, paused, with Arabic subtitles and subtitle, quality and speed chips"></td>
+  </tr>
+  <tr>
+    <td align="center">Home</td>
     <td align="center">Player</td>
-    <td align="center">Android TV</td>
-    <td align="center">Android TV: a series</td>
+  </tr>
+</table>
+
+**Android TV**
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/tv-home.webp" alt="Home on Android TV, with tabs across the top"></td>
+    <td width="33%"><img src="docs/screenshots/tv-details.webp" alt="A series on Android TV, with seasons, episodes and download buttons"></td>
+    <td width="33%"><img src="docs/screenshots/tv-player.webp" alt="The TV player with its controls, driven by the remote"></td>
+  </tr>
+  <tr>
+    <td align="center">Home</td>
+    <td align="center">A series</td>
+    <td align="center">Player</td>
   </tr>
 </table>
 
