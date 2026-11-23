@@ -12,6 +12,8 @@ import 'dart:ui' as ui;
 
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/app/widgets/media_image.dart';
+import 'package:cinemakom/features/home/widgets/home_hero.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart' show VideoKind;
 import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
@@ -24,12 +26,12 @@ import 'package:cinemakom/data/repositories/downloads_repository.dart';
 import 'package:cinemakom/data/repositories/library_repository.dart';
 import 'package:cinemakom/main.dart' show noRetry;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:material_ui/material_ui.dart' show Icons, Scrollable, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:cinemakom/features/player/widgets/seek_bar.dart';
 
 import '../test/helpers/fake_downloader.dart';
 
@@ -82,12 +84,16 @@ Future<void> _pump(
       retry: noRetry,
       overrides: [
         preferenceStoreProvider.overrideWith((ref) => store),
-        if (library != null)
-          libraryRepositoryProvider.overrideWithValue(library),
-        if (downloads != null)
-          downloadStoreProvider.overrideWithValue(downloads),
-        if (downloader != null)
-          downloaderProvider.overrideWithValue(downloader),
+        // Always in memory: the real database would carry watch progress
+        // from one run to the next ("Resume" instead of "Play"), and the
+        // real downloader can't be started again in each test.
+        libraryRepositoryProvider.overrideWithValue(
+          library ?? MemoryLibraryRepository(),
+        ),
+        downloadStoreProvider.overrideWithValue(
+          downloads ?? MemoryDownloadStore(),
+        ),
+        downloaderProvider.overrideWithValue(downloader ?? FakeDownloader()),
       ],
       child: const CinemakomApp(),
     ),
@@ -176,10 +182,19 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
     await _shot(tester, '21-phone-home-rows', wait: 4000);
 
-    // Details of the first banner (the hero's Play opens it until Phase 4).
+    // Details of the first banner: tapping the banner opens them (Play
+    // starts the player, which this test must not leave open).
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 2000));
     await _wait(tester, 500);
-    await tester.tap(find.text('Play').first);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(HomeHero),
+            matching: find.byType(MediaImage),
+          )
+          .hitTestable()
+          .first,
+    );
     await _shot(tester, '22-phone-details-hero', wait: 5000);
     await tester.tap(find.byTooltip('Back'));
     await _wait(tester, 500);
@@ -435,12 +450,19 @@ void main() {
     await _wait(tester, 4000);
     await tester.tap(find.text('Play').first);
     await _shot(tester, '50-desktop-player', wait: 2000);
-    // Jump about 10 minutes in (dialogue), then pause so the controls stay.
-    final bar = tester.getRect(find.byType(SeekBar));
-    await tester.tapAt(Offset(bar.left + bar.width * 0.07, bar.center.dy));
-    await _wait(tester, 4000);
-    await tester.tapAt(const Offset(640, 200));
-    await _wait(tester, 300);
+    // Jump to 10% (about 15 minutes in, dialogue) with the player's own
+    // shortcut: a tap on the seek bar would miss once the controls fade.
+    // Then pause, so the controls stay.
+    // Wait until it plays: before the duration is known, 10% is nothing.
+    for (var i = 0; i < 40 && find.text('0:00').evaluate().isNotEmpty; i++) {
+      await _wait(tester, 250);
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await _wait(tester, 6000);
+    if (find.byTooltip('Pause').evaluate().isEmpty) {
+      await tester.tapAt(const Offset(640, 200)); // show the controls
+      await _wait(tester, 300);
+    }
     if (find.byTooltip('Pause').evaluate().isNotEmpty) {
       await tester.tap(find.byTooltip('Pause'));
     }
