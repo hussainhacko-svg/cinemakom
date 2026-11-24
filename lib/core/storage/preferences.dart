@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart' show Locale;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../diagnostics/event_log.dart';
+
 /// The two UI languages. English is the default.
 enum AppLanguage {
   english('en'),
@@ -136,10 +138,29 @@ abstract interface class PreferenceStore {
 }
 
 /// [PreferenceStore] backed by shared_preferences.
+///
+/// Never throws, unlike the package: a value of another type (an older
+/// version's, or a file edited by hand) reads as missing, a key outside
+/// [PreferenceKeys.all] reads as missing and isn't saved, and a write the
+/// platform refuses keeps the value for this session. Each is logged.
+/// [MemoryPreferenceStore] behaves the same
+/// (`test/core/preference_store_contract_test.dart`).
 class SharedPreferencesStore implements PreferenceStore {
   SharedPreferencesStore._(this._prefs);
 
   final SharedPreferencesWithCache _prefs;
+
+  /// The saved settings, or, when they can't be read (a damaged settings
+  /// file), a [MemoryPreferenceStore]: the app starts with the defaults
+  /// instead of failing on every launch.
+  static Future<PreferenceStore> open() async {
+    try {
+      return await create();
+    } on Object catch (e) {
+      logEvent('settings', "can't read the saved settings: $e", urgent: true);
+      return MemoryPreferenceStore();
+    }
+  }
 
   static Future<SharedPreferencesStore> create() async =>
       SharedPreferencesStore._(
@@ -151,22 +172,59 @@ class SharedPreferencesStore implements PreferenceStore {
       );
 
   @override
-  String? getString(String key) => _prefs.getString(key);
+  String? getString(String key) => _read<String>(key);
 
   @override
-  int? getInt(String key) => _prefs.getInt(key);
+  int? getInt(String key) => _read<int>(key);
+
+  T? _read<T extends Object>(String key) {
+    if (!PreferenceKeys.all.contains(key)) {
+      logEvent('settings', 'read of an unknown key: $key');
+      return null;
+    }
+    final Object? value;
+    try {
+      value = _prefs.get(key);
+    } on Object catch (e) {
+      logEvent('settings', "can't read $key: $e");
+      return null;
+    }
+    if (value == null || value is T) return value as T?;
+    logEvent('settings', '$key is a ${value.runtimeType}, not a $T: ignored');
+    return null;
+  }
 
   @override
   Future<void> setString(String key, String value) =>
-      _prefs.setString(key, value);
+      _write(key, () => _prefs.setString(key, value));
 
   @override
-  Future<void> setInt(String key, int value) => _prefs.setInt(key, value);
+  Future<void> setInt(String key, int value) =>
+      _write(key, () => _prefs.setInt(key, value));
+
+  Future<void> _write(String key, Future<void> Function() write) async {
+    if (!PreferenceKeys.all.contains(key)) {
+      logEvent('settings', 'write of an unknown key: $key');
+      return;
+    }
+    try {
+      // The cache takes the value first, so it holds for this session.
+      await write();
+    } on Object catch (e) {
+      logEvent('settings', "can't save $key: $e", urgent: true);
+    }
+  }
 }
 
-/// In-memory [PreferenceStore] for tests.
+/// In-memory [PreferenceStore] for tests, and for a session whose saved
+/// settings couldn't be read. Behaves like [SharedPreferencesStore]: keys
+/// outside [PreferenceKeys.all] are neither read nor kept.
 class MemoryPreferenceStore implements PreferenceStore {
-  MemoryPreferenceStore([Map<String, Object>? values]) : values = {...?values};
+  MemoryPreferenceStore([Map<String, Object>? values])
+    : values = {
+        for (final MapEntry(:key, :value) in (values ?? const {}).entries)
+          if (PreferenceKeys.all.contains(key)) key: value,
+      };
 
   final Map<String, Object> values;
 
@@ -183,10 +241,14 @@ class MemoryPreferenceStore implements PreferenceStore {
   };
 
   @override
-  Future<void> setString(String key, String value) async => values[key] = value;
+  Future<void> setString(String key, String value) async {
+    if (PreferenceKeys.all.contains(key)) values[key] = value;
+  }
 
   @override
-  Future<void> setInt(String key, int value) async => values[key] = value;
+  Future<void> setInt(String key, int value) async {
+    if (PreferenceKeys.all.contains(key)) values[key] = value;
+  }
 }
 
 abstract final class PreferenceKeys {
@@ -253,7 +315,7 @@ AppSettings readSettings(PreferenceStore store) {
 /// The settings store, opened once at startup ([appStartupProvider] waits
 /// for it). Tests override it with a [MemoryPreferenceStore].
 final preferenceStoreProvider = FutureProvider<PreferenceStore>(
-  (ref) => SharedPreferencesStore.create(),
+  (ref) => SharedPreferencesStore.open(),
 );
 
 /// Everything the app needs before it can show its first real screen.
