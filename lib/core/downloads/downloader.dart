@@ -65,7 +65,7 @@ class DownloadJob {
   /// URL in the same quality when this one is about to expire.
   final String? quality;
 
-  /// Per-task notification configuration (Android, §5.9).
+  /// Per-task notification configuration (Android/iOS, §5.9).
   final DownloadTaskNotice? notice;
 }
 

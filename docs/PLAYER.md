@@ -16,7 +16,7 @@ These are the targets. Every milestone below is checked against them.
 | **Never lose progress** | At most 10 s of progress is lost, whatever happens: app killed, crash, unplugged laptop |
 | **Smooth controls** | The controls run at 60 fps on a mid-range Android phone while 1080p plays. Position updates repaint only the seek bar and the clock |
 | **Switching keeps your place** | Changing quality, subtitles or episode keeps the position (quality), the subtitle and speed choices (episode), and the play/pause state |
-| **Works everywhere** | Touch on Android (remote on Android TV), keyboard and mouse on Linux and Windows, in English (LTR) and Arabic (RTL) |
+| **Works everywhere** | Touch on Android and iOS, keyboard and mouse on Linux and Windows, in English (LTR) and Arabic (RTL) |
 
 ## 2. Decisions
 
@@ -27,7 +27,7 @@ These are the targets. Every milestone below is checked against them.
 4. **Extras in Phase 4:** subtitle size and delay, seek-bar previews (moved up from Phase 7), and a controls lock on mobile.
 5. **Not in Phase 4:** picture-in-picture, casting, background audio, lock-screen media controls (§12).
 6. Already decided (PLAN.md §4.1): 2160p is a normal quality, with an always-visible quality chip. "Arabic (styled)" is an extra subtitle choice for ASS tracks. Stream URLs are fetched right before playing and again on a 403. When the API fails, ask the status page once.
-7. **Android plays with ExoPlayer, not mpv** (*2026-11-19, after real-phone tests*). media_kit copies each decoded frame back to memory and draws it into a Flutter texture; 4K stuttered visibly on the owner's phone, even after `framedrop=no` cut the dropped frames to 0. `ExoPlayerEngine` (video_player 2.14) decodes in hardware into a Flutter texture with no copy back to memory. *Not* the SurfaceView platform view: Flutter draws that above every widget, so the controls only showed on the letterbox bars. **Confirmed on the owner's phone (2026-11-19): 4K is smooth and the controls work.** **Cost:** no styled (ASS) subtitles on Android; plain tracks are downloaded with the shared headers, parsed in Dart (SRT/VTT) and drawn by the Flutter layer as before. Desktop keeps media_kit. Where the two engines behave differently, this file says so with **Android (ExoPlayer)**; the mpv-on-Android findings in §13 stay for reference.
+7. **Android plays with ExoPlayer, not mpv** (*2026-11-19, after real-phone tests*). media_kit copies each decoded frame back to memory and draws it into a Flutter texture; 4K stuttered visibly on the owner's phone, even after `framedrop=no` cut the dropped frames to 0. `ExoPlayerEngine` (video_player 2.14) decodes in hardware into a Flutter texture with no copy back to memory. *Not* the SurfaceView platform view: Flutter draws that above every widget, so the controls only showed on the letterbox bars. **Confirmed on the owner's phone (2026-11-19): 4K is smooth and the controls work.** **Cost:** no styled (ASS) subtitles on Android; plain tracks are downloaded with the shared headers, parsed in Dart (SRT/VTT) and drawn by the Flutter layer as before. Desktop and iOS keep media_kit. Where the two engines behave differently, this file says so with **Android (ExoPlayer)**; the mpv-on-Android findings in §13 stay for reference.
 
 ## 3. What already exists
 
@@ -41,7 +41,7 @@ These are the targets. Every milestone below is checked against them.
 | Default quality and subtitles | `settingsProvider` (`PreferredQuality.height` = `VideoSource.height`) | |
 | Shared headers | `ApiClient.defaultHeaders` | Passed to `Media(httpHeaders:)`. Never copied |
 | Status page | `StatusRepository.cinemanaHealth()`, `ErrorView` / `errorMessage` | |
-| Packages | media_kit 1.2.6, media_kit_video 2.0.1, media_kit_libs_video (desktop), video_player 2.14 (Android), drift + drift_flutter, wakelock_plus, screen_brightness, volume_controller, window_manager 0.6.0 | `MediaKit.ensureInitialized()` already runs in `main.dart` |
+| Packages | media_kit 1.2.6, media_kit_video 2.0.1, media_kit_libs_video (desktop, iOS), video_player 2.14 (Android), drift + drift_flutter, wakelock_plus, screen_brightness, volume_controller, window_manager 0.6.0 | `MediaKit.ensureInitialized()` already runs in `main.dart` |
 | Where Play plugs in | `details_screen.dart`, `home_hero.dart`, `episode_list.dart` | Wired in M2 through `openPlayer` |
 
 **media_kit facts this plan relies on** (read from the package source):
@@ -60,9 +60,9 @@ lib/
   core/
     player/
       player_engine.dart        # PlayerEngine interface: open, play/pause, seek, rate, volume, subtitle, streams of state
-      media_kit_engine.dart     # desktop: the only file that imports media_kit (mpv options, headers, error mapping)
+      media_kit_engine.dart     # desktop and iOS: the only file that imports media_kit (mpv options, headers, error mapping)
       exo_player_engine.dart    # Android: the only file that imports video_player (texture view, SRT/VTT parsing)
-      subtitle_fonts.dart       # copies the bundled Arabic font to disk for libass (desktop)
+      subtitle_fonts.dart       # copies the bundled Arabic font to disk for libass (desktop and iOS)
     storage/
       database.dart             # drift DB (watch_history now; favorites and downloads later)
   data/
@@ -104,7 +104,7 @@ lib/
 
 **Android (ExoPlayer):** `ExoPlayerEngine` uses ExoPlayer's defaults: hardware decoding, its own buffer, and its own retries of a failed read (then it stops with an error, §6). The only settings are the texture view (decision 7) and the shared headers. The table below is mpv only.
 
-**mpv (desktop)** is set in `media_kit_engine.dart`, once per player. The "mobile" values below were measured on Android before decision 7 and no longer run anywhere (Apple platforms were dropped on 2026-11-22).
+**mpv (desktop and iOS)** is set in `media_kit_engine.dart`, once per player. "Mobile" below now means iOS. Those values were measured on Android before decision 7; check them when iOS starts (PLAN.md Phase 6).
 
 | Option | Value | Why |
 |---|---|---|
@@ -245,7 +245,7 @@ Every error message goes in the ARB files.
 
 ## 9. Platform specifics
 
-### 9.1 Mobile (Android)
+### 9.1 Mobile (Android, iOS)
 - **On enter:** landscape only, immersive mode (`SystemUiMode.immersiveSticky`), wakelock while playing. **On exit:** restore the browsing orientation (portrait, unless Settings allows rotation: `setBrowseOrientation`), system UI, wakelock and brightness.
 - **Gestures** (`gesture_layer.dart`, physical sides):
 
@@ -259,7 +259,7 @@ Every error message goes in the ARB files.
   - Drags start 24 dp from the screen edges, so the system back gesture and notification shade still work.
   - The brightness and volume levels show as a slim vertical bar (`bulb` on `velvet`) with an icon.
 - **Controls lock:** a lock button in the top bar. While locked, touches are ignored except a small unlock button that appears on tap and hides after 3 s.
-- **Audio interruptions:** pause on headphone unplug, incoming calls and other apps taking audio focus. This needs **`audio_session`** (new dependency): it is the standard package for this and doesn't add background playback.
+- **Audio interruptions:** pause on headphone unplug, incoming calls and other apps taking audio focus. iOS plays sound even with the silent switch on. This needs **`audio_session`** (new dependency): it is the standard package for this and doesn't add background playback.
   - *Built (M7):* `lib/core/player/audio_focus.dart` is the only file that imports it. **audio_session owns audio focus on every platform, and ExoPlayer is told not to take focus itself** (`VideoPlayerOptions(mixWithOthers: true)`): two focus requests from one app take focus from each other (ExoPlayer would pause itself), and audio_session only reports unplugged headphones while it holds focus. A short interruption (a call) resumes afterwards; another app taking the sound for good doesn't; a notification "duck" doesn't pause.
 - **Back:** the system back button or gesture leaves the player (saving progress), or unlocks first when locked, or closes an open menu first.
 - *Built (M7):* `gesture_layer.dart` (the only place that touches brightness and volume). Choices made while building:
@@ -341,7 +341,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
 - **Manual before release:** a 2-hour movie in 4K on desktop, a full anime season on a phone (plain subtitles; styled on desktop), airplane mode mid-play, and a 403 forced by editing a URL's signature in a debug build, on Linux and on the Android phone.
 
 ## 12. Not in this phase
-- **Picture-in-picture:** not chosen for now. Android could add it later with a small native change (ExoPlayer makes it easier than mpv did).
+- **Picture-in-picture:** not chosen for now. Android could add it later with a small native change (ExoPlayer makes it easier than mpv did). iOS PiP isn't possible with media_kit's mpv backend.
 - **Casting, background audio, lock-screen controls:** later, if wanted. `audio_session` is a first step toward them.
 - **Audio track switching:** every file has one audio track (API.md §3).
 - **Offline playback (built in Phase 6, 2026-11-19):** `PlayerController._load` asks `DownloadsRepository.playable` first. A finished download plays `file://…` with its saved subtitles and no stream request; ExoPlayer opens it with `VideoPlayerController.file`, and its subtitle loader reads `file:` URLs from disk. Details, previews and episodes wait at most 3 s (`offlineWait`), so a dead connection never holds up playback, and without a connection Next episode uses the downloaded episodes. Recovery reopens the file instead of fetching URLs. Checked live on Linux (`integration_test/downloads_test.dart`).
@@ -390,6 +390,7 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 | ExoPlayer's failures differ from mpv's | It stops on every error and resets its position; handled with `errorsStopPlayback` (§6) and a unit test. A minute in airplane mode recovers on the phone (2026-11-19); the 403 check is still to do (§13) |
 | Some Android phones can't decode 4K in hardware | ExoPlayer can't fall back to software like mpv, so the decoder fallback goes to a lower quality (§6, M9) |
 | Windows has no dev machine yet | M8 needs a Windows machine or VM. The NVIDIA Linux bug (AGENTS.md) doesn't affect Windows |
+| `volume_controller` and `screen_brightness` differ between Android and iOS | Wrap them in the gesture layer only, and test both platforms when iOS starts (PLAN.md Phase 6) |
 
 ## 15. M9 results (2026-11-19)
 
@@ -414,12 +415,13 @@ No frame came near 16.7 ms, the §1 target (60 fps); the controls nearly hold 12
 | Never lose progress | Saved every 10 s, on pause, seek, episode change, exit and when the app goes to the background (M4, checked with a force-stop) |
 | Smooth controls | Above |
 | Switching keeps your place | Unit and widget tests; checked on the phone (M3, M5) |
-| Works everywhere | Android and Linux, touch and keyboard/mouse, English and Arabic (RTL pass on Linux screenshots). **Windows not run yet** (no machine) |
+| Works everywhere | Android and Linux, touch and keyboard/mouse, English and Arabic (RTL pass on Linux screenshots). **Windows not run yet** (no machine); iOS comes with Phase 6 |
 
 **Tests:** `integration_test/player_test.dart` (the player end to end on the live API: a movie and an episode) passes on Linux. The M0 spike and the mpv 4K test were removed.
 
 **Still open after M9** (none of them block Phase 6):
 - **Windows:** never run (no machine). Check every shortcut in §9.2, the mouse, full screen and playback.
+- **iOS:** comes with Phase 6. The mpv "mobile" values in §5 were measured on Android before decision 7; check them there, along with audio_session (silent switch, interruptions) and the gestures (`volume_controller`, `screen_brightness`, §14).
 - **§13 checks 1 and 3 on the phone:** a few seconds of airplane mode mid-play, and a forged URL signature (debug build). The code paths are covered by unit tests.
 - **The manual checks before release (§11)** that are left: a 2-hour 4K movie on desktop, and a full anime season playing through by itself on the phone (plain subtitles; styled ones are desktop only).
 - **Later, outside this plan (§12):** picture-in-picture, casting, background audio, lock-screen controls, long-press for 2×.

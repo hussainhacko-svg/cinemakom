@@ -184,6 +184,7 @@ D3 tests all of this against the real plugin on Linux (cut the network mid-downl
 | Android 7–9 (API 24–28) | same | same, after asking for `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion="28"`). If refused, the app folder, as today | same |
 | Android TV | same as the phone | `Movies/Cinemakom` | TV file managers |
 | Linux / Windows | `<folder>/.partial` (as today) | `~/Videos/Cinemakom` or the chosen folder (as today) | yes, already. Add **Show in folder** on desktop |
+| iOS | library default | **`Documents/Downloads`**, with `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` (storage.md) | the Files app |
 
 **The D5 spike decides how finishing works on Android.** The question is whether the library's `Files.move` from the partial folder to `Movies/` succeeds as a rename on the phone.
 - **If it does:** set the partial folder with `useExternalStorage` or the temp path, and finishing is instant.
@@ -235,7 +236,7 @@ Configured **per task** (`configureNotificationForTask`), so the total size and 
 - Pause and Resume buttons come from the `paused` configuration (notifications.md). Their labels follow the system language on Android. D6 checks whether they can be localized and documents it if not.
 - With foreground mode the notification stays up for the whole download (one per task). The time-limit `paused` (§3.1) no longer happens.
 - Tap handling: `FileDownloader().registerCallbacks(taskNotificationTapCallback: …)` opens the Downloads tab through go_router.
-- Desktop has no notification (as today).
+- Desktop has no notification (as today). iOS shows the system's own progress.
 
 ### 5.10 The Downloads screens (phone and TV)
 
@@ -279,7 +280,7 @@ Each milestone ends with `fvm flutter analyze` clean, `fvm flutter test` green, 
 | **D2** | **States and saved progress.** Schema 4, the §5.2 rules, the 60 s guard, re-check on resume, holding-queue pause, failure reasons, the Downloads rows. | The §9 state tests pass. "1 MB of 27 GB" can't happen |
 | **D3** | **Retry that continues.** Rule 1, `retries: 10`, pause on no network and resume on return (§5.5), whether resume data can survive a final failure, started-over handling, the quality-change prompt. | A download failed by cutting the network, then retried, continues from its bytes (Linux integration test and the phone) |
 | **D4** | **Cleanup.** The janitor, the storage line, logs. | After forced failures, retries and deletes, only finished files remain (unit test on a temp folder, Linux integration test). The owner's phone gets its 11.5 GB back |
-| **D5** | **Files in Movies/Cinemakom.** The rename spike first (debug APK on the phone, a 50 MB file), then paths per API level, the move of existing downloads, the outside-change handling, Show in folder. | A finished download is in `Movies/Cinemakom` in the phone's file manager and plays in another video app. Deleting it in the file manager shows "File removed" in the app |
+| **D5** | **Files in Movies/Cinemakom.** The rename spike first (debug APK on the phone, a 50 MB file), then paths per API level, the move of existing downloads, the outside-change handling, iOS `Info.plist`, Show in folder. | A finished download is in `Movies/Cinemakom` in the phone's file manager and plays in another video app. Deleting it in the file manager shows "File removed" in the app |
 | **D6** | **The notification** (§5.9). | Checked on the phone in English and Arabic: every state from the table, the buttons work, a tap opens Downloads |
 | **D7** | **Proof.** The full phone checklist (§10) on a release APK, the TV check (TCL), Windows if available. Docs: tick this plan, PLAN.md Phase 6, API.md if anything about ranges or sizes changed. | The owner signs off on the phone |
 
@@ -349,6 +350,7 @@ If D0–D3 show a bug inside the library itself (not in our setup), report it up
 - **OEM battery savers** (ColorOS) may still kill a foreground service. D1 checks on the OnePlus. If it happens, the reconcile and auto-retry rules (§5.4, §5.5) bring the download back, and Settings may need a hint to turn off battery optimisation for the app.
 - **Temp-file matching is by count and age** (§5.7), because the library doesn't say which file is whose. A wrong guess would delete a paused task's partial file, so that task starts over. That costs time but never leaves junk. D4 checks whether the resume data path can be read safely instead.
 - **Very large files (27 GB)** strain storage on phones and TVs. The space check is up front, and the quality picker already shows sizes.
+- **iOS** background limits (URLSession) are still untested on a device (PLAN.md Phase 6).
 - **Android 15 limits `dataSync` foreground services to 6 hours a day** (the app targets SDK 36, so it applies). A download longer than that (27 GB below ~1.3 MB/s, normal on a slow connection) is stopped by the system when WorkManager runs it; a UIDT job (used when Android allows it, `TransferHint.userInitiated`) has no such limit. A stopped run counts as a failure and is retried from its partial file; if Android won't start the service again, the retries run out and the failure is final. Since 2026-11-22 that no longer costs anything: the resume data is kept (§5.5 point 4), and the download continues as soon as the app comes to the front (Android resets the quota then) or on the next slow retry. Not yet seen on the phone: D7 should include one download of more than 6 hours with the app in the background.
 - **Signed URLs expire during long downloads**: handled by the `Auth` refresh (§5.5 point 6). It's marked experimental in background_downloader; if a library update changes it, the 403 handling and kept resume data still continue the download.
 - **`Download.contentUri`** (schema 4) is unused: the D5 rename into `Movies/Cinemakom` worked on Android 15, so no MediaStore copy is needed. It's kept for that fallback, should an OEM refuse the rename.

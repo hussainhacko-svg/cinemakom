@@ -39,6 +39,7 @@ void main() {
       'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',
       'android/app/src/main/res/drawable/ic_launcher_monochrome.xml',
       'android/app/src/main/res/values-v31/styles.xml',
+      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
       'windows/runner/resources/app_icon.ico',
       'linux/packaging/icons/hicolor/scalable/apps/io.github.sharon_xa.cinemakom.svg',
       'linux/packaging/io.github.sharon_xa.cinemakom.desktop',

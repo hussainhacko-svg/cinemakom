@@ -5,7 +5,7 @@
 <h1 align="center">Cinemakom</h1>
 
 <p align="center">
-  An alternative app for <a href="https://cinemana.shabakaty.com">Cinemana</a>: movies, series and anime on Android phones, Android TV, Linux and Windows.<br>
+  An alternative app for <a href="https://cinemana.shabakaty.com">Cinemana</a>: movies, series and anime on Apple TV (tvOS), iOS, iPadOS, macOS, Android, Android TV, Linux and Windows.<br>
   English and Arabic (full right-to-left layout).
 </p>
 
@@ -93,7 +93,8 @@
 | Android TV / Google TV | ✅ Tested on a TCL Google TV. Uses the same APK as phones |
 | Linux (x64) | ✅ Tested |
 | Windows (x64) | ⚠️ Builds in CI but hasn't been tried on a real machine yet |
-| iOS, iPadOS, macOS, tvOS | ❌ Not supported |
+| Apple TV (tvOS) | ✅ Tested on Apple TV 4K (native HDR `AVPlayerLayer` + Match Dynamic Range, see [`docs/APPLE_TV.md`](docs/APPLE_TV.md)) |
+| iOS / iPadOS / macOS | ✅ Supported on the `apple` branch (`ios/` and `macos/` runners) |
 
 ## Install
 

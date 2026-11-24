@@ -53,7 +53,9 @@ Future<void> setAppleTvWakelock({required bool on}) async {
 /// and [debugIsTvOverride].
 bool get isDesktop =>
     switch (defaultTargetPlatform) {
-      TargetPlatform.linux || TargetPlatform.windows => true,
+      TargetPlatform.linux ||
+      TargetPlatform.windows ||
+      TargetPlatform.macOS => true,
       _ => false,
     } &&
     !kIsWeb;
@@ -63,9 +65,12 @@ bool get isLinux => defaultTargetPlatform == TargetPlatform.linux && !kIsWeb;
 bool get isWindows =>
     defaultTargetPlatform == TargetPlatform.windows && !kIsWeb;
 
-/// Phones, tablets and TVs: only Android (no Apple platforms, decision
-/// 2026-11-22).
-bool get isMobile => isAndroid;
+bool get isMobile =>
+    switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    } &&
+    !kIsWeb;
 
 bool get isAndroid =>
     defaultTargetPlatform == TargetPlatform.android && !kIsWeb;
@@ -88,5 +93,5 @@ const forceTvUi = bool.fromEnvironment('CINEMAKOM_TV');
 /// desktop one. Only `main` reads it: the phone UI never checks for TV.
 bool get useTvUi => isTv || forceTvUi;
 
-/// True on touch phones and tablets (Android, not Android TV).
+/// True on touch phones and tablets (Android/iOS excluding Android TV).
 bool get isTouchMobile => isMobile && !isTv;

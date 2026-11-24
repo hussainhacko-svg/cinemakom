@@ -13,8 +13,8 @@
 # <label> is `git describe` (a tag such as v1.2.0, else the commit, with
 # "-dirty" when there are uncommitted changes).
 #
-# Windows can't be built on Linux: the release workflow builds it. Apple
-# platforms aren't supported (decision 2026-11-22). A target that fails doesn't stop the others; the script exits
+# Windows, macOS and iOS can't be built on Linux: the release workflow builds
+# them. A target that fails doesn't stop the others; the script exits
 # non-zero if any failed.
 set -uo pipefail
 
@@ -33,6 +33,7 @@ done
 
 case "$(uname -s)" in
   Linux) possible=(android linux) ;;
+  Darwin) possible=(android) ;;  # macOS/iOS builds aren't scripted here yet
   *) possible=(android) ;;
 esac
 [[ ${#targets[@]} -eq 0 ]] && targets=("${possible[@]}")
@@ -81,7 +82,7 @@ for f in "${built[@]}"; do (( ${#f} > width )) && width=${#f}; done
 for f in "${built[@]}"; do
   printf '  %-*s  %s\n' "$width" "$f" "$(du -h "$out/$f" | cut -f1)"
 done
-for t in windows; do
+for t in windows macos ios; do
   printf '  %-*s  %s\n' "$width" "($t)" "not possible here: built by the release workflow"
 done
 if [[ ${#failed[@]} -gt 0 ]]; then

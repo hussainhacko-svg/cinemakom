@@ -3,7 +3,7 @@
 Guidance for AI coding agents (Claude Code, Codex, etc.) working in this repository.
 
 ## What this is
-**Cinemakom** is a cross-platform streaming frontend written in **Flutter** for **Android (phones, tablets and Android TV), Linux and Windows**. It is a client for the Cinemana API (`https://cinemana.shabakaty.com/api/android/`). We build **only the frontend**. There is no backend in this repo. Apple platforms (iOS, iPadOS, macOS, tvOS) are **not supported** (owner's decision, 2026-11-22): there is no `ios/` or `macos/` folder, and nothing Apple-specific should be added.
+**Cinemakom** is a cross-platform streaming frontend written in **Flutter** for **Android, iOS, Linux and Windows**. It is a client for the Cinemana API (`https://cinemana.shabakaty.com/api/android/`). We build **only the frontend**. There is no backend in this repo.
 
 The original Kotlin/Jetpack Compose Android app is at `../cinematy`. It is low-quality AI-generated code: use it only for hints about which endpoints exist, and verify every behavior against the live API (see "Reference app" below).
 
@@ -46,7 +46,7 @@ tool/build_all.sh                        # every release this machine can build 
 
 ## Architecture rules
 - Folders are organized by feature: `lib/core` (network, storage, platform), `lib/data` (models, parsers, repositories), `lib/features/<feature>` (screen, widgets, providers). See PLAN.md §3.
-- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit (desktop) and video_player/ExoPlayer (Android). **Downloads:** background_downloader, behind `Downloader` (`lib/core/downloads`; `background_file_downloader.dart` is the only file that imports it). `DownloadsRepository` owns the queue, events and offline lookups; the player plays a finished download from disk by itself.
+- **State and DI:** Riverpod. **Routing:** go_router. **HTTP:** dio. **DB:** drift. **Player:** media_kit (desktop, iOS) and video_player/ExoPlayer (Android). **Downloads:** background_downloader, behind `Downloader` (`lib/core/downloads`; `background_file_downloader.dart` is the only file that imports it). `DownloadsRepository` owns the queue, events and offline lookups; the player plays a finished download from disk by itself.
 - **Only `lib/core/network` builds URLs or sets headers.** Screens and widgets never call Dio directly. They go through repositories.
 - **One shared header map** (`User-Agent`, `Referer`, `Origin`, see API.md) is used for API calls, images, video streams and downloads. Never copy it somewhere else.
 - **The JSON is inconsistent.** IDs and titles come under several different key names. Parse with the tolerant helpers in `lib/data/parsers`, not generated `fromJson`. Parsers must skip bad items and never throw.

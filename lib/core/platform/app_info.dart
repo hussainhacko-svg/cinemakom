@@ -24,6 +24,12 @@ Future<AppInfo> readAppInfo() async {
       device =
           '${a.manufacturer} ${a.model} · Android ${a.version.release} '
           '(API ${a.version.sdkInt})';
+    } else if (Platform.isIOS) {
+      final i = await info.iosInfo;
+      device = '${i.utsname.machine} · ${i.systemName} ${i.systemVersion}';
+    } else if (Platform.isMacOS) {
+      final m = await info.macOsInfo;
+      device = '${m.model} · macOS ${m.osRelease}';
     } else if (Platform.isLinux) {
       device = (await info.linuxInfo).prettyName;
     } else if (Platform.isWindows) {

@@ -37,7 +37,7 @@ import 'package:media_kit/media_kit.dart';
 import '../test/helpers/fake_downloader.dart';
 
 final _dir = Directory(
-  Platform.isAndroid
+  Platform.isAndroid || Platform.isIOS
       ? '${Directory.systemTemp.path}/screenshots'
       : Platform.environment['SCREENSHOT_DIR'] ?? 'build/screenshots',
 )..createSync(recursive: true);
