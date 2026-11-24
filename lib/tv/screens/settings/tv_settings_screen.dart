@@ -56,6 +56,9 @@ class TvSettingsScreen extends ConsumerWidget {
     }
 
     final language = settings.effectiveLanguage;
+    // Counted again each time the TvScreen builder runs: it also runs without
+    // this build (the page shown again after a pop), and indexes that kept
+    // counting lost the row Back should return to (R2).
     var row = 0;
     Widget settingsRow(String label, String? value, VoidCallback onSelect) =>
         Padding(
@@ -70,140 +73,143 @@ class TvSettingsScreen extends ConsumerWidget {
 
     return TvScreen(
       order: 1,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: const EdgeInsetsDirectional.fromSTEB(
-          TvSpace.safeH,
-          0,
-          TvSpace.safeH,
-          TvSpace.safeV,
-        ),
-        child: Align(
-          alignment: AlignmentDirectional.topStart,
-          child: SizedBox(
-            width: 620,
-            child: TvZone.column(
-              order: 0,
-              keyline: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Heading(l10n.settingsGeneral),
-                  settingsRow(
-                    l10n.settingsLanguage,
-                    language == AppLanguage.arabic
-                        ? l10n.languageArabic
-                        : l10n.languageEnglish,
-                    () => pick(
+      builder: (context, scroll) {
+        row = 0;
+        return SingleChildScrollView(
+          controller: scroll,
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            TvSpace.safeH,
+            0,
+            TvSpace.safeH,
+            TvSpace.safeV,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: SizedBox(
+              width: 620,
+              child: TvZone.column(
+                order: 0,
+                keyline: 0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Heading(l10n.settingsGeneral),
+                    settingsRow(
                       l10n.settingsLanguage,
-                      [
-                        TvChoice(AppLanguage.english, l10n.languageEnglish),
-                        TvChoice(AppLanguage.arabic, l10n.languageArabic),
-                      ],
-                      language,
-                      notifier.setLanguage,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _Heading(l10n.settingsPlayback),
-                  settingsRow(
-                    l10n.settingsDefaultQuality,
-                    qualityLabel(l10n, settings.defaultQuality),
-                    () => pick(
-                      l10n.settingsDefaultQuality,
-                      [
-                        for (final q in PreferredQuality.values)
-                          TvChoice(q, qualityLabel(l10n, q)),
-                      ],
-                      settings.defaultQuality,
-                      notifier.setDefaultQuality,
-                    ),
-                  ),
-                  settingsRow(
-                    l10n.settingsDefaultSubtitles,
-                    subtitleLabel(l10n, settings.defaultSubtitle),
-                    () => pick(
-                      l10n.settingsDefaultSubtitles,
-                      [
-                        for (final s in SubtitlePreference.values)
-                          TvChoice(s, subtitleLabel(l10n, s)),
-                      ],
-                      settings.defaultSubtitle,
-                      notifier.setDefaultSubtitle,
-                    ),
-                  ),
-                  settingsRow(
-                    l10n.settingsSubtitleSize,
-                    subtitleSizeLabel(l10n, settings.subtitleSize),
-                    () => pick(
-                      l10n.settingsSubtitleSize,
-                      [
-                        for (final s in SubtitleSize.values)
-                          TvChoice(s, subtitleSizeLabel(l10n, s)),
-                      ],
-                      settings.subtitleSize,
-                      notifier.setSubtitleSize,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _Heading(l10n.settingsHelp),
-                  settingsRow(l10n.settingsReportBug, null, () async {
-                    final info = await ref.read(bugReportInfoProvider.future);
-                    if (!context.mounted) return;
-                    await showTvQrPanel(
-                      context,
-                      title: l10n.settingsReportBug,
-                      codes: [
-                        (
-                          label: l10n.bugReportByEmail,
-                          data: '${bugReportEmailUri(l10n, info, tv: true)}',
-                          short: bugReportEmail,
-                        ),
-                        (
-                          label: l10n.bugReportOnGithub,
-                          data: '${bugReportGithubUri(info, tv: true)}',
-                          short: '$projectUrlShort/issues',
-                        ),
-                      ],
-                    );
-                  }),
-                  settingsRow(
-                    l10n.settingsGithub,
-                    null,
-                    () => showTvQrPanel(
-                      context,
-                      title: l10n.settingsGithub,
-                      codes: [
-                        (
-                          label: l10n.settingsGithub,
-                          data: projectUrl,
-                          short: projectUrlShort,
-                        ),
-                      ],
-                    ),
-                  ),
-                  settingsRow(
-                    l10n.settingsAbout,
-                    null,
-                    () => context.push('/settings/licenses'),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      const CinemakomMark(size: 32, semanticLabel: null),
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.appTitle,
-                        style: MarqueeTvText.of(context).caption,
+                      language == AppLanguage.arabic
+                          ? l10n.languageArabic
+                          : l10n.languageEnglish,
+                      () => pick(
+                        l10n.settingsLanguage,
+                        [
+                          TvChoice(AppLanguage.english, l10n.languageEnglish),
+                          TvChoice(AppLanguage.arabic, l10n.languageArabic),
+                        ],
+                        language,
+                        notifier.setLanguage,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 16),
+                    _Heading(l10n.settingsPlayback),
+                    settingsRow(
+                      l10n.settingsDefaultQuality,
+                      qualityLabel(l10n, settings.defaultQuality),
+                      () => pick(
+                        l10n.settingsDefaultQuality,
+                        [
+                          for (final q in PreferredQuality.values)
+                            TvChoice(q, qualityLabel(l10n, q)),
+                        ],
+                        settings.defaultQuality,
+                        notifier.setDefaultQuality,
+                      ),
+                    ),
+                    settingsRow(
+                      l10n.settingsDefaultSubtitles,
+                      subtitleLabel(l10n, settings.defaultSubtitle),
+                      () => pick(
+                        l10n.settingsDefaultSubtitles,
+                        [
+                          for (final s in SubtitlePreference.values)
+                            TvChoice(s, subtitleLabel(l10n, s)),
+                        ],
+                        settings.defaultSubtitle,
+                        notifier.setDefaultSubtitle,
+                      ),
+                    ),
+                    settingsRow(
+                      l10n.settingsSubtitleSize,
+                      subtitleSizeLabel(l10n, settings.subtitleSize),
+                      () => pick(
+                        l10n.settingsSubtitleSize,
+                        [
+                          for (final s in SubtitleSize.values)
+                            TvChoice(s, subtitleSizeLabel(l10n, s)),
+                        ],
+                        settings.subtitleSize,
+                        notifier.setSubtitleSize,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _Heading(l10n.settingsHelp),
+                    settingsRow(l10n.settingsReportBug, null, () async {
+                      final info = await ref.read(bugReportInfoProvider.future);
+                      if (!context.mounted) return;
+                      await showTvQrPanel(
+                        context,
+                        title: l10n.settingsReportBug,
+                        codes: [
+                          (
+                            label: l10n.bugReportByEmail,
+                            data: '${bugReportEmailUri(l10n, info, tv: true)}',
+                            short: bugReportEmail,
+                          ),
+                          (
+                            label: l10n.bugReportOnGithub,
+                            data: '${bugReportGithubUri(info, tv: true)}',
+                            short: '$projectUrlShort/issues',
+                          ),
+                        ],
+                      );
+                    }),
+                    settingsRow(
+                      l10n.settingsGithub,
+                      null,
+                      () => showTvQrPanel(
+                        context,
+                        title: l10n.settingsGithub,
+                        codes: [
+                          (
+                            label: l10n.settingsGithub,
+                            data: projectUrl,
+                            short: projectUrlShort,
+                          ),
+                        ],
+                      ),
+                    ),
+                    settingsRow(
+                      l10n.settingsAbout,
+                      null,
+                      () => context.push('/settings/licenses'),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      children: [
+                        const CinemakomMark(size: 32, semanticLabel: null),
+                        const SizedBox(width: 12),
+                        Text(
+                          l10n.appTitle,
+                          style: MarqueeTvText.of(context).caption,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
