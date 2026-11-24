@@ -29,8 +29,8 @@ String? bundledLibmpv({
   bool Function(String path)? exists,
 }) {
   if (executable == null && !Platform.isLinux) return null;
-  final path = p.join(
-    p.dirname(executable ?? Platform.resolvedExecutable),
+  final path = p.posix.join(
+    p.posix.dirname(executable ?? Platform.resolvedExecutable),
     'lib',
     'libmpv.so.2',
   );

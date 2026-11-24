@@ -63,7 +63,7 @@ Future<void> initAppDirs() async {
     if (isLinux) {
       final home = env['HOME'] ?? Directory.current.path;
       final configHome = xdgBase(env, 'XDG_CONFIG_HOME', home, '.config');
-      final userDirs = File(p.join(configHome, 'user-dirs.dirs'));
+      final userDirs = File(p.posix.join(configHome, 'user-dirs.dirs'));
       AppDirs._current = linuxAppDirs(
         env: env,
         home: home,
@@ -97,14 +97,21 @@ const _videosFolderId = '{18989B1D-99B5-455B-841C-AB7C74E4DDFC}';
 
 /// The folders on Linux, by the XDG Base Directory and user-dirs specs.
 /// [userDirs] is the text of `$XDG_CONFIG_HOME/user-dirs.dirs`, if any.
+/// Always `/` paths (`p.posix`), so the tests check them on Windows too.
 AppDirs linuxAppDirs({
   required Map<String, String> env,
   required String home,
   String? userDirs,
 }) => AppDirs(
-  data: p.join(xdgBase(env, 'XDG_DATA_HOME', home, '.local/share'), appId),
-  cache: p.join(xdgBase(env, 'XDG_CACHE_HOME', home, '.cache'), appId),
-  state: p.join(xdgBase(env, 'XDG_STATE_HOME', home, '.local/state'), appId),
+  data: p.posix.join(
+    xdgBase(env, 'XDG_DATA_HOME', home, '.local/share'),
+    appId,
+  ),
+  cache: p.posix.join(xdgBase(env, 'XDG_CACHE_HOME', home, '.cache'), appId),
+  state: p.posix.join(
+    xdgBase(env, 'XDG_STATE_HOME', home, '.local/state'),
+    appId,
+  ),
   videos: xdgUserDir(
     'VIDEOS',
     fallback: 'Videos',
@@ -134,8 +141,10 @@ String xdgBase(
   String fallback,
 ) {
   final value = env[name];
-  if (value != null && value.isNotEmpty && p.isAbsolute(value)) return value;
-  return p.join(home, fallback);
+  if (value != null && value.isNotEmpty && p.posix.isAbsolute(value)) {
+    return value;
+  }
+  return p.posix.join(home, fallback);
 }
 
 /// A user folder (`VIDEOS`, `DOWNLOAD`, …) as `xdg-user-dir` gives it: the
@@ -159,8 +168,8 @@ String xdgUserDir(
     if (v == r'$HOME' || v.startsWith(r'$HOME/')) {
       v = home + v.substring(5);
     }
-    v = p.normalize(v);
-    if (!p.isAbsolute(v) || p.equals(v, home)) return null;
+    v = p.posix.normalize(v);
+    if (!p.posix.isAbsolute(v) || p.posix.equals(v, home)) return null;
     return v;
   }
 
@@ -170,5 +179,5 @@ String xdgUserDir(
     if (l.startsWith('#') || !l.startsWith('$key=')) continue;
     fromFile = expand(l.substring(key.length + 1));
   }
-  return fromFile ?? expand(env[key]) ?? p.join(home, fallback);
+  return fromFile ?? expand(env[key]) ?? p.posix.join(home, fallback);
 }
