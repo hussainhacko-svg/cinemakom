@@ -1,13 +1,41 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path/path.dart' as p;
 
 import '../platform/platform_info.dart';
 import 'player_engine.dart';
 import 'subtitle_fonts.dart';
+
+/// Starts media_kit, once, before the first player (`main`).
+///
+/// The Linux AppImage carries its own libmpv, next to the app
+/// (docs/PACKAGING.md §3), and media_kit must use that one. Left to itself
+/// it opens `libmpv.so` first: where mpv is installed, that's the system's
+/// copy, while the video plugin is linked to ours. Two libmpv in one
+/// process abort as the video opens (mpv's "group_index >= 0" assertion,
+/// seen on Arch with mpv installed).
+void initMediaKit() => MediaKit.ensureInitialized(libmpv: bundledLibmpv());
+
+/// `<app>/lib/libmpv.so.2` when the app carries its own libmpv, else `null`
+/// (Windows, Android, and a development build on the system's libmpv).
+@visibleForTesting
+String? bundledLibmpv({
+  String? executable,
+  bool Function(String path)? exists,
+}) {
+  if (executable == null && !Platform.isLinux) return null;
+  final path = p.join(
+    p.dirname(executable ?? Platform.resolvedExecutable),
+    'lib',
+    'libmpv.so.2',
+  );
+  return (exists ?? (f) => File(f).existsSync())(path) ? path : null;
+}
 
 /// [PlayerEngine] on media_kit (libmpv). The only file that imports
 /// media_kit. Options and their reasons: docs/PLAYER.md §5 and §13.

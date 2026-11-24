@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/app.dart';
@@ -14,13 +13,14 @@ import 'core/platform/app_dirs.dart';
 import 'core/platform/full_screen.dart';
 import 'core/platform/orientation.dart';
 import 'core/platform/platform_info.dart';
+import 'core/player/media_kit_engine.dart';
 import 'core/storage/legacy_files.dart';
 import 'core/storage/preferences.dart';
 import 'tv/tv_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
+  initMediaKit();
   await initPlatformInfo();
   // Desktop: the XDG folders on Linux, Local AppData on Windows
   // (docs/PACKAGING.md §2). The old log moves before the log opens it.

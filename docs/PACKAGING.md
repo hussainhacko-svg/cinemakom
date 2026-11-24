@@ -247,6 +247,12 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
     VA-API with copy-back (`vaapi-copy`): the GPU decodes, and each frame
     passes through memory once. That's fine up to 4K on recent hardware.
     Without either, mpv decodes in software (`hwdec=auto`).
+  - **Only our libmpv may load.** media_kit opens `libmpv.so` by name,
+    and where mpv is installed that's the system's copy, while the video
+    plugin is linked to ours. Two libmpv in one process abort as a video
+    opens (it crashed on this machine, which has mpv). So `initMediaKit`
+    (`media_kit_engine.dart`) passes the `lib/libmpv.so.2` next to the
+    app. The container tests couldn't catch it: none had mpv installed.
 
 *Checked 2026-11-24:*
 - **Clean containers:** Ubuntu 22.04, Debian 12, Fedora 45 and Arch, with
