@@ -87,8 +87,10 @@ class BackgroundFileDownloader implements Downloader {
   /// The engine's status as the app's. The exception's type isn't always
   /// right: on desktop a refused or dropped connection arrives as a
   /// `TaskFileSystemException` ("ClientException with SocketException"),
-  /// which would read "Couldn't save the file" and never continue by itself,
-  /// so the description is checked for network errors too.
+  /// and on Android every `IOException` but a socket one does (an unknown
+  /// host, a TLS error, a stream cut short). Those would read "Couldn't
+  /// save the file" and never continue by themselves, so the description is
+  /// checked for network errors too ([networkErrors]).
   @visibleForTesting
   static DownloaderStatus statusFrom(
     String id,
@@ -101,11 +103,12 @@ class BackgroundFileDownloader implements Downloader {
         : responseStatusCode;
     final description = exception?.description.toLowerCase() ?? '';
     final isSpace =
-        exception is TaskFileSystemException && description.contains('space');
+        exception is TaskFileSystemException &&
+        _spaceErrors.any(description.contains);
     final isTimedOut = description.contains('timed out');
     final isNetwork =
         exception is TaskConnectionException ||
-        _networkErrors.any(description.contains);
+        networkErrors.any(description.contains);
     return DownloaderStatus(
       id,
       _state(status),
@@ -119,7 +122,10 @@ class BackgroundFileDownloader implements Downloader {
     );
   }
 
-  static const _networkErrors = [
+  /// What a network error's description contains (lower case): Dart's
+  /// (desktop) and Java's (Android, `e.toString()`).
+  @visibleForTesting
+  static const networkErrors = [
     'socketexception',
     'clientexception',
     'httpexception',
@@ -133,7 +139,45 @@ class BackgroundFileDownloader implements Downloader {
     'unknownhostexception',
     'sslexception',
     'eofexception',
+    // Android: javax.net.ssl.SSLProtocolException, java.net.ProtocolException
+    // ("unexpected end of stream"), HTTP/2's StreamResetException.
+    'protocolexception',
+    'unexpected end of stream',
+    'streamresetexception',
+    'connectexception',
+    'noroutetohostexception',
   ];
+
+  /// A full disk, by platform: the engine's own check (Android), ENOSPC
+  /// (Android, Linux), Windows' error 112. Not just "space": a folder may
+  /// be called that.
+  static const _spaceErrors = [
+    'insufficient space',
+    'no space left',
+    'enospc',
+    'not enough space',
+    'disk full',
+    'disk is full',
+  ];
+
+  /// A progress update as the app's, or `null` for the negative values the
+  /// engine uses as status signals (failed, paused, …), which come as
+  /// status updates too. `networkSpeed` is in MB/s.
+  @visibleForTesting
+  static DownloaderProgress? progressFrom(TaskProgressUpdate update) {
+    if (update.progress < 0) return null;
+    return DownloaderProgress(
+      update.task.taskId,
+      fraction: update.progress.clamp(0, 1).toDouble(),
+      expectedBytes: update.hasExpectedFileSize
+          ? update.expectedFileSize
+          : null,
+      bytesPerSecond: update.hasNetworkSpeed
+          ? update.networkSpeed * 1024 * 1024
+          : null,
+      timeLeft: update.hasTimeRemaining ? update.timeRemaining : null,
+    );
+  }
 
   void _onUpdate(TaskUpdate update) {
     final id = update.task.taskId;
@@ -157,23 +201,8 @@ class BackgroundFileDownloader implements Downloader {
             responseStatusCode: update.responseStatusCode,
           ),
         );
-      case TaskProgressUpdate(:final progress):
-        // Negative progress values are status signals (failed, paused, …),
-        // already sent as status updates.
-        if (progress < 0) return;
-        _events.add(
-          DownloaderProgress(
-            id,
-            fraction: progress.clamp(0, 1).toDouble(),
-            expectedBytes: update.hasExpectedFileSize
-                ? update.expectedFileSize
-                : null,
-            bytesPerSecond: update.hasNetworkSpeed
-                ? update.networkSpeed * 1024 * 1024
-                : null,
-            timeLeft: update.hasTimeRemaining ? update.timeRemaining : null,
-          ),
-        );
+      case TaskProgressUpdate():
+        if (progressFrom(update) case final progress?) _events.add(progress);
     }
   }
 
@@ -237,7 +266,7 @@ class BackgroundFileDownloader implements Downloader {
     updates: Updates.statusAndProgress,
     retries: retries,
     metaData: job.quality ?? '',
-    options: _options(job.url, job.quality),
+    options: refreshOptions(job.url, job.quality),
     // Pausable (also across Android's 9-minute work limit) and, with a
     // notification, a user-initiated transfer on Android 14+.
     transferHints: {TransferHint.userInitiated, TransferHint.largeFile},
@@ -247,7 +276,8 @@ class BackgroundFileDownloader implements Downloader {
   /// expiry, [downloadUrlRefreshMargin] before the URL's `Expires`, before
   /// every run (its own retries, rescheduled tasks, resumes) and only then
   /// calls [refreshSignedUrl]. No access parameters: the URL is left as is.
-  static TaskOptions? _options(String url, String? quality) {
+  @visibleForTesting
+  static TaskOptions? refreshOptions(String url, String? quality) {
     final expires = signedUrlExpiry(url);
     if (expires == null || quality == null || quality.isEmpty) return null;
     return TaskOptions(
@@ -339,7 +369,7 @@ class BackgroundFileDownloader implements Downloader {
       task.copyWith(
         url: url,
         retriesRemaining: retries,
-        options: _options(url, task.metaData),
+        options: refreshOptions(url, task.metaData),
       ),
     );
     if (ok) await _kept.remove(taskId);
@@ -371,9 +401,21 @@ class BackgroundFileDownloader implements Downloader {
   Future<void> sync() => _fd.resumeFromBackground();
 
   @override
-  Future<Map<String, KnownTask>> known() async {
+  Future<Map<String, KnownTask>> known() async => knownFrom(
+    await _fd.database.allRecords(),
+    await _fd.allTasks(allGroups: true),
+  );
+
+  /// What the engine knows: its database [records], and the [live] tasks
+  /// of its native and holding queues and those waiting to retry
+  /// (docs/DOWNLOADS.md §5.4).
+  @visibleForTesting
+  static Map<String, KnownTask> knownFrom(
+    List<TaskRecord> records,
+    List<Task> live,
+  ) {
     final out = <String, KnownTask>{};
-    for (final r in await _fd.database.allRecords()) {
+    for (final r in records) {
       final state = _state(r.status);
       out[r.taskId] = KnownTask(
         state,
@@ -384,11 +426,10 @@ class BackgroundFileDownloader implements Downloader {
             : null,
       );
     }
-    // Also the tasks in the native and holding queues, and those waiting to
-    // retry (docs/DOWNLOADS.md §5.4). `allTasks` lists paused tasks too, so
-    // a paused (or finished) record keeps its state: only a task without a
-    // live record counts as queued (PR #4 review, critical 3).
-    for (final t in await _fd.allTasks(allGroups: true)) {
+    // `allTasks` lists paused tasks too, so a paused (or finished) record
+    // keeps its state: only a task without a live record counts as queued
+    // (PR #4 review, critical 3).
+    for (final t in live) {
       final existing = out[t.taskId];
       if (existing == null ||
           existing.state == DownloaderState.failed ||
@@ -450,7 +491,7 @@ Future<Task?> refreshSignedUrl(Task task) async {
     if (url == null) return null;
     return task.copyWith(
       url: url,
-      options: BackgroundFileDownloader._options(url, task.metaData),
+      options: BackgroundFileDownloader.refreshOptions(url, task.metaData),
     );
   } on Object {
     return null;
