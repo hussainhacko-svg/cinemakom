@@ -1,10 +1,7 @@
-import 'dart:io';
-
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../core/platform/app_info.dart';
 
 // Bug reports and the project's page (Settings → Help), shared by the phone
 // and TV UIs. There is no server: a report opens the user's mail app, or
@@ -20,28 +17,13 @@ const projectUrlShort = 'github.com/sharon-xa/cinemakom';
 const bugReportEmail = 'me@sharon-xa.com';
 
 /// What a report says about the app and the device.
-typedef BugReportInfo = ({String version, String device});
+typedef BugReportInfo = AppInfo;
 
 /// The app's version and the device ("OnePlus CPH2423 · Android 15").
 /// A provider, so tests (where platform channels never answer) override it.
-final bugReportInfoProvider = FutureProvider<BugReportInfo>((ref) async {
-  final package = await PackageInfo.fromPlatform();
-  final version = '${package.version} (${package.buildNumber})';
-  final info = DeviceInfoPlugin();
-  final String device;
-  if (Platform.isAndroid) {
-    final a = await info.androidInfo;
-    device = '${a.manufacturer} ${a.model} · Android ${a.version.release}';
-  } else if (Platform.isLinux) {
-    device = (await info.linuxInfo).prettyName;
-  } else if (Platform.isWindows) {
-    final w = await info.windowsInfo;
-    device = '${w.productName} ${w.displayVersion}';
-  } else {
-    device = Platform.operatingSystem;
-  }
-  return (version: version, device: device);
-});
+final bugReportInfoProvider = FutureProvider<BugReportInfo>(
+  (ref) => readAppInfo(),
+);
 
 /// The "about the device" lines at the end of a report. [tv] says it came
 /// from the TV UI.
@@ -61,6 +43,7 @@ Uri bugReportEmailUri(
   final body =
       '${l10n.bugReportWhatHappened}\n\n\n'
       '${l10n.bugReportWhatDoing}\n\n\n'
+      '${l10n.bugReportAttachLog}\n\n'
       '———\n${_aboutLines(l10n, info, tv)}\n';
   // Encoded by hand: queryParameters writes spaces as "+", which mail apps
   // show as is.

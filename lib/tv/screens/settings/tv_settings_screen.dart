@@ -188,6 +188,11 @@ class TvSettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     settingsRow(
+                      l10n.settingsActivityLog,
+                      null,
+                      () => context.push('/settings/log'),
+                    ),
+                    settingsRow(
                       l10n.settingsAbout,
                       null,
                       () => context.push('/settings/licenses'),

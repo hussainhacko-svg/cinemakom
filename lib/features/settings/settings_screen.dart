@@ -196,6 +196,10 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () => _reportBug(context, ref),
                   ),
                   SettingsRow(
+                    label: l10n.settingsActivityLog,
+                    onTap: () => context.go(AppRoutes.activityLog),
+                  ),
+                  SettingsRow(
                     label: l10n.settingsGithub,
                     onTap: () => _open(context, Uri.parse(projectUrl)),
                   ),

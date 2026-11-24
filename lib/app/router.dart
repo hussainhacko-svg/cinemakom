@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart' show Widget;
 
+import '../core/diagnostics/route_log.dart';
 import '../core/storage/preferences.dart';
 import '../data/models/catalog_models.dart';
 import '../data/models/media_item.dart';
 import '../data/models/playback_request.dart';
 import '../features/browse/media_list_screen.dart';
 import '../features/debug/debug_screen.dart';
+import '../features/settings/activity_log_screen.dart';
 import '../features/details/details_screen.dart';
 import '../features/downloads/downloads_screen.dart';
 import '../features/genre/genre_screen.dart';
@@ -31,6 +33,7 @@ abstract final class AppRoutes {
   static const downloads = '/downloads';
   static const settings = '/settings';
   static const debug = '/settings/debug';
+  static const activityLog = '/settings/log';
   static const watch = '/watch';
 }
 
@@ -93,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             AppRoutes.settings,
             const SettingsScreen(),
             routes: [
+              GoRoute(
+                path: 'log',
+                builder: (_, _) => const ActivityLogScreen(),
+              ),
               // Developer-only API check, compiled out of release builds.
               if (kDebugMode)
                 GoRoute(path: 'debug', builder: (_, _) => const DebugScreen()),
@@ -102,6 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  logRoutes(router);
   ref.onDispose(router.dispose);
   return router;
 });

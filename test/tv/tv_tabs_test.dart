@@ -464,16 +464,18 @@ void main() {
           .firstWhere((s) => s.position.axis == Axis.vertical)
           .position
           .pixels;
-      await tv.up();
-      await tv.up();
-      await tv.up();
+      // Up past Activity log, GitHub and Report a bug.
+      for (var i = 0; i < 4; i++) {
+        await tv.up();
+      }
       expect(tv.focused, startsWith('Subtitle size'));
       final before = offset();
+      final markBefore = tester.getRect(find.text('Cinemakom').last);
       await tv.ok();
       await tv.back();
       expect(tv.focused, startsWith('Subtitle size'));
       expect(offset(), before);
-      expect(tester.getRect(find.text('Cinemakom').last), mark);
+      expect(tester.getRect(find.text('Cinemakom').last), markBefore);
       // Back up from the end: every row shows as it's focused (the ring
       // check in each press), up to the first.
       await tv.up();

@@ -16,6 +16,7 @@ import '../app/widgets/media_image.dart';
 import '../core/storage/preferences.dart';
 import '../data/repositories/downloads_repository.dart';
 import '../features/downloads/download_flow.dart' show buildDownloadNotices;
+import 'focus/key_log.dart';
 import 'focus/tv_back.dart';
 import 'focus/tv_focus_watchdog.dart';
 import 'focus/tv_screen.dart';
@@ -65,10 +66,12 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SystemNavigator.setFrameworkHandlesBack(true);
+    TvKeyLog.start();
   }
 
   @override
   void dispose() {
+    TvKeyLog.stop();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

@@ -172,6 +172,15 @@ void main() {
       await _key(tester, _ok);
       await _shot(tester, '$l-09-settings-language-panel', wait: 1000);
       await _key(tester, _back);
+      // Settings → Help → Activity log, then its QR code (the real server,
+      // on this machine's Wi-Fi, closed with the panel).
+      await _key(tester, _down, times: 6);
+      await _key(tester, _ok);
+      await _shot(tester, '$l-09b-activity-log', wait: 1000);
+      await _key(tester, _ok);
+      await _shot(tester, '$l-09c-activity-log-phone', wait: 1500);
+      await _key(tester, _back);
+      await _key(tester, _back);
 
       // The player on a live stream: controls, a seek, a panel.
       _push(

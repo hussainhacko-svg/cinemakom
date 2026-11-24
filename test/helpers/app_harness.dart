@@ -1,3 +1,4 @@
+import 'package:cinemakom/features/settings/activity_log_flow.dart';
 import 'package:cinemakom/features/settings/report_flow.dart';
 
 import 'dart:io';
@@ -21,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../fixture.dart';
+import 'fake_log_actions.dart';
 import '../features/player/fake_engine.dart';
 import '../repositories/fake_api_client.dart';
 import 'fake_downloader.dart';
@@ -106,6 +108,7 @@ Future<void> pumpApp(
   double height = 844,
   bool tv = false,
   int? freeSpace,
+  FakeLogActions? logActions,
 }) async {
   // The TV UI draws at 960 × 540 dp, ratio 2 (docs/TV.md §6.1, the TCL).
   if (tv) {
@@ -142,6 +145,9 @@ Future<void> pumpApp(
           const AlwaysOnlineConnectivity(),
         ),
         downloadFreeSpaceProvider.overrideWithValue(() async => freeSpace),
+        activityLogActionsProvider.overrideWithValue(
+          logActions ?? FakeLogActions(),
+        ),
         bugReportInfoProvider.overrideWith(
           (ref) async => (version: '1.0.0 (1)', device: 'Test device'),
         ),

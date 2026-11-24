@@ -10,6 +10,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:cinemakom/core/diagnostics/event_log.dart';
 import 'package:cinemakom/app/app.dart';
 import 'package:cinemakom/app/router.dart';
 import 'package:cinemakom/app/widgets/media_image.dart';
@@ -129,6 +130,21 @@ void main() {
     await _shot(tester, '04-phone-library');
     await tester.tap(find.text('Settings'));
     await _shot(tester, '05-phone-settings');
+
+    // Settings → Help → Activity log, with what a session leaves in it.
+    EventLog.instance
+      ..record('player', 'open 3119279 at 10:00 (MediaKitEngine)')
+      ..record('player', 'phase loading → ready · length 1:52:10 @ 10:00')
+      ..record('net', 'GET banner/level/0 failed after 30012 ms: timeout')
+      ..record('freeze', 'a frame took 912 ms (build 880, raster 32)')
+      ..record('error', 'Bad state: no element\n#0 List.first')
+      ..record('player', 'buffering false → true @ 12:31');
+    await _push(tester, AppRoutes.activityLog);
+    await _shot(tester, '05b-phone-activity-log');
+    ProviderScope.containerOf(tester.element(find.byType(CinemakomApp)))
+        .read(routerProvider)
+        .pop();
+    await _wait(tester, 500);
 
     await tester.tap(find.text('Default quality'));
     await _shot(tester, '06-phone-quality-sheet');

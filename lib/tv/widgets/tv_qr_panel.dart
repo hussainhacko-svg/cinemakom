@@ -22,6 +22,7 @@ Future<void> showTvQrPanel(
   BuildContext context, {
   required String title,
   required List<TvQrCode> codes,
+  String? note,
 }) => showTvSidePanel<void>(
   context,
   width: 480,
@@ -73,6 +74,12 @@ Future<void> showTvQrPanel(
                   ],
                 ),
               ),
+            ],
+            // Beside the codes: under them it would push OK off a 540 dp
+            // screen.
+            if (note != null) ...[
+              const SizedBox(width: 24),
+              Expanded(child: Text(note, style: text.caption)),
             ],
           ],
         ),

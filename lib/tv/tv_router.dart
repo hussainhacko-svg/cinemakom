@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../core/diagnostics/route_log.dart';
 import '../app/navigation_args.dart';
 import '../app/theme/marquee_colors.dart';
 import '../core/storage/preferences.dart';
@@ -17,6 +18,7 @@ import 'screens/home/tv_home_screen.dart';
 import 'screens/downloads/tv_downloads_screen.dart';
 import 'screens/library/tv_library_screen.dart';
 import 'screens/search/tv_search_screen.dart';
+import 'screens/settings/tv_activity_log_screen.dart';
 import 'screens/settings/tv_settings_screen.dart';
 import 'screens/tv_welcome_screen.dart';
 import 'tv_shell.dart';
@@ -85,12 +87,16 @@ final tvRouterProvider = Provider<GoRouter>((ref) {
           _branch(
             '/settings',
             const TvSettingsScreen(),
-            routes: [_route('licenses', (_) => const TvLicensesScreen())],
+            routes: [
+              _route('licenses', (_) => const TvLicensesScreen()),
+              _route('log', (_) => const TvActivityLogScreen()),
+            ],
           ),
         ],
       ),
     ],
   );
+  logRoutes(router);
   ref.onDispose(router.dispose);
   return router;
 });

@@ -244,5 +244,19 @@
   "bugReportWhatDoing": "ماذا كنت تفعل عندما حدث ذلك؟ أرفق لقطة شاشة إن أمكن.",
   "bugReportLanguage": "لغة التطبيق: العربية",
   "bugReportNoApp": "تعذّر فتح تطبيق لذلك. راسلنا على {address}",
-  "tvScanWithPhone": "امسح الرمز بكاميرا هاتفك"
+  "tvScanWithPhone": "امسح الرمز بكاميرا هاتفك",
+  "settingsActivityLog": "سجل النشاط",
+  "activityLogNote": "ما فعله التطبيق مؤخرًا وأي أخطاء، محفوظ على هذا الجهاز للمساعدة في معرفة سبب مشكلة حدثت مرة واحدة. لا يخرج شيء من الجهاز إلا إذا شاركته.",
+  "activityLogShare": "مشاركة السجل",
+  "activityLogSave": "حفظ نسخة",
+  "activityLogSaved": "حُفظ: {path}",
+  "activityLogClear": "مسح",
+  "activityLogCleared": "أصبح السجل فارغًا",
+  "activityLogEmpty": "لم يُسجَّل شيء بعد",
+  "activityLogFailed": "تعذّر تجهيز السجل",
+  "activityLogToPhone": "افتحه على هاتفك",
+  "activityLogSameWifi": "يجب أن يكون هاتفك على شبكة Wi-Fi نفسها التي يتصل بها التلفاز. يعمل الرمز ما دامت هذه النافذة مفتوحة.",
+  "activityLogNoNetwork": "صِل التلفاز بشبكة Wi-Fi لفتح السجل على هاتفك.",
+  "activityLogAdb": "من الحاسوب: adb pull {path}",
+  "bugReportAttachLog": "إن أمكن، شارك سجل النشاط أيضًا (الإعدادات ← المساعدة ← سجل النشاط)."
 }
