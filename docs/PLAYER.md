@@ -93,6 +93,7 @@ lib/
 
 **Rules**
 - **Only `media_kit_engine.dart` imports media_kit, and only `exo_player_engine.dart` imports video_player.** Everything else talks to `PlayerEngine`, so the controller is unit-tested with a `FakeEngine` and the screens are widget-tested without native code. Engine differences are flags on the interface (`supportsStyledSubtitles`, `errorsStopPlayback`), never platform checks in the controller.
+- **What every engine promises** *(2026-11-24)*: `open()` never throws (a file that can't open is an `errors` event), the latest `open()` wins (an overtaken one closes whatever it made and reports nothing), and once `dispose()` has started every call is a no-op, nothing is reported, and no native player is left behind. Before this, a quality or episode switch while the first file still set up left a second native player playing behind on both engines, and closing the player mid-open threw (`StateError` on ExoPlayer, `"[Player] has been disposed"` on mpv). ExoPlayer re-checks after every await of `open()`; mpv runs its opens one after another and stops a setup the close overtook.
 - **`PlayerController` owns the session.** Screens call intents like `togglePlay()`, `seekBy()`, `selectQuality()`, `selectSubtitle()`, `nextEpisode()`. The controller also owns recovery and saving progress.
 - **Headers:** the engine receives `ApiClient.defaultHeaders` and passes it to `Media(httpHeaders:)`. Subtitle URLs and sprite sheets get the same headers (sprites through `MediaImage` or the shared header map).
 - **Sources are a sealed type:** `RemoteSource(videoId)` now, `LocalSource(filePath, subtitlePath)` in Phase 6, so offline playback reuses the same player.
@@ -334,6 +335,7 @@ Each milestone ends with something that runs, and is checked on **Android and Li
   - Keyboard shortcuts.
   - The locked state.
   - Error states.
+- **Engines** *(2026-11-24)*: `test/core/player/exo_player_engine_test.dart` drives `ExoPlayerEngine` through a fake video_player platform (`fake_video_platform.dart`, which can hold initialize, the volume call and dispose so a test can land at any await): what it asks ExoPlayer for, its events and errors, the races above, subtitle timing and 600 seeded broken SubRip/WebVTT files. `integration_test/media_kit_engine_test.dart` does the same for mpv on the real libmpv with two clips ffmpeg makes (offline, about 90 s, needs `ffmpeg`), sweeping each race over 12 delays in both modes (one player, a player per file) and counting live native players (`MediaKitEngine.livePlayers`). media_kit's `open()` waits on the frame loop, so these are `testWidgets` with live frames; media_kit's libmpv doesn't play `av://lavfi:` sources.
 - **Integration** (`integration_test/player_test.dart`, live API, Linux and the Android emulator): launch → open a movie → play 5 s → seek → change quality → leave → resume. Then the same for an episode, with Next episode.
 - **Manual before release:** a 2-hour movie in 4K on desktop, a full anime season on a phone (plain subtitles; styled on desktop), airplane mode mid-play, and a 403 forced by editing a URL's signature in a debug build, on Linux and on the Android phone.
 

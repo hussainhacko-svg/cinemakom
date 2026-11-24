@@ -38,6 +38,12 @@ class MediaKitEngine implements PlayerEngine {
   };
 
   Player? _player;
+
+  /// Native players made and not yet disposed, across engines: a test
+  /// checks none is left behind (one nobody holds would play on).
+  @visibleForTesting
+  static int get livePlayers => _livePlayers;
+  static int _livePlayers = 0;
   final _video = ValueNotifier<VideoController?>(null);
   final _subscriptions = <StreamSubscription<Object?>>[];
 
@@ -98,12 +104,14 @@ class MediaKitEngine implements PlayerEngine {
   @override
   Duration get currentDuration => _player?.state.duration ?? Duration.zero;
 
-  NativePlayer? get _native => _player?.platform as NativePlayer?;
-
-  Future<Player> _ensurePlayer({required bool fresh}) async {
+  /// The native player for the next file, or `null` when the engine was
+  /// closed meanwhile (then nothing new is made, and one being set up is
+  /// left to [dispose], which already closed it).
+  Future<Player?> _ensurePlayer({required bool fresh}) async {
     final existing = _player;
     if (existing != null && !fresh) return existing;
     if (existing != null) await _release(existing);
+    if (_disposed) return null;
 
     final player = Player(
       configuration: PlayerConfiguration(
@@ -113,23 +121,32 @@ class MediaKitEngine implements PlayerEngine {
         libassAndroidFontName: isAndroid ? libassFontFamily : null,
       ),
     );
+    _livePlayers++;
     _player = player;
+    bool gone() => _disposed || !identical(_player, player);
     final native = player.platform! as NativePlayer;
-    for (final MapEntry(:key, :value) in _options.entries) {
-      await native.setProperty(key, value);
-    }
-    if (!isAndroid) {
-      final fonts = await libassFontsDir();
-      if (fonts != null) {
-        await native.setProperty('sub-fonts-dir', fonts);
-        await native.setProperty('sub-font', libassFontFamily);
+    try {
+      for (final MapEntry(:key, :value) in _options.entries) {
+        await native.setProperty(key, value);
       }
+      if (!isAndroid) {
+        final fonts = await libassFontsDir();
+        if (fonts != null) {
+          await native.setProperty('sub-fonts-dir', fonts);
+          await native.setProperty('sub-font', libassFontFamily);
+        }
+      }
+      // Settings the user picked survive a new native player.
+      await player.setRate(_rate);
+      await player.setVolume(_volume);
+      await native.setProperty('sub-scale', '$_subtitleScale');
+      await native.setProperty('sub-delay', _seconds(_subtitleDelay));
+    } on Object {
+      // A player closed while it was set up refuses every call.
+      if (gone()) return null;
+      rethrow;
     }
-    // Settings the user picked survive a new native player.
-    await player.setRate(_rate);
-    await player.setVolume(_volume);
-    await native.setProperty('sub-scale', '$_subtitleScale');
-    await native.setProperty('sub-delay', _seconds(_subtitleDelay));
+    if (gone()) return null;
 
     final s = player.stream;
     _subscriptions.addAll([
@@ -167,50 +184,90 @@ class MediaKitEngine implements PlayerEngine {
     _subscriptions.clear();
     _video.value = null;
     if (identical(_player, player)) _player = null;
+    _livePlayers--;
     await player.dispose();
   }
 
+  /// Bumped by every [open]: an older open stops at its next step.
+  int _openId = 0;
+
+  /// Opens run one after another, so two never set up or release native
+  /// players at once; one overtaken before its turn is skipped.
+  Future<void> _opening = Future<void>.value();
+
+  /// Never throws: a file that can't open is reported on [errors], and one
+  /// overtaken by a newer open, or by [dispose], just stops.
   @override
   Future<void> open(
     EngineSource source, {
     Duration start = Duration.zero,
     bool play = true,
+  }) {
+    if (_disposed) return Future<void>.value();
+    final id = ++_openId;
+    return _opening = _opening.then(
+      (_) => _open(id, source, start: start, play: play),
+    );
+  }
+
+  Future<void> _open(
+    int id,
+    EngineSource source, {
+    required Duration start,
+    required bool play,
   }) async {
-    if (_disposed) return;
-    final player = await _ensurePlayer(
-      fresh: recreatePerFile && _player != null,
-    );
-    await player.open(
-      Media(source.uri, httpHeaders: source.headers, start: start),
-      play: play,
-    );
+    bool stale() => id != _openId || _disposed;
+    if (stale()) return;
+    try {
+      final player = await _ensurePlayer(
+        fresh: recreatePerFile && _player != null,
+      );
+      if (player == null || stale()) return;
+      await player.open(
+        Media(source.uri, httpHeaders: source.headers, start: start),
+        play: play,
+      );
+    } on Object catch (e) {
+      if (!stale()) _errors.add('$e');
+    }
   }
 
-  @override
-  Future<void> play() async => _player?.play();
-
-  @override
-  Future<void> pause() async => _player?.pause();
-
-  @override
-  Future<void> seek(Duration position) async => _player?.seek(position);
-
-  @override
-  Future<void> setRate(double rate) async {
-    _rate = rate;
-    await _player?.setRate(rate);
-  }
-
-  @override
-  Future<void> setVolume(double volume) async {
-    _volume = volume.clamp(0, 100).toDouble();
-    await _player?.setVolume(_volume);
-  }
-
-  @override
-  Future<void> setSubtitle(EngineSubtitle? track) async {
+  /// Runs [action] on the native player, if there is one. One closed under
+  /// it (the player screen leaving) refuses the call: that's no error.
+  Future<void> _onPlayer(Future<void> Function(Player player) action) async {
     final player = _player;
     if (player == null) return;
+    try {
+      await action(player);
+    } on Object {
+      if (_disposed || !identical(_player, player)) return;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> play() => _onPlayer((p) => p.play());
+
+  @override
+  Future<void> pause() => _onPlayer((p) => p.pause());
+
+  @override
+  Future<void> seek(Duration position) => _onPlayer((p) => p.seek(position));
+
+  @override
+  Future<void> setRate(double rate) {
+    _rate = rate;
+    return _onPlayer((p) => p.setRate(rate));
+  }
+
+  @override
+  Future<void> setVolume(double volume) {
+    _volume = volume.clamp(0, 100).toDouble();
+    return _onPlayer((p) => p.setVolume(_volume));
+  }
+
+  @override
+  Future<void> setSubtitle(EngineSubtitle? track) => _onPlayer((player) async {
     _subtitleUri = track?.uri;
     if (track == null) {
       await player.setSubtitleTrack(SubtitleTrack.no());
@@ -218,7 +275,10 @@ class MediaKitEngine implements PlayerEngine {
     }
     // Plain tracks: mpv still parses them and sends the text, but Flutter
     // draws it. Styled tracks: libass draws them into the frame.
-    await _native?.setProperty('sub-visibility', track.styled ? 'yes' : 'no');
+    await (player.platform! as NativePlayer).setProperty(
+      'sub-visibility',
+      track.styled ? 'yes' : 'no',
+    );
     await player.setSubtitleTrack(
       SubtitleTrack.uri(
         track.uri,
@@ -226,18 +286,25 @@ class MediaKitEngine implements PlayerEngine {
         language: track.language,
       ),
     );
-  }
+  });
 
   @override
-  Future<void> setSubtitleDelay(Duration delay) async {
+  Future<void> setSubtitleDelay(Duration delay) {
     _subtitleDelay = delay;
-    await _native?.setProperty('sub-delay', _seconds(delay));
+    return _onPlayer(
+      (p) => (p.platform! as NativePlayer).setProperty(
+        'sub-delay',
+        _seconds(delay),
+      ),
+    );
   }
 
   @override
-  Future<void> setSubtitleScale(double scale) async {
+  Future<void> setSubtitleScale(double scale) {
     _subtitleScale = scale;
-    await _native?.setProperty('sub-scale', '$scale');
+    return _onPlayer(
+      (p) => (p.platform! as NativePlayer).setProperty('sub-scale', '$scale'),
+    );
   }
 
   @override

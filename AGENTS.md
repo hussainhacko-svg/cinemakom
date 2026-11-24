@@ -29,6 +29,7 @@ fvm dart run tool/api_contract_check.dart  # live API contract check
 fvm flutter test integration_test/screenshots_test.dart -d linux  # PNGs of the main screens in build/screenshots, for design review
 fvm flutter test integration_test/tv_screenshots_test.dart -d linux  # the TV UI at 960×540, driven by remote keys (live API, real stream), PNGs tv-* in build/screenshots
 fvm flutter test integration_test/player_engine_test.dart -d linux  # live player check (real media_kit)
+fvm flutter test integration_test/media_kit_engine_test.dart -d linux  # mpv engine races on the real libmpv, offline (needs ffmpeg, ~90 s)
 fvm flutter test integration_test/player_test.dart -d linux  # the player end to end (live API, real engine)
 fvm flutter test integration_test/downloads_test.dart -d linux  # downloads end to end (live CDN, ~50 MB): pause, resume, offline play
 fvm flutter test integration_test/downloads_recovery_test.dart -d linux  # a final failure then Retry continues from its bytes; an expiring URL is refreshed (live CDN, ~50 MB)

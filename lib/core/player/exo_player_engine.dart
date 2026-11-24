@@ -106,7 +106,11 @@ class ExoPlayerEngine implements PlayerEngine {
   }) async {
     if (_disposed) return;
     final id = ++_openId;
+    // Overtaken by a newer open, or the player closed, at any await below:
+    // whatever this open made is closed again and nothing more is reported.
+    bool stale() => id != _openId || _disposed;
     await _release();
+    if (stale()) return;
     _last = null;
     _lastError = null;
     _completed.add(false);
@@ -135,18 +139,19 @@ class ExoPlayerEngine implements PlayerEngine {
           );
     try {
       await controller.initialize();
-      if (id != _openId || _disposed) {
-        await controller.dispose();
-        return;
-      }
-      await controller.setPlaybackSpeed(_rate);
-      await controller.setVolume(_volume / 100);
-      if (start > Duration.zero) await controller.seekTo(start);
+      if (!stale()) await controller.setPlaybackSpeed(_rate);
+      if (!stale()) await controller.setVolume(_volume / 100);
+      if (!stale() && start > Duration.zero) await controller.seekTo(start);
     } on Object catch (e) {
       await controller.dispose();
       // A failed open stays "buffering", like mpv (PLAYER.md §13); the
       // controller sees the error and recovers.
-      if (id == _openId && !_disposed) _errors.add('$e');
+      if (!stale()) _errors.add('$e');
+      return;
+    }
+    if (stale()) {
+      // Never shown: an ExoPlayer nobody holds would play on behind.
+      await controller.dispose();
       return;
     }
     controller.addListener(() => _onValue(controller));
@@ -227,6 +232,7 @@ class ExoPlayerEngine implements PlayerEngine {
 
   @override
   Future<void> setSubtitle(EngineSubtitle? track) async {
+    if (_disposed) return;
     final id = ++_subtitleId;
     _setCaptions(const []);
     if (track == null) return;
