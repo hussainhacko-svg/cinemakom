@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: what GNOME Software, KDE Discover and Flathub show
+     (docs/PACKAGING.md §3). Validate: appstreamcli validate - -no-net <this> -->
+<component type="desktop-application">
+  <id>io.github.sharon_xa.cinemakom</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Cinemakom</name>
+  <name xml:lang="ar">سينماكم</name>
+  <summary>Movies and series from Cinemana</summary>
+  <summary xml:lang="ar">أفلام ومسلسلات من سينمانا</summary>
+
+  <developer id="io.github.sharon_xa">
+    <name>sharon-xa</name>
+  </developer>
+
+  <description>
+    <p>
+      An alternative app for Cinemana: browse and watch its movies, series
+      and anime, in English or Arabic.
+    </p>
+    <p xml:lang="ar">
+      تطبيق بديل لسينمانا: تصفّح أفلامه ومسلسلاته وأنميه وشاهدها، بالعربية أو الإنجليزية.
+    </p>
+    <ul>
+      <li>Search, genres and lists, with Continue watching and your own list</li>
+      <li xml:lang="ar">البحث والتصنيفات والقوائم، مع متابعة المشاهدة وقائمتك الخاصة</li>
+      <li>A player with subtitles, quality choice, speed and Skip intro</li>
+      <li xml:lang="ar">مشغّل مع الترجمة واختيار الجودة والسرعة وتخطي المقدمة</li>
+      <li>Downloads to watch offline</li>
+      <li xml:lang="ar">التنزيل للمشاهدة دون اتصال</li>
+      <li>A full right-to-left layout in Arabic</li>
+      <li xml:lang="ar">واجهة كاملة من اليمين إلى اليسار بالعربية</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.sharon_xa.cinemakom.desktop</launchable>
+
+  <url type="homepage">https://github.com/sharon-xa/cinemakom</url>
+  <url type="bugtracker">https://github.com/sharon-xa/cinemakom/issues</url>
+  <url type="vcs-browser">https://github.com/sharon-xa/cinemakom</url>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>Player</category>
+  </categories>
+  <keywords>
+    <keyword>movies</keyword>
+    <keyword>series</keyword>
+    <keyword>anime</keyword>
+    <keyword>streaming</keyword>
+    <keyword>Cinemana</keyword>
+    <keyword xml:lang="ar">أفلام</keyword>
+    <keyword xml:lang="ar">مسلسلات</keyword>
+    <keyword xml:lang="ar">سينمانا</keyword>
+  </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home</caption>
+      <image>https://raw.githubusercontent.com/sharon-xa/cinemakom/main/docs/screenshots/desktop-home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The player</caption>
+      <image>https://raw.githubusercontent.com/sharon-xa/cinemakom/main/docs/screenshots/desktop-player.png</image>
+    </screenshot>
+  </screenshots>
+
+  <requires>
+    <internet>always</internet>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <!-- OARS describes the app itself for the store; it isn't a ratings
+       feature in the app (AGENTS.md). -->
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-11-20">
+      <description>
+        <p>The first release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

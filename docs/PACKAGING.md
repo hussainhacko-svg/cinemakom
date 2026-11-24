@@ -157,11 +157,16 @@ but their security fixes become ours. FFmpeg parses whatever file the CDN
 sends. A distro patches its own copy; ours stays as old as our last
 release. So:
 
-- **Bundled:** libmpv and what it brings (FFmpeg, libass, libplacebo), in
-  the Flatpak and on Windows. **Rule: an FFmpeg or mpv
-  security release means a Cinemakom release.** CI can warn us: Flathub's
-  update checker for the Flatpak modules, and a scheduled job comparing
-  our versions with the latest.
+- **Bundled:** libmpv, libass and libplacebo in the Flatpak; libmpv with
+  its FFmpeg on Windows. **Rule: a security release of any of them means
+  a Cinemakom release.** CI can warn us: Flathub's update checker for the
+  Flatpak modules, and a scheduled job comparing our versions with the
+  latest.
+- **FFmpeg in the Flatpak comes from the runtime** (GNOME 51: FFmpeg 8.1,
+  with H.264 and the other patented codecs through
+  `org.freedesktop.Platform.codecs-extra`), so its security fixes arrive
+  with runtime updates, not with ours. FFmpeg is the library that parses
+  what the CDN sends, so that's where it matters most.
 - **Never bundled:** glibc (a binary needs at least the build machine's),
   GPU drivers (Mesa or NVIDIA, libGL and EGL, VA-API drivers: they must
   match the kernel and GPU), and GTK where possible (themes, input
@@ -175,40 +180,58 @@ release. So:
 
 One Linux package (owner's decision): one thing to keep working.
 
-**Flatpak, for every Linux user.** It brings its own runtime
-(glibc, GTK) and our libmpv and FFmpeg, so one build runs the same on
-every distro, with nothing to install first. It's sandboxed, updates
-through GNOME Software and KDE Discover, and Flathub is where Linux
-users look first.
+**Flatpak, for every Linux user.** It brings its own runtime (glibc, GTK,
+FFmpeg) and our libmpv, so one build runs the same on every distro, with
+nothing to install first. It's sandboxed, updates through GNOME Software
+and KDE Discover, and Flathub is where Linux users look first.
+
+*Built and checked on Linux 2026-11-24* (`tool/build_flatpak.sh`, 36 MB
+bundle): it starts in the sandbox, loads Home over the network, keeps its
+files in `~/.var/app/<id>/` (library, posters, log) with downloads in the
+host's Videos folder, reaches NetworkManager, names the host system in
+the log header and bug reports ("EndeavourOS (Flatpak)"), and a second
+launch hands over to the open window. libmpv inside it plays H.264 and
+AAC to the end through the runtime's FFmpeg. Left: the release workflow's
+Linux job has never run (the AppArmor workaround in particular), and
+playback of a real stream through the UI.
+
 - **Manifest** `linux/flatpak/io.github.sharon_xa.cinemakom.yml`:
-  - Runtime: the GNOME Platform, which includes GTK 3.
-  - Modules: libmpv and its libraries (libass, libplacebo, FFmpeg) built
-    from source, as other mpv-based apps on Flathub do.
-  - The app: the Flutter release bundle.
+  - Runtime: the GNOME Platform 51 (GTK 3, FFmpeg).
+  - Modules: libass 0.17.5, libplacebo 7.387.0 (OpenGL, no Vulkan) and
+    libmpv from mpv 0.42.0 (OpenGL, Wayland, VA-API with Wayland and
+    dmabuf interop, PulseAudio, PipeWire), pinned by checksum.
+  - The app: the Flutter release bundle, built first on the host (CI:
+    Ubuntu 24.04). Everything it links is in the runtime but libmpv.
+  - mpv has no X11 support here (the SDK lacks some X11 libraries): on an
+    X11-only desktop playback works, but hardware decoding may fall back
+    to software. Wayland desktops are fine.
 - **Permissions:**
   - `--share=network`, `--share=ipc`
   - `--socket=wayland`, `--socket=fallback-x11`, `--device=dri`
   - `--socket=pulseaudio`
   - `--filesystem=xdg-videos`, for downloads
+  - `--system-talk-name=org.freedesktop.NetworkManager`: connectivity_plus
+    asks it whether the device is online.
   - Other folders, and Save a copy of the log, go through the file
     chooser portal.
   - Keeping the screen on already uses the Inhibit portal
     (wakelock_plus), so it needs no permission.
-- **AppStream metainfo** `io.github.sharon_xa.cinemakom.metainfo.xml`:
-  the description in English and Arabic, screenshots (from
-  `integration_test/screenshots_test.dart`), release notes and the
-  required OARS content declaration. That declaration describes the app
-  for the store; it isn't a ratings feature.
-- **First** attach a `.flatpak` bundle to each GitHub release, built in
-  CI. **Then** submit to Flathub. Flathub reviews apps and prefers
-  source builds: check its current rules for Flutter apps when
-  submitting. The app ID already matches the `io.github.<user>` form
+- **AppStream metainfo** `linux/packaging/io.github.sharon_xa.cinemakom.metainfo.xml`:
+  English and Arabic, two screenshots (`docs/screenshots/desktop-*.png`),
+  releases, and the required OARS content declaration (empty). That
+  declaration describes the app for the store; it isn't a ratings
+  feature. `appstreamcli validate` passes. Before Flathub: the
+  screenshots show real film posters and a film frame, which reviewers
+  may question.
+- **Releases:** the release workflow builds the `.flatpak` (Linux job, on
+  `ubuntu-24.04`) and attaches it. **Then** submit to Flathub (P3).
+  Flathub reviews apps and prefers source builds: check its current rules
+  for Flutter apps when submitting (building Flutter inside the SDK,
+  offline). The app ID already matches the `io.github.<user>` form
   Flathub verifies through GitHub.
 
-**The tarball** stays a release download only until the Flatpak ships
-(P2), so Linux users have something to install meanwhile. Then the
-release workflow stops attaching it, and the README points to the
-Flatpak only: its "install libmpv" table and manual steps go.
+**The tarball is gone** (2026-11-24): the release workflow builds the
+Flatpak instead, and the README's Linux section is one `flatpak install`.
 
 **Not offered:** AppImage, AUR, `.deb`, `.rpm`, Snap. Flatpak covers all
 of those users with one package that updates itself, and runs on Arch
@@ -294,7 +317,7 @@ too.
 |---|---|---|
 | **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: the §2.1 steps |
 | **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | In Windows Sandbox: installs, starts, updates over itself and uninstalls cleanly. On the owner's machine: plays up to 4K and downloads |
-| **P2** | Linux: metainfo, Flatpak bundle in CI, the tarball dropped, README points to the Flatpak | The `.flatpak` installs and plays on Fedora, Ubuntu 24.04 and Arch, in GNOME and KDE |
+| **P2** | Linux: metainfo, Flatpak bundle in CI, the tarball dropped, README points to the Flatpak | Built and checked on Arch (§3). Left: the first CI run, a real stream played through the UI, and a try on Fedora or Ubuntu in GNOME and KDE |
 | **P3** | Flathub and winget | Listed, and updates arrive by themselves |
 | **P4** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
 

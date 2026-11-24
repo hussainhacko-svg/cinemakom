@@ -116,29 +116,11 @@ Cinemakom appears in the TV's app list and opens in the TV interface.
 > **Upgrading from v1.0.0:** v1.0.0 was signed with a temporary key, so Android won't install newer versions over it. Uninstall it once, then install the new APK. From then on, each update installs over the last and keeps your library and downloads.
 
 ### Linux
-The player needs **libmpv**:
-
-| Distro | Package |
-|---|---|
-| Arch, Manjaro | `sudo pacman -S mpv` |
-| Debian 13, Ubuntu 24.04+ | `sudo apt install libmpv2` |
-| Older Debian and Ubuntu | `sudo apt install libmpv1` |
-| Fedora | `sudo dnf install mpv-libs` (from RPM Fusion) |
-
-Then extract the tarball and run it:
+Download `cinemakom-<version>-linux-x64.flatpak` and install it:
 ```bash
-mkdir -p ~/.local/opt
-tar -xzf cinemakom-<version>-linux-x64.tar.gz -C ~/.local/opt
-~/.local/opt/cinemakom/cinemakom
+flatpak install --user cinemakom-<version>-linux-x64.flatpak
 ```
-To add it to your app menu:
-```bash
-mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons
-ln -sf ~/.local/opt/cinemakom/cinemakom ~/.local/bin/cinemakom
-cp ~/.local/opt/cinemakom/packaging/io.github.sharon_xa.cinemakom.desktop ~/.local/share/applications/
-cp -r ~/.local/opt/cinemakom/packaging/icons/hicolor ~/.local/share/icons/
-```
-(`~/.local/bin` has to be on your `PATH`.)
+It works on any distro with [Flatpak](https://flatpak.org/setup/) (most have it already) and brings everything the player needs, so there's nothing else to install. Cinemakom then shows up in your app menu, or run `flatpak run io.github.sharon_xa.cinemakom`. To remove it: `flatpak uninstall io.github.sharon_xa.cinemakom`.
 
 ### Windows
 Extract `cinemakom-<version>-windows-x64.zip` and run `cinemakom.exe`. Everything it needs, libmpv included, is in the folder. Windows hasn't been tested yet, so please report anything that doesn't work (Settings → Help → Report a bug, or [open an issue](https://github.com/sharon-xa/cinemakom/issues)).
@@ -202,7 +184,7 @@ The `integration_test/` folder has live end-to-end tests (the player, downloads,
 ### Release builds
 ```bash
 fvm flutter build apk --release --split-per-abi   # APKs in build/app/outputs/flutter-apk/
-tool/build_all.sh                                  # Android APKs and the Linux tarball into dist/<git describe>/
+tool/build_all.sh                                  # Android APKs and the Linux Flatpak into dist/<git describe>/
 ```
 Pushing a `v*` tag runs [the release workflow](.github/workflows/release.yml): it runs analyze and tests, then builds Android, Linux and Windows and publishes a GitHub release. Release APKs are signed with one permanent key. Locally, `android/key.properties` (gitignored) points to it. Without that file, a local build falls back to the debug key, which can't install over an official release.
 
