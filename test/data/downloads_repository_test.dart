@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cinemakom/core/diagnostics/event_log.dart';
 import 'package:cinemakom/core/downloads/connectivity_monitor.dart';
 import 'package:cinemakom/core/downloads/downloader.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
@@ -523,6 +524,24 @@ void main() {
       );
       await env.settle();
       expect((await env.store.get(movie.id))!.downloadedBytes, 450);
+    },
+  );
+
+  test(
+    'the flight recorder has each download\'s steps and the network',
+    () async {
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      env.connectivity.setOnline(false);
+      await env.settle();
+      env.connectivity.setOnline(true);
+      await env.settle();
+      final log = [
+        for (final e in EventLog.instance.recent)
+          if (e.tag == 'downloads') e.message,
+      ];
+      expect(log, contains(startsWith('3119279 none -> queued quality=720p')));
+      expect(log, containsAllInOrder(['network gone', 'network back']));
     },
   );
 

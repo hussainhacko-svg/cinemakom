@@ -1,8 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+import '../../core/diagnostics/event_log.dart';
 
 import '../../core/platform/platform_info.dart';
 import '../../core/platform/storage_space.dart';
@@ -291,10 +292,10 @@ Future<LegacyMigration> migrateLegacyDownloads({
           ),
         );
         restarted.add(d.videoId);
-        debugPrint('[downloads] migrated unfinished ${d.videoId} -> $newDir');
+        logEvent('downloads', 'migrated unfinished ${d.videoId} -> $newDir');
         _removeIfEmpty(oldDir);
       } on FileSystemException catch (e) {
-        debugPrint('[downloads] migration skipped for ${d.videoId}: $e');
+        logEvent('downloads', 'migration skipped for ${d.videoId}: $e');
       }
       continue;
     }
@@ -332,10 +333,10 @@ Future<LegacyMigration> migrateLegacyDownloads({
       );
       if (onMoved != null) await onMoved(newVideoPath);
       movedCount++;
-      debugPrint('[downloads] migrated ${d.videoId} -> $newVideoPath');
+      logEvent('downloads', 'migrated ${d.videoId} -> $newVideoPath');
       _removeIfEmpty(oldDir);
     } on FileSystemException catch (e) {
-      debugPrint('[downloads] migration skipped for ${d.videoId}: $e');
+      logEvent('downloads', 'migration skipped for ${d.videoId}: $e');
     }
   }
   return (moved: movedCount, restarted: restarted);

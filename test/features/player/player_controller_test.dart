@@ -1,3 +1,4 @@
+import 'package:cinemakom/core/diagnostics/event_log.dart';
 import 'package:cinemakom/core/network/api_client.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/network/api_exception.dart';
@@ -112,7 +113,114 @@ Env start(
   return env;
 }
 
+/// The player's lines in the flight recorder.
+List<String> playerLog() => [
+  for (final e in EventLog.instance.recent)
+    if (e.tag == 'player') e.message,
+];
+
 void main() {
+  group('the flight recorder', () {
+    test('a session: what changed, what was asked, at which position', () {
+      fakeAsync((async) {
+        final env = start(async);
+        env.engine.emitReady(at: const Duration(minutes: 10));
+        env.flush();
+        env.controller.pause();
+        env.flush();
+        env.controller.play();
+        env.flush();
+        env.controller.seek(const Duration(minutes: 20));
+        env.flush();
+        env.engine.emitBuffering(true);
+        env.flush();
+        env.engine.emitBuffering(false);
+        env.flush();
+        env.controller.selectQuality(
+          env.state.sources.firstWhere((s) => s.label == '720p'),
+        );
+        env.flush();
+        env.engine.emitError('Failed to open https://cdn/x.mp4');
+        env.flush(const Duration(seconds: 5));
+
+        final log = playerLog();
+        String first(String what) =>
+            log.firstWhere((l) => l.contains(what), orElse: () => '');
+        expect(log.first, startsWith('open 7'));
+        expect(first('phase loading → ready'), isNotEmpty);
+        expect(first('length 2:00:00'), isNotEmpty);
+        expect(first('pause @ 10:00'), isNotEmpty);
+        expect(first('playing true → false'), isNotEmpty);
+        expect(first('seek to 20:00 @'), isNotEmpty);
+        expect(
+          log.lastWhere((l) => l.contains('buffering false → true')),
+          endsWith('@ 20:00'),
+        );
+        expect(first('quality 720p'), isNotEmpty);
+        expect(first('quality 1080p → 720p'), isNotEmpty);
+        expect(first('engine error: Failed to open'), isNotEmpty);
+        // In this order, each after the one before.
+        var from = 0;
+        for (final step in [
+          'phase loading → ready',
+          'pause @ 10:00',
+          'play @ 10:00',
+          'seek to 20:00 @ 10:00',
+          'buffering false → true @ 20:00',
+          'quality 720p @ 20:00',
+          'engine error: Failed to open',
+          'recover (engine error), attempt 1 @ 20:00',
+        ]) {
+          final i = log.indexWhere((l) => l.contains(step), from);
+          expect(
+            i,
+            isNonNegative,
+            reason: '"$step" after line $from:\n${log.join('\n')}',
+          );
+          from = i + 1;
+        }
+      });
+    });
+
+    test('a stall says why it recovers', () {
+      fakeAsync((async) {
+        final env = start(async);
+        env.engine.emitReady();
+        env.flush(const Duration(seconds: 20));
+        expect(
+          playerLog().where((l) => l.startsWith('recover (stalled)')),
+          isNotEmpty,
+        );
+      });
+    });
+
+    test('playback moving adds no lines', () {
+      fakeAsync((async) {
+        // Past the fixture's intro (0–27 s): leaving it is a change.
+        final env = start(async);
+        env.engine.emitReady(at: const Duration(minutes: 1));
+        env.flush();
+        final before = playerLog().length;
+        for (var s = 61; s <= 180; s++) {
+          env.engine.emitPosition(Duration(seconds: s));
+          env.flush(const Duration(seconds: 1));
+        }
+        expect(playerLog().skip(before), isEmpty);
+      });
+    });
+
+    test('closing the player is a line', () {
+      fakeAsync((async) {
+        final env = start(async);
+        env.engine.emitReady();
+        env.flush();
+        env.c.dispose();
+        env.flush();
+        expect(playerLog().last, startsWith('close @'));
+      });
+    });
+  });
+
   test('opens the default quality with the shared headers and subtitles', () {
     fakeAsync((async) {
       final env = start(async);

@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/diagnostics/event_log.dart';
 import '../../core/downloads/background_file_downloader.dart';
 import '../../core/downloads/connectivity_monitor.dart';
 import '../../core/downloads/downloader.dart';
@@ -256,7 +256,7 @@ class DownloadsRepository {
   DateTime? _startedAt;
   DateTime? _lastReconcileAt;
 
-  void _log(String message) => debugPrint('[downloads] $message');
+  void _log(String message) => logEvent('downloads', message);
 
   void dispose() {
     _disposed = true;
@@ -531,6 +531,7 @@ class DownloadsRepository {
   /// (10 times, 2 s to 512 s apart).
   Future<void> _onConnectivity(bool online) async {
     if (_disposed) return;
+    if (online != _online) _log('network ${online ? 'back' : 'gone'}');
     _online = online;
     final rows = await _store.all();
     if (!online) {

@@ -5,6 +5,7 @@ import 'dart:isolate';
 
 import 'package:dio/dio.dart';
 
+import '../diagnostics/event_log.dart';
 import 'api_endpoints.dart';
 import 'api_exception.dart';
 
@@ -65,26 +66,95 @@ class ApiClient {
   ///
   /// A GET that fails with a network error, a timeout or a 5xx is retried
   /// once. 4xx answers and POSTs are never retried.
-  Future<Object?> fetch(ApiRequest request, {CancelToken? cancelToken}) async {
-    await _slots.acquire();
+  Future<Object?> fetch(ApiRequest request, {CancelToken? cancelToken}) =>
+      _logged(
+        '${request.method.name.toUpperCase()} ${logPlace(request.path)}',
+        (retried) async {
+          await _slots.acquire();
+          try {
+            try {
+              return await _send(request, cancelToken);
+            } on ApiException catch (e) {
+              if (!_isRetryable(request, e) ||
+                  cancelToken?.isCancelled == true) {
+                rethrow;
+              }
+              retried(e);
+              await Future<void>.delayed(retryDelay);
+              return await _send(request, cancelToken);
+            }
+          } finally {
+            _slots.release();
+          }
+        },
+      );
+
+  /// A request this slow is logged even when it works.
+  static const slowRequest = Duration(seconds: 5);
+
+  /// Runs [run], logging (lib/core/diagnostics) a retry, a final failure
+  /// or a slow answer of [what]. Successes aren't logged: they'd drown
+  /// what matters.
+  static Future<T> _logged<T>(
+    String what,
+    Future<T> Function(void Function(ApiException) retried) run,
+  ) async {
+    final watch = Stopwatch()..start();
     try {
-      try {
-        return await _send(request, cancelToken);
-      } on ApiException catch (e) {
-        if (!_isRetryable(request, e) || cancelToken?.isCancelled == true) {
-          rethrow;
-        }
-        await Future<void>.delayed(retryDelay);
-        return await _send(request, cancelToken);
+      final result = await run(
+        (e) => logEvent('net', '$what: ${_describe(e)}, trying again'),
+      );
+      if (watch.elapsed > slowRequest) {
+        logEvent('net', '$what slow: ${watch.elapsedMilliseconds} ms');
       }
-    } finally {
-      _slots.release();
+      return result;
+    } on ApiException catch (e) {
+      if (e.kind != ApiErrorKind.cancelled) {
+        logEvent(
+          'net',
+          '$what failed after ${watch.elapsedMilliseconds} ms: '
+              '${_describe(e)}',
+        );
+      }
+      rethrow;
     }
   }
 
+  static String _describe(ApiException e) => [
+    e.kind.name,
+    ?e.statusCode?.toString(),
+    if (e.message case final m? when m.isNotEmpty) scrubForLog(m),
+  ].join(' ');
+
+  /// Where a request went, for the log: the API path, or a CDN link's
+  /// host and path. Never a query (signed-link tokens) or what was
+  /// searched for (title search carries it in the path).
+  static String logPlace(String pathOrUrl) {
+    final uri = Uri.tryParse(pathOrUrl);
+    final place = uri == null
+        ? pathOrUrl.split('?').first
+        : uri.hasScheme
+        ? '${uri.host}${uri.path}'
+        : uri.path;
+    return place.replaceAll(
+      RegExp(r'video_title_search/[^/]+'),
+      'video_title_search/…',
+    );
+  }
+
+  /// [text] without anything that looks like a query string.
+  static String scrubForLog(String text) =>
+      text.replaceAll(RegExp(r'\?[^\s,)]*'), '?…');
+
   /// Downloads a text file (a subtitle) from an absolute [url] with the
   /// shared headers, retried once like [fetch]. A UTF-8 BOM is dropped.
-  Future<String> fetchText(String url) async {
+  Future<String> fetchText(String url) =>
+      _logged('GET ${logPlace(url)}', (retried) => _fetchText(url, retried));
+
+  Future<String> _fetchText(
+    String url,
+    void Function(ApiException) retried,
+  ) async {
     Future<String> once() async {
       try {
         final response = await _dio.get<String>(url);
@@ -101,6 +171,7 @@ class ApiClient {
         return await once();
       } on ApiException catch (e) {
         if (!_isRetryable(ApiRequest(url), e)) rethrow;
+        retried(e);
         await Future<void>.delayed(retryDelay);
         return await once();
       }
@@ -144,7 +215,16 @@ class ApiClient {
 
   /// Saves the file at an absolute [url] (a subtitle) to [path] with the
   /// shared headers, retried once like [fetch]. Throws [ApiException].
-  Future<void> downloadFile(String url, String path) async {
+  Future<void> downloadFile(String url, String path) => _logged(
+    'GET ${logPlace(url)} to a file',
+    (retried) => _downloadFile(url, path, retried),
+  );
+
+  Future<void> _downloadFile(
+    String url,
+    String path,
+    void Function(ApiException) retried,
+  ) async {
     Future<void> once() async {
       try {
         await _dio.download(url, path);
@@ -159,6 +239,7 @@ class ApiClient {
         await once();
       } on ApiException catch (e) {
         if (!_isRetryable(ApiRequest(url), e)) rethrow;
+        retried(e);
         await Future<void>.delayed(retryDelay);
         await once();
       }

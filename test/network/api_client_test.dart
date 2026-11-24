@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cinemakom/core/diagnostics/event_log.dart';
 import 'package:cinemakom/core/network/api_client.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/network/api_exception.dart';
@@ -230,6 +231,82 @@ void main() {
     ]);
     expect(peak, 3);
     expect(adapter.requests, hasLength(10));
+  });
+
+  // The flight recorder (lib/core/diagnostics): failures, retries and
+  // slow answers, never a query, a signed link's token or a search.
+  group('in the log', () {
+    List<String> net() => [
+      for (final e in EventLog.instance.recent)
+        if (e.tag == 'net') e.message,
+    ];
+
+    test('a retry, then the failure, with the path and how long', () async {
+      final (client, _) = _client((_, _) => _json('', status: 503));
+      await expectLater(
+        client.fetch(ApiEndpoints.banners()),
+        throwsA(isA<ApiException>()),
+      );
+      expect(net(), hasLength(2));
+      expect(net().first, 'GET banner/level/0: http 503, trying again');
+      expect(
+        net().last,
+        matches(r'^GET banner/level/0 failed after \d+ ms: http 503'),
+      );
+    });
+
+    test('a success is no line', () async {
+      final (client, _) = _client((_, _) => _json('[]'));
+      await client.fetch(ApiEndpoints.banners());
+      expect(net(), isEmpty);
+    });
+
+    test('a search is never written down', () async {
+      final (client, _) = _client((_, _) => _json('', status: 500));
+      await expectLater(
+        client.fetch(ApiEndpoints.titleSearch('my secret search')),
+        throwsA(isA<ApiException>()),
+      );
+      final segments = ApiEndpoints.titleSearch('my secret search').path
+          .split('/');
+      final encoded = segments[segments.indexOf('video_title_search') + 1];
+      expect(net(), isNotEmpty);
+      for (final line in net()) {
+        expect(line, contains('video_title_search/…'));
+        expect(line, isNot(contains('secret')));
+        expect(line, isNot(contains(encoded)));
+      }
+    });
+
+    test('a signed link: its host and path, never its token', () async {
+      const url =
+          'https://cnth2.shabakaty.com/sub/a.srt?Expires=1795089600&Signature=SECRET';
+      final (client, _) = _client(
+        (options, _) => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'failed for $url',
+        ),
+      );
+      await expectLater(client.fetchText(url), throwsA(isA<ApiException>()));
+      expect(net(), isNotEmpty);
+      for (final line in net()) {
+        expect(line, contains('cnth2.shabakaty.com/sub/a.srt'));
+        expect(line, isNot(contains('SECRET')));
+        expect(line, isNot(contains('Expires=')));
+      }
+    });
+
+    test('logPlace and scrubForLog', () {
+      expect(ApiClient.logPlace('videoInfo/id/5'), 'videoInfo/id/5');
+      expect(
+        ApiClient.logPlace('https://cdn.x/v/1.mp4?Signature=s&Expires=1'),
+        'cdn.x/v/1.mp4',
+      );
+      expect(
+        ApiClient.scrubForLog('GET https://a/b?token=x, then (https://c?d=e)'),
+        'GET https://a/b?…, then (https://c?…)',
+      );
+    });
   });
 
   group('contentLength', () {

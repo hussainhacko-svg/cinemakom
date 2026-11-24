@@ -6,6 +6,8 @@ import 'package:media_kit/media_kit.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/app.dart';
+import 'app/widgets/broken_part.dart';
+import 'core/diagnostics/diagnostics.dart';
 import 'core/platform/full_screen.dart';
 import 'core/platform/orientation.dart';
 import 'core/platform/platform_info.dart';
@@ -16,6 +18,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await initPlatformInfo();
+  // The flight recorder (lib/core/diagnostics): errors, freezes and what
+  // happened before them, kept on the device for Settings → Help.
+  await startDiagnostics(
+    ui: useTvUi
+        ? 'tv'
+        : isDesktop
+        ? 'desktop'
+        : 'phone',
+  );
+  BrokenPart.install();
   registerFontLicenses();
   // Upright from the first frame on phones/tablets; TVs stay landscape.
   // The saved choice applies once settings load (CinemakomApp).

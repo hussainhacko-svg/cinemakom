@@ -16,9 +16,12 @@ import '../../data/models/media_details.dart' show SkipRange;
 import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
+import '../../core/diagnostics/event_log.dart';
 import '../../data/repositories/downloads_repository.dart';
 import '../../data/repositories/library_repository.dart';
 import '../../data/repositories/media_repository.dart';
+import 'player_labels.dart' show formatClock;
+import 'player_log.dart';
 import 'player_state.dart';
 import 'quality.dart';
 import 'subtitles.dart';
@@ -173,6 +176,17 @@ class PlayerController extends Notifier<PlayerState> {
       (_, size) => unawaited(engine.setSubtitleScale(size.scale)),
     );
     ref.onDispose(_dispose);
+    // The flight recorder: every change, with where playback was.
+    logEvent(
+      'player',
+      'open ${request.videoId}'
+          '${request.start == null ? '' : ' at ${formatClock(request.start!)}'}'
+          ' (${engine.runtimeType})',
+    );
+    listenSelf((before, after) {
+      final change = describePlayerChange(before, after);
+      if (change != null) _log(change);
+    });
     Future.microtask(
       () => _load(
         request.videoId,
@@ -183,7 +197,12 @@ class PlayerController extends Notifier<PlayerState> {
     return PlayerState.initial(request).copyWith(volume: volume);
   }
 
+  /// A line in the log, at the playback position.
+  void _log(String what) =>
+      logEvent('player', '$what @ ${formatClock(position.value)}');
+
   void _dispose() {
+    _log('close');
     _session++;
     _watchdog?.cancel();
     _countdown?.cancel();
@@ -421,11 +440,12 @@ class PlayerController extends Notifier<PlayerState> {
       saveProgress();
       _updateUpNext();
     } else {
-      unawaited(_recover());
+      unawaited(_recover('ended early'));
     }
   }
 
   void _onError(String error) {
+    _log('engine error: $error');
     if (state.phase != PlayerPhase.failed &&
         engine.isDecoderError(error) &&
         _lowerQuality()) {
@@ -437,7 +457,7 @@ class PlayerController extends Notifier<PlayerState> {
     final phase = state.phase;
     if ((phase == PlayerPhase.loading && state.quality != null) ||
         (phase == PlayerPhase.ready && engine.errorsStopPlayback)) {
-      unawaited(_recover());
+      unawaited(_recover('engine error'));
     }
   }
 
@@ -504,7 +524,7 @@ class PlayerController extends Notifier<PlayerState> {
         : stallLimitPlaying;
     if (_stallTicks >= limit) {
       _stallTicks = 0;
-      unawaited(_recover());
+      unawaited(_recover('stalled'));
     }
   }
 
@@ -535,6 +555,7 @@ class PlayerController extends Notifier<PlayerState> {
 
   /// Jumps to the end of the intro under the playhead (Skip intro, S).
   Future<void> skipIntro() async {
+    _log('skip intro');
     final range = state.intro;
     if (range != null) await seek(range.end);
   }
@@ -578,12 +599,14 @@ class PlayerController extends Notifier<PlayerState> {
     if (next == null || !ref.mounted) return;
     saveProgress();
     if (_autoEpisodes >= autoEpisodesBeforeAsking) {
+      _log('still watching? (paused)');
       _userPaused = true;
       unawaited(engine.pause());
       _setUpNext(UpNext.stillWatching);
       return;
     }
     _autoEpisodes++;
+    _log('next episode ${next.id} by itself');
     unawaited(_load(next.id, episode: next));
   }
 
@@ -607,8 +630,9 @@ class PlayerController extends Notifier<PlayerState> {
   // ---------------------------------------------------------------------------
   // Recovery (PLAYER.md §6)
 
-  Future<void> _recover() async {
+  Future<void> _recover(String why) async {
     if (_recovering || !ref.mounted) return;
+    _log('recover ($why), attempt ${_attempt + 1}');
     if (state.phase == PlayerPhase.failed || state.phase == PlayerPhase.ended) {
       return;
     }
@@ -659,6 +683,7 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> togglePlay() => state.playing ? pause() : play();
 
   Future<void> play() async {
+    _log('play');
     noteActivity();
     _userPaused = false;
     if (state.upNext == UpNext.stillWatching) {
@@ -672,6 +697,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> pause() async {
+    _log('pause');
     noteActivity();
     _userPaused = true;
     await engine.pause();
@@ -679,6 +705,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> seek(Duration to) async {
+    _log('seek to ${formatClock(to)}');
     final duration = state.duration;
     final clamped = to < Duration.zero
         ? Duration.zero
@@ -777,6 +804,7 @@ class PlayerController extends Notifier<PlayerState> {
       seek(state.duration * (tenth.clamp(0, 9) / 10));
 
   Future<void> setSpeed(double speed) async {
+    _log('speed $speed');
     noteActivity();
     state = state.copyWith(speed: speed);
     await engine.setRate(speed);
@@ -799,6 +827,7 @@ class PlayerController extends Notifier<PlayerState> {
   /// Switches quality at the current position, keeping play/pause, speed and
   /// the subtitle. The choice holds for the next episodes too.
   Future<void> selectQuality(VideoSource source) async {
+    _log('quality ${source.label}');
     noteActivity();
     if (source.url == state.quality?.url) return;
     _chosenHeight = source.height;
@@ -809,6 +838,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> selectSubtitle(SubtitleOption option) async {
+    _log('subtitle ${subtitleName(option)}');
     noteActivity();
     _chosenSubtitle = option;
     state = state.copyWith(subtitle: option, subtitleFailed: false);
@@ -846,6 +876,7 @@ class PlayerController extends Notifier<PlayerState> {
   /// Switches to [episode], keeping quality, subtitle choice and speed. It
   /// resumes where that episode was left, if it was.
   Future<void> playEpisode(Episode episode) {
+    _log('episode ${episode.id} (S${episode.season}E${episode.episode})');
     noteActivity();
     _userPaused = false;
     saveProgress();

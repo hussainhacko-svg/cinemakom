@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path/path.dart' as p;
 
+import '../../core/diagnostics/event_log.dart';
 import '../models/download.dart';
 
 /// What [DownloadsJanitor.sweep] removed.
@@ -278,9 +278,10 @@ class DownloadsJanitor {
       reclaimedBytes: reclaimed,
     );
     if (report.totalRemoved > 0) {
-      debugPrint(
-        '[downloads] janitor removed temp=$removedTemp videos=$removedVideos '
-        'subs=$removedSubs dirs=$removedDirs reclaimed=$reclaimed bytes',
+      logEvent(
+        'downloads',
+        'janitor removed temp=$removedTemp videos=$removedVideos '
+            'subs=$removedSubs dirs=$removedDirs reclaimed=$reclaimed bytes',
       );
     }
     return report;
