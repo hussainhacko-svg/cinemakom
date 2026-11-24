@@ -297,10 +297,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).
   - *Done 2026-11-19:* Android asks for the display's fastest refresh rate (`MainActivity`). OnePlus/ColorOS had held the app at 60 Hz. On the owner's OnePlus (120 Hz) the frame-timing check (`integration_test/scroll_perf_test.dart`) measured: UI thread about 1.5 ms and raster about 4.2 ms on average against an 8.3 ms budget, with under 1% of frames late while scrolling and about 1.5% when opening a title. Those late frames are the page-transition snapshot, which is how Flutter is built. Re-run the check after big UI changes.
 - *Done 2026-11-24:* a flight recorder for bugs that happen once (`lib/core/diagnostics`): uncaught errors, freezes (frames over 700 ms, the event loop blocked 1 s or more), the player's state changes, the remote's keys with the focus, screens, network failures and download steps, kept on the device in `logs/current.log` and `previous.log` (the last session). Settings → Help → Activity log shows it and hands it over: the share sheet on phones, Save a copy on computers, a QR code on the TV that opens it on a phone on the same Wi-Fi (`LogServer`, a random link, only while the panel is open). A part of a screen that fails to build shows the background in release builds (`BrokenPart`), not Flutter's grey box.
-- Packaging:
-  - Android: APK/AAB
-  - Windows: MSIX or an installer (Inno Setup)
-  - Linux: AppImage or Flatpak, installing the `.desktop` file and the icons
+- Packaging: the plan is `docs/PACKAGING.md` (2026-11-24): files in the right folders first (XDG on Linux, Local/Roaming on Windows), then a per-user Inno Setup installer and winget on Windows, a Flatpak (then Flathub), an AUR package and a proper tarball on Linux. Android is the APK.
 
 ---
 
