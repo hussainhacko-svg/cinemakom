@@ -210,6 +210,97 @@ void main() {
     });
   });
 
+  // ExoPlayer's isPlaying is "frames moving right now": false whenever it
+  // buffers. On a weak connection it went true/false many times a second,
+  // and the whole player took that as pause/play: the Play/Pause icon
+  // flickered, the TV controls kept popping up and taking the focus, and
+  // OK during the stall played instead of pausing (the owner saw it on
+  // the TV, 2026-11-24). `playing` means "not paused", as on mpv; a stall
+  // is `buffering`.
+  group('playing means "not paused", whatever ExoPlayer buffers', () {
+    /// ExoPlayer stalling: buffering, frames stop, then a few frames.
+    Future<void> stall(FakeVideo v) async {
+      v
+        ..send(VideoEventType.bufferingStart)
+        ..send(VideoEventType.isPlayingStateUpdate, playing: false);
+      await settle();
+      v
+        ..send(VideoEventType.bufferingEnd)
+        ..send(VideoEventType.isPlayingStateUpdate, playing: true);
+      await settle();
+    }
+
+    test('a stall is buffering, never a pause', () async {
+      await engine.open(stream);
+      await settle();
+      expect(seen.playing.last, isTrue);
+      final before = seen.playing.length;
+      for (var i = 0; i < 20; i++) {
+        await stall(platform.last);
+      }
+      expect(seen.playing.skip(before), isEmpty, reason: '${seen.playing}');
+      expect(
+        seen.buffering.where((b) => b),
+        hasLength(greaterThanOrEqualTo(20)),
+      );
+    });
+
+    test('stalled with no frames yet: still playing', () async {
+      await engine.open(stream);
+      await settle();
+      platform.last
+        ..send(VideoEventType.bufferingStart)
+        ..send(VideoEventType.isPlayingStateUpdate, playing: false);
+      await settle();
+      expect(seen.playing.last, isTrue);
+      expect(seen.buffering.last, isTrue);
+    });
+
+    test('Pause and Play are what playing follows', () async {
+      await engine.open(stream);
+      await settle();
+      await engine.pause();
+      await settle();
+      expect(seen.playing.last, isFalse);
+      // A stall while paused doesn't make it play.
+      await stall(platform.last);
+      expect(seen.playing.last, isFalse);
+      await engine.play();
+      await settle();
+      expect(seen.playing.last, isTrue);
+    });
+
+    test('opened paused stays paused through a stall', () async {
+      await engine.open(stream, play: false);
+      await settle();
+      await stall(platform.last);
+      expect(seen.playing, isNot(contains(true)));
+    });
+
+    test('the end of the file stops it', () async {
+      await engine.open(stream);
+      await settle();
+      platform.last.send(VideoEventType.completed);
+      await settle();
+      expect(seen.playing.last, isFalse);
+      expect(seen.completed.last, isTrue);
+      // Play again from the end.
+      await engine.play();
+      await settle();
+      expect(seen.playing.last, isTrue);
+    });
+
+    test('a new file opened paused after a playing one', () async {
+      await engine.open(stream);
+      await settle();
+      await engine.open(other, play: false);
+      await settle();
+      expect(seen.playing.last, isFalse);
+      await stall(platform.last);
+      expect(seen.playing.last, isFalse);
+    });
+  });
+
   group('errors', () {
     test('a file that won\'t open: its error, still "buffering" (the player '
         'recovers), and no native player left', () async {

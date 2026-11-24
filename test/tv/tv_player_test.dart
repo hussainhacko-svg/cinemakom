@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cinemakom/app/widgets/bulb_loader.dart';
 import 'package:cinemakom/core/network/api_endpoints.dart';
 import 'package:cinemakom/core/storage/preferences.dart';
 import 'package:cinemakom/data/models/localized_text.dart';
@@ -319,6 +320,37 @@ void main() {
     expect(engine.seeks.last, const Duration(milliseconds: 27121));
     expect(find.text('Skip intro'), findsNothing);
     expect(tv.focused, 'Video');
+  });
+
+  // A weak connection mid-intro (seen on the TV, 2026-11-24): the engine
+  // buffers on and off many times a second. That's the loader, not a pause:
+  // the controls stay hidden, Skip intro keeps the focus, OK still skips.
+  testWidgets('a stall in the intro: the loader, and Skip intro still works', (
+    tester,
+  ) async {
+    final engine = FakeEngine();
+    final tv = await _open(tester, engine, at: const Duration(seconds: 2));
+    await tester.pump(TvPlayerScreen.hideAfter);
+    await tester.pumpAndSettle();
+    expect(tv.focused, 'Skip intro');
+
+    // Inside the 8 s Skip intro stays pinned (PlayerController.introPinnedFor).
+    for (var i = 0; i < 4; i++) {
+      engine.emitBuffering(true);
+      await tester.pump(const Duration(milliseconds: 400));
+      engine.emitBuffering(false);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    engine.emitBuffering(true);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(BulbLoader), findsOneWidget);
+    expect(tv.focused, 'Skip intro');
+
+    await tv.ok();
+    expect(engine.seeks.last, const Duration(milliseconds: 27121));
+    expect(engine.isPlaying, isTrue, reason: 'OK skipped, it didn\'t pause');
+    engine.emitBuffering(false);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('a series: Episodes panel opens on the episode playing', (

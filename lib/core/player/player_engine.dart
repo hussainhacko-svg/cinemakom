@@ -57,6 +57,9 @@ abstract interface class PlayerEngine {
 
   /// The end of the buffered range.
   Stream<Duration> get buffered;
+  /// Whether playback was asked for and not paused: not whether frames are
+  /// moving right now. A stall is [buffering] with [playing] still true
+  /// (ExoPlayer's own isPlaying drops at every stall, PLAYER.md §6).
   Stream<bool> get playing;
   Stream<bool> get buffering;
 

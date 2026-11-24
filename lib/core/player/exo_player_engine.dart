@@ -47,6 +47,19 @@ class ExoPlayerEngine implements PlayerEngine {
   List<Caption> _captions = const [];
   List<String> _shownLines = const [];
 
+  /// Whether playback was asked for and not paused: what [playing]
+  /// reports. ExoPlayer's own isPlaying is false whenever it buffers, and
+  /// on a weak connection it flipped many times a second; that's
+  /// [buffering] here, as on mpv (PLAYER.md §6).
+  bool _wantsPlay = false;
+  bool _reportedPlaying = false;
+
+  void _reportPlaying() {
+    if (_disposed || _wantsPlay == _reportedPlaying) return;
+    _reportedPlaying = _wantsPlay;
+    _playing.add(_wantsPlay);
+  }
+
   /// The last value without an error.
   VideoPlayerValue? _last;
   String? _lastError;
@@ -115,6 +128,8 @@ class ExoPlayerEngine implements PlayerEngine {
     _lastError = null;
     _completed.add(false);
     _buffering.add(true);
+    _wantsPlay = false;
+    _reportedPlaying = false;
     _playing.add(false);
     // External subtitles belong to the old file (PlayerEngine.open).
     _subtitleId++;
@@ -157,7 +172,11 @@ class ExoPlayerEngine implements PlayerEngine {
     controller.addListener(() => _onValue(controller));
     _controller.value = controller;
     _onValue(controller);
-    if (play) await controller.play();
+    if (play) {
+      _wantsPlay = true;
+      _reportPlaying();
+      await controller.play();
+    }
   }
 
   void _onValue(VideoPlayerController controller) {
@@ -188,9 +207,11 @@ class ExoPlayerEngine implements PlayerEngine {
     }
     final end = _bufferedEnd(v);
     if (last == null || end != _bufferedEnd(last)) _buffered.add(end);
-    if (last == null || v.isPlaying != last.isPlaying) {
-      _playing.add(v.isPlaying);
+    // The end of the file stops it (ExoPlayer pauses there).
+    if (v.isCompleted && (last == null || !last.isCompleted)) {
+      _wantsPlay = false;
     }
+    _reportPlaying();
     if (last == null || v.isBuffering != last.isBuffering) {
       _buffering.add(v.isBuffering);
     }
@@ -209,10 +230,22 @@ class ExoPlayerEngine implements PlayerEngine {
   }
 
   @override
-  Future<void> play() async => _controller.value?.play();
+  Future<void> play() async {
+    final controller = _controller.value;
+    if (_disposed || controller == null) return;
+    _wantsPlay = true;
+    _reportPlaying();
+    await controller.play();
+  }
 
   @override
-  Future<void> pause() async => _controller.value?.pause();
+  Future<void> pause() async {
+    final controller = _controller.value;
+    if (_disposed || controller == null) return;
+    _wantsPlay = false;
+    _reportPlaying();
+    await controller.pause();
+  }
 
   @override
   Future<void> seek(Duration position) async =>
