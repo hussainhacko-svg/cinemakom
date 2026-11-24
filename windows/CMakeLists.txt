@@ -57,6 +57,55 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Replace media_kit_libs_windows_video's 2023-09-24 libmpv-2.dll with a
+# current build pinned by SHA256 (docs/PACKAGING.md §4). Keep this current:
+# an FFmpeg or mpv security release means a Cinemakom release.
+set(CINEMAKOM_LIBMPV_VERSION "20261111-git-bcde6b93cc")
+set(CINEMAKOM_LIBMPV_ARCHIVE_NAME "mpv-dev-x86_64-${CINEMAKOM_LIBMPV_VERSION}.7z")
+set(CINEMAKOM_LIBMPV_URL
+  "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261111/${CINEMAKOM_LIBMPV_ARCHIVE_NAME}")
+set(CINEMAKOM_LIBMPV_SHA256
+  "273c079b11ea5575822f972756f4c9a71149a5c10130353abeb8586738938452")
+set(CINEMAKOM_LIBMPV_ARCHIVE "${CMAKE_BINARY_DIR}/${CINEMAKOM_LIBMPV_ARCHIVE_NAME}")
+set(CINEMAKOM_LIBMPV_DIR "${CMAKE_BINARY_DIR}/cinemakom-libmpv")
+set(CINEMAKOM_LIBMPV_DLL "${CINEMAKOM_LIBMPV_DIR}/libmpv-2.dll")
+set(CINEMAKOM_LIBMPV_STAMP "${CINEMAKOM_LIBMPV_DIR}/.sha256")
+
+set(_cinemakom_need_libmpv TRUE)
+if(EXISTS "${CINEMAKOM_LIBMPV_DLL}" AND EXISTS "${CINEMAKOM_LIBMPV_STAMP}")
+  file(READ "${CINEMAKOM_LIBMPV_STAMP}" _cinemakom_stamp)
+  string(STRIP "${_cinemakom_stamp}" _cinemakom_stamp)
+  if(_cinemakom_stamp STREQUAL "${CINEMAKOM_LIBMPV_SHA256}")
+    set(_cinemakom_need_libmpv FALSE)
+  endif()
+endif()
+
+if(_cinemakom_need_libmpv)
+  message(STATUS "Downloading current libmpv (${CINEMAKOM_LIBMPV_VERSION})...")
+  file(DOWNLOAD "${CINEMAKOM_LIBMPV_URL}" "${CINEMAKOM_LIBMPV_ARCHIVE}"
+    EXPECTED_HASH "SHA256=${CINEMAKOM_LIBMPV_SHA256}"
+    TLS_VERIFY ON
+    STATUS _cinemakom_dl_status)
+  list(GET _cinemakom_dl_status 0 _cinemakom_dl_code)
+  if(NOT _cinemakom_dl_code EQUAL 0)
+    list(GET _cinemakom_dl_status 1 _cinemakom_dl_msg)
+    message(FATAL_ERROR "Failed to download ${CINEMAKOM_LIBMPV_URL}: ${_cinemakom_dl_msg}")
+  endif()
+  file(REMOVE_RECURSE "${CINEMAKOM_LIBMPV_DIR}")
+  file(MAKE_DIRECTORY "${CINEMAKOM_LIBMPV_DIR}")
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E tar xf "${CINEMAKOM_LIBMPV_ARCHIVE}" libmpv-2.dll
+    WORKING_DIRECTORY "${CINEMAKOM_LIBMPV_DIR}"
+    RESULT_VARIABLE _cinemakom_tar_res)
+  if(NOT _cinemakom_tar_res EQUAL 0 OR NOT EXISTS "${CINEMAKOM_LIBMPV_DLL}")
+    message(FATAL_ERROR "Failed to extract libmpv-2.dll from ${CINEMAKOM_LIBMPV_ARCHIVE}")
+  endif()
+  file(WRITE "${CINEMAKOM_LIBMPV_STAMP}" "${CINEMAKOM_LIBMPV_SHA256}\n")
+endif()
+
+list(FILTER PLUGIN_BUNDLED_LIBRARIES EXCLUDE REGEX "libmpv-2\\.dll$")
+list(APPEND PLUGIN_BUNDLED_LIBRARIES "${CINEMAKOM_LIBMPV_DLL}")
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -106,3 +155,15 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Bundle the Visual C++ runtime DLLs (msvcp140.dll, vcruntime140.dll,
+# vcruntime140_1.dll, etc.) so the app starts on PCs without the Microsoft
+# Visual C++ Redistributable installed (docs/PACKAGING.md §4).
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+include(InstallRequiredSystemLibraries)
+if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+  install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    CONFIGURATIONS Profile;Release
+    COMPONENT Runtime)
+endif()

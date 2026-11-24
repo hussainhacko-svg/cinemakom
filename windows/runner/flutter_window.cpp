@@ -1,5 +1,6 @@
 #include "flutter_window.h"
 
+#include <cstdlib>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -41,6 +42,21 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   if (flutter_controller_) {
+    // Guarantee the process exits even if a plugin destructor, libmpv/ANGLE
+    // DLL detach, or background Dart isolate hangs after the window closes.
+    // Otherwise a windowless cinemakom.exe lingers, holding the single-instance
+    // mutex and blocking relaunch or installer upgrades.
+    HANDLE watchdog = ::CreateThread(
+        nullptr, 0,
+        [](LPVOID) -> DWORD {
+          ::Sleep(3000);
+          ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);
+          return 0;
+        },
+        nullptr, 0, nullptr);
+    if (watchdog != nullptr) {
+      ::CloseHandle(watchdog);
+    }
     flutter_controller_ = nullptr;
   }
 

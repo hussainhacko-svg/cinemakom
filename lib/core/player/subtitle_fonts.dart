@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../platform/app_dirs.dart';
@@ -25,8 +26,8 @@ Future<String?> _copyFont() async {
     // A copy of an asset: the cache folder on desktop.
     final base =
         AppDirs.current?.cache ?? (await getApplicationSupportDirectory()).path;
-    final dir = Directory('$base/subtitle-fonts');
-    final file = File('${dir.path}/${libassFontAsset.split('/').last}');
+    final dir = Directory(p.join(base, 'subtitle-fonts'));
+    final file = File(p.join(dir.path, p.posix.basename(libassFontAsset)));
     if (!file.existsSync()) {
       final data = await rootBundle.load(libassFontAsset);
       await dir.create(recursive: true);

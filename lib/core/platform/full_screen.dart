@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:ui' show Size;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -36,10 +38,22 @@ class _WindowFullScreen implements FullScreen {
 
   @override
   void set(bool on) {
-    try {
-      _window?.isFullScreen = on;
-    } on Object {
-      // Nothing to do.
+    void apply() {
+      try {
+        _window?.isFullScreen = on;
+      } on Object {
+        // Nothing to do.
+      }
+    }
+
+    // On Windows, toggling full screen calls Win32 SetWindowPos synchronously,
+    // which dispatches WM_SIZE and pumps a nested Flutter frame. Doing that
+    // inside handleDrawFrame (e.g. PlayerScreen.dispose) clears the outer
+    // frame's timestamp and throws on post-frame callbacks.
+    if (SchedulerBinding.instance.schedulerPhase != SchedulerPhase.idle) {
+      Timer.run(apply);
+    } else {
+      apply();
     }
   }
 }

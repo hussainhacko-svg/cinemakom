@@ -12,7 +12,9 @@ Future<AppInfo> readAppInfo() async {
   var version = '?';
   try {
     final package = await PackageInfo.fromPlatform();
-    version = '${package.version} (${package.buildNumber})';
+    version = package.buildNumber.isEmpty
+        ? package.version
+        : '${package.version} (${package.buildNumber})';
   } on Object {
     // Unknown version.
   }

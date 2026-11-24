@@ -175,7 +175,16 @@ jobs:
           flutter build windows --release
           --build-name="${{ steps.ver.outputs.name }}"
           --build-number="${{ steps.ver.outputs.number }}"
-      - name: Package zip
+      - name: Verify bundled runtime and libmpv DLLs
+        shell: pwsh
+        run: |
+          $release = "build/windows/x64/runner/Release"
+          foreach ($file in @("cinemakom.exe", "libmpv-2.dll", "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")) {
+            if (-not (Test-Path "$release/$file")) {
+              throw "Missing required release file: $release/$file"
+            }
+          }
+      - name: Package portable zip
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -183,6 +192,54 @@ jobs:
             -Path "build/windows/x64/runner/Release/*" `
             -DestinationPath "dist/cinemakom-$($env:TAG_NAME)-windows-x64.zip" `
             -Force
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          $isccPaths = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          $hasArabic = $iscc -and (Test-Path (Join-Path (Split-Path $iscc) "Languages\Arabic.isl"))
+          if (-not $hasArabic) {
+            choco upgrade innosetup --yes --no-progress
+            $iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) {
+            throw "Inno Setup (ISCC.exe) not found after installation"
+          }
+          & $iscc `
+            "/DMyAppVersion=${{ steps.ver.outputs.name }}" `
+            "/DSourceDir=$PWD\build\windows\x64\runner\Release" `
+            "/DOutputDir=$PWD\dist" `
+            "/DOutputBaseFilename=cinemakom-$($env:TAG_NAME)-windows-x64-setup" `
+            windows\packaging\cinemakom.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw "ISCC failed with exit code $LASTEXITCODE"
+          }
+      - name: Smoke test installer
+        shell: pwsh
+        run: |
+          $setup = "$PWD\dist\cinemakom-$($env:TAG_NAME)-windows-x64-setup.exe"
+          $installDir = "$env:LOCALAPPDATA\Programs\Cinemakom"
+          $exe = "$installDir\cinemakom.exe"
+          $unins = "$installDir\unins000.exe"
+
+          $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Silent install failed with exit code $($p.ExitCode)" }
+          if (-not (Test-Path $exe)) { throw "Installed executable missing: $exe" }
+          if (-not (Test-Path "$installDir\vcruntime140_1.dll")) { throw "Bundled vcruntime140_1.dll missing" }
+
+          $app = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 5
+          if ($app.HasExited) { throw "Cinemakom exited early with code $($app.ExitCode)" }
+          $app.CloseMainWindow() | Out-Null
+          if (-not $app.WaitForExit(5000)) { $app.Kill() }
+
+          $u = Start-Process -FilePath $unins -ArgumentList "/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES" -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "Silent uninstall failed with exit code $($u.ExitCode)" }
+          if (Test-Path $exe) { throw "Executable still exists after uninstall: $exe" }
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
