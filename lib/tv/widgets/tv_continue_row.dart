@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -52,6 +53,7 @@ class TvContinueRow extends ConsumerWidget {
             height: topRoom + cardHeight + gap,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
+              scrollCacheExtent: const ScrollCacheExtent.pixels(600),
               padding: const EdgeInsetsDirectional.fromSTEB(
                 TvSpace.safeH,
                 topRoom,
@@ -124,7 +126,9 @@ class _ContinueCard extends StatelessWidget {
           scale: TvFocusStyle.wideCardScale,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: focused ? context.palette.boothRaised : context.palette.booth,
+              color: focused
+                  ? context.palette.boothRaised
+                  : context.palette.booth,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

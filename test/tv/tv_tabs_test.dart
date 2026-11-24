@@ -483,6 +483,7 @@ void main() {
       await tv.up();
       await tv.up();
       await tv.up();
+      await tv.up();
       expect(tv.focused, startsWith('Language'));
     });
 

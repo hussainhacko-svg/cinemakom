@@ -260,12 +260,16 @@ class PlayerController extends Notifier<PlayerState> {
     );
 
     final repo = _repo;
-    final downloads = ref.read(downloadsRepositoryProvider);
+    final downloads = supportsDownloads
+        ? ref.read(downloadsRepositoryProvider)
+        : null;
     final saved = start == null
         ? _quietly(_library.progress(videoId), null)
         : Future<WatchProgress?>.value();
     // A downloaded file plays from disk, with its saved subtitles.
-    final local = await _quietly(downloads.playable(videoId), null);
+    final local = downloads == null
+        ? null
+        : await _quietly(downloads.playable(videoId), null);
     if (!_isCurrent(session)) return;
     _local = local != null;
     Future<T> online<T>(Future<T> future, T fallback) => _quietly(
@@ -290,7 +294,7 @@ class PlayerController extends Notifier<PlayerState> {
     final episodes = request.isSeries && state.episodes.isEmpty
         ? online(repo.episodes(seriesId), const <Episode>[]).then(
             // Offline: the downloaded episodes, so Next still works.
-            (list) async => list.isEmpty && local != null
+            (list) async => list.isEmpty && local != null && downloads != null
                 ? await _quietly(
                     downloads.downloadedEpisodes(seriesId),
                     const <Episode>[],

@@ -41,17 +41,34 @@ class _TvTextEntryState extends State<TvTextEntry> {
   final _field = FocusNode(debugLabel: 'TvTextEntry field');
   final _button = GlobalKey();
   bool _editing = false;
+  bool _hadFieldFocus = false;
 
   /// The search box design: a 56 dp pill.
   static const double height = 56;
 
   @override
+  void initState() {
+    super.initState();
+    _field.addListener(_onFieldFocus);
+  }
+
+  @override
   void dispose() {
+    _field.removeListener(_onFieldFocus);
     _field.dispose();
     super.dispose();
   }
 
+  void _onFieldFocus() {
+    if (_field.hasFocus) {
+      _hadFieldFocus = true;
+    } else if (_editing && _hadFieldFocus) {
+      _stop();
+    }
+  }
+
   void _start() {
+    _hadFieldFocus = false;
     setState(() => _editing = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _field.requestFocus();
@@ -61,6 +78,7 @@ class _TvTextEntryState extends State<TvTextEntry> {
   /// Back to D-pad moves, focus on the box again.
   bool _stop() {
     if (!_editing) return false;
+    _hadFieldFocus = false;
     setState(() => _editing = false);
     final button = _button.currentContext;
     if (button != null) Focus.of(button).requestFocus();

@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/l10n/app_localizations.dart';
@@ -104,6 +105,7 @@ class TvPosterRow extends StatelessWidget {
         height: height,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
+          scrollCacheExtent: const ScrollCacheExtent.pixels(600),
           padding: const EdgeInsetsDirectional.fromSTEB(
             TvSpace.safeH,
             TvPoster.growRoom,

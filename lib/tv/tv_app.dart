@@ -119,6 +119,7 @@ class _TvAppState extends ConsumerState<TvApp> with WidgetsBindingObserver {
       locale: language.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: _localizationsDelegates,
+      scrollBehavior: isAppleTv ? const _AppleTvScrollBehavior() : null,
       theme: buildMarqueeTvTheme(
         arabic: language == AppLanguage.arabic,
         palette: MarqueePalette.forProfile(theme),
@@ -250,6 +251,24 @@ class _DownloadsState extends ConsumerState<_Downloads>
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Uses [ClampingScrollPhysics] without overscroll indicators on Apple TV so
+/// focus-driven scrolling matches Android TV instead of rubber-banding under
+/// iOS's default [BouncingScrollPhysics].
+class _AppleTvScrollBehavior extends MaterialScrollBehavior {
+  const _AppleTvScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const ClampingScrollPhysics();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }
 
 /// Maps Apple TV's 1920 × 1080 pt canvas to Cinemakom's 960 × 540 dp TV

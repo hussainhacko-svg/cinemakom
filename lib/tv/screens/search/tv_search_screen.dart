@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -87,6 +88,7 @@ class _TvSearchScreenState extends ConsumerState<TvSearchScreen> {
       order: 1,
       builder: (context, scroll) => CustomScrollView(
         controller: scroll,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(600),
         slivers: [
           SliverPadding(
             // The box's ring at the top, which the scroll view clips.

@@ -134,7 +134,10 @@ double? _minimal(
 void _scrollTo(ScrollPosition position, double target, bool animate) {
   final to = target.clamp(position.minScrollExtent, position.maxScrollExtent);
   if ((to - position.pixels).abs() < 0.5) return;
-  if (animate) {
+  // Jump when repeating or when a rapid tap/swipe arrives mid-animation
+  // (e.g. Apple TV emits 80 ms KeyDownEvent repeats instead of KeyRepeatEvent),
+  // so the viewport never lags behind focus or outruns lazy list cacheExtent.
+  if (animate && !position.isScrollingNotifier.value) {
     position.animateTo(
       to,
       duration: TvFocusStyle.duration,

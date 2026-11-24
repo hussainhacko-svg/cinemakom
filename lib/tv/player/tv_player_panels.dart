@@ -204,7 +204,9 @@ class _StepButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: context.palette.boothRaised,
           border: Border.all(
-            color: focused ? context.palette.velvetStrong : context.palette.velvet,
+            color: focused
+                ? context.palette.velvetStrong
+                : context.palette.velvet,
           ),
         ),
         child: Icon(icon, size: 22, color: context.palette.cream),

@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -374,6 +375,7 @@ class _Cast extends StatelessWidget {
               order: order,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
+                scrollCacheExtent: const ScrollCacheExtent.pixels(600),
                 padding: const EdgeInsetsDirectional.fromSTEB(
                   TvSpace.safeH,
                   22,

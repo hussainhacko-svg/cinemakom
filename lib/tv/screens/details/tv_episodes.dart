@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -159,6 +160,7 @@ class TvEpisodes extends StatelessWidget {
               child: ListView.separated(
                 // Room for the focus ring, which the list clips.
                 padding: EdgeInsetsDirectional.fromSTEB(outer, 8, _ringRoom, 8),
+                scrollCacheExtent: const ScrollCacheExtent.pixels(600),
                 itemCount: entries.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 6),
                 itemBuilder: (context, i) {
@@ -191,6 +193,7 @@ class TvEpisodes extends StatelessWidget {
               keyline: 0,
               child: ListView.separated(
                 padding: EdgeInsetsDirectional.fromSTEB(_ringRoom, 8, outer, 8),
+                scrollCacheExtent: const ScrollCacheExtent.pixels(600),
                 itemCount: shown.length + (downloads ? 1 : 0),
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, row) {
