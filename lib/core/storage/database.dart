@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import 'legacy_files.dart';
+
 part 'database.g.dart';
 
 /// How far each movie or episode was watched (PLAYER.md §7.6). Display
@@ -138,7 +140,17 @@ class Downloads extends Table {
 @DriftDatabase(tables: [WatchHistory, Favorites, ContinueHidden, Downloads])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
-    : super(executor ?? driftDatabase(name: 'cinemakom'));
+    : super(
+        executor ??
+            driftDatabase(
+              name: 'cinemakom',
+              // The data folder on desktop, not drift's default Documents
+              // (docs/PACKAGING.md §2); Android unchanged.
+              native: const DriftNativeOptions(
+                databaseDirectory: appDatabaseDirectory,
+              ),
+            ),
+      );
 
   /// 1: watch history (Phase 4). 2: favorites and hidden Continue titles.
   /// 3: downloads. 4: downloads reliability fields (DOWNLOADS.md §5.3).

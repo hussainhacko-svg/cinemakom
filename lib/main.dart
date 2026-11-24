@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +10,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/app.dart';
 import 'app/widgets/broken_part.dart';
 import 'core/diagnostics/diagnostics.dart';
+import 'core/platform/app_dirs.dart';
 import 'core/platform/full_screen.dart';
 import 'core/platform/orientation.dart';
 import 'core/platform/platform_info.dart';
+import 'core/storage/legacy_files.dart';
 import 'core/storage/preferences.dart';
 import 'tv/tv_app.dart';
 
@@ -18,6 +22,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await initPlatformInfo();
+  // Desktop: the XDG folders on Linux, Local AppData on Windows
+  // (docs/PACKAGING.md §2). The old log moves before the log opens it.
+  await initAppDirs();
+  await moveDesktopLogs();
   // The flight recorder (lib/core/diagnostics): errors, freezes and what
   // happened before them, kept on the device for Settings → Help.
   await startDiagnostics(
@@ -46,6 +54,7 @@ Future<void> main() async {
   // The TV has its own UI (docs/TV.md). On Linux the define shows it in a
   // window the size Android TV draws apps at.
   if (useTvUi && isDesktop) setWindowContentSize(const Size(960, 540));
+  unawaited(tidyLegacyFiles());
   runApp(
     ProviderScope(
       retry: noRetry,

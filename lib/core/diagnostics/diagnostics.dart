@@ -7,14 +7,18 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../platform/app_dirs.dart';
 import '../platform/app_info.dart';
 import 'event_log.dart';
 
 /// Where the log files are. On Android it's the app's external folder,
 /// which `adb pull` reaches without root
-/// (`/sdcard/Android/data/<package>/files/logs`); elsewhere the app's
-/// support folder.
+/// (`/sdcard/Android/data/<package>/files/logs`); on desktop the state
+/// folder (`~/.local/state/<id>/logs`, Local AppData on Windows).
 Future<Directory> logDirectory() async {
+  if (AppDirs.current case final dirs?) {
+    return Directory('${dirs.state}${Platform.pathSeparator}logs');
+  }
   Directory? base;
   if (Platform.isAndroid) {
     try {

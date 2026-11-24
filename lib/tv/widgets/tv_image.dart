@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/theme/marquee_colors.dart';
 import '../../app/widgets/media_image.dart';
 import '../../core/network/api_client.dart';
+import '../../core/storage/image_cache.dart';
 import '../theme/tv_space.dart';
 
 /// When scrolling has stopped, so cards on screen can swap their thumbnail
@@ -117,6 +118,7 @@ class _TvImageState extends ConsumerState<TvImage> {
             CachedNetworkImage(
               imageUrl: url,
               httpHeaders: ApiClient.defaultHeaders,
+              cacheManager: appImageCache,
               memCacheWidth: width,
               fit: widget.fit,
               alignment: widget.alignment,

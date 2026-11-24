@@ -16,9 +16,17 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
-// Implements GApplication::activate.
+// Implements GApplication::activate. In release builds the app is unique
+// (see my_application_new): launching it again activates this process,
+// which brings its window to the front instead of opening a second one.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  GList* windows = gtk_application_get_windows(GTK_APPLICATION(application));
+  if (windows != nullptr) {
+    gtk_window_present(GTK_WINDOW(windows->data));
+    return;
+  }
 
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
@@ -134,7 +142,18 @@ MyApplication* my_application_new() {
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
 
+  // One instance per user in release builds (docs/PACKAGING.md §3): two
+  // would run two download engines on one library. Debug builds stay
+  // non-unique, so `flutter run` and the integration tests start even
+  // while the installed app is open.
+#if defined(NDEBUG) && GLIB_CHECK_VERSION(2, 74, 0)
+  const GApplicationFlags flags = G_APPLICATION_DEFAULT_FLAGS;
+#elif defined(NDEBUG)
+  const GApplicationFlags flags = G_APPLICATION_FLAGS_NONE;
+#else
+  const GApplicationFlags flags = G_APPLICATION_NON_UNIQUE;
+#endif
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+                                     flags, nullptr));
 }

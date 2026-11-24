@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../platform/app_dirs.dart';
+
 /// The fallback font libass uses for styled (ASS) subtitles, whose files
 /// name fonts no device has. It must be the Regular file: with only the
 /// Medium one, libass renders nothing (PLAYER.md §13).
@@ -20,9 +22,10 @@ Future<String?> libassFontsDir() => _fontsDir ??= _copyFont();
 
 Future<String?> _copyFont() async {
   try {
-    final dir = Directory(
-      '${(await getApplicationSupportDirectory()).path}/libass-fonts',
-    );
+    // A copy of an asset: the cache folder on desktop.
+    final base =
+        AppDirs.current?.cache ?? (await getApplicationSupportDirectory()).path;
+    final dir = Directory('$base/subtitle-fonts');
     final file = File('${dir.path}/${libassFontAsset.split('/').last}');
     if (!file.existsSync()) {
       final data = await rootBundle.load(libassFontAsset);

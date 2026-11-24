@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/diagnostics/event_log.dart';
 
+import '../../core/platform/app_dirs.dart';
 import '../../core/platform/platform_info.dart';
 import '../../core/platform/storage_space.dart';
 import '../models/download.dart';
@@ -15,8 +16,11 @@ import 'download_store.dart';
 /// Where new downloads go: a base directory and a folder in it.
 typedef DownloadRoot = ({String baseDirectory, String directory});
 
-/// The default desktop download folder: `~/Videos/Cinemakom`.
+/// The default desktop download folder: `Cinemakom` in the user's videos
+/// folder (`XDG_VIDEOS_DIR` on Linux, which may be translated or moved;
+/// the Videos known folder on Windows, wherever the user put it).
 String defaultDesktopFolder() {
+  if (AppDirs.current case final dirs?) return p.join(dirs.videos, 'Cinemakom');
   final home =
       Platform.environment['HOME'] ??
       Platform.environment['USERPROFILE'] ??
@@ -212,7 +216,9 @@ Future<DownloadRoot> platformDownloadRoot(String? desktopFolder) async {
 /// destination so finishing is a rename, not a copy (docs/DOWNLOADS.md §5.6).
 Future<String?> platformPartialDir(DownloadRoot root) async {
   if (isDesktop) {
-    return p.join(root.directory, '.partial');
+    final dir = p.join(root.directory, '.partial');
+    if (isWindows) await _hideOnWindows(dir);
+    return dir;
   }
   if (isAndroid) {
     try {
@@ -392,5 +398,17 @@ Future<void> _moveFile(File src, String destPath) async {
   } on FileSystemException {
     await src.copy(destPath);
     await src.delete();
+  }
+}
+
+/// A leading dot hides a folder on Linux, not on Windows: there the
+/// unfinished downloads' folder gets the hidden attribute, so it doesn't
+/// show in Videos.
+Future<void> _hideOnWindows(String dir) async {
+  try {
+    await Directory(dir).create(recursive: true);
+    await Process.run('attrib', ['+h', dir]);
+  } on Object catch (e) {
+    logEvent('downloads', "couldn't hide $dir: $e");
   }
 }

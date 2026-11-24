@@ -35,6 +35,11 @@ bool get isDesktop =>
     } &&
     !kIsWeb;
 
+bool get isLinux => defaultTargetPlatform == TargetPlatform.linux && !kIsWeb;
+
+bool get isWindows =>
+    defaultTargetPlatform == TargetPlatform.windows && !kIsWeb;
+
 /// Phones, tablets and TVs: only Android (no Apple platforms, decision
 /// 2026-11-22).
 bool get isMobile => isAndroid;

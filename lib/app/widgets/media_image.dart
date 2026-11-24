@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/storage/image_cache.dart';
 import '../theme/marquee_colors.dart';
 
 /// Whether [MediaImage] loads from the network. Widget tests turn it off.
@@ -48,6 +49,7 @@ class MediaImage extends ConsumerWidget {
         final image = CachedNetworkImage(
           imageUrl: url,
           httpHeaders: ApiClient.defaultHeaders,
+          cacheManager: appImageCache,
           memCacheWidth: width,
           fit: fit,
           alignment: alignment,

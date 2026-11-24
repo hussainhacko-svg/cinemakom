@@ -7,12 +7,16 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/theme/marquee_colors.dart';
 import '../../../app/widgets/media_image.dart' show networkImagesProvider;
 import '../../../core/network/api_client.dart';
+import '../../../core/storage/image_cache.dart';
 import '../../../data/models/playback_models.dart';
 
 /// A sprite sheet with the shared headers, through the image cache. The
 /// player prefetches with the same provider, so the frame shows at once.
-ImageProvider seekSheetImage(String url) =>
-    CachedNetworkImageProvider(url, headers: ApiClient.defaultHeaders);
+ImageProvider seekSheetImage(String url) => CachedNetworkImageProvider(
+  url,
+  headers: ApiClient.defaultHeaders,
+  cacheManager: appImageCache,
+);
 
 /// One seek-preview frame: its cell of the sprite sheet, drawn with
 /// `drawImageRect` (PLAYER.md §7.8), stretched to [width] × [height]. A
