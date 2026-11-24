@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -229,6 +230,76 @@ void main() {
     ]);
     expect(peak, 3);
     expect(adapter.requests, hasLength(10));
+  });
+
+  group('contentLength', () {
+    /// A body that never ends, counting what was read of it and whether
+    /// the connection was let go.
+    (Stream<Uint8List>, int Function(), bool Function()) endless() {
+      var sent = 0;
+      var closed = false;
+      late final StreamController<Uint8List> c;
+      c = StreamController<Uint8List>(
+        onListen: () async {
+          while (!closed) {
+            sent += 1 << 20;
+            c.add(Uint8List(1 << 20));
+            await Future<void>.delayed(Duration.zero);
+          }
+        },
+        onCancel: () => closed = true,
+      );
+      return (c.stream, () => sent, () => closed);
+    }
+
+    test('the size from Content-Range, and the range asked for', () async {
+      final (client, adapter) = _client(
+        (_, _) => ResponseBody.fromString(
+          'x',
+          206,
+          headers: {
+            'content-range': ['bytes 0-0/3000000000'],
+            'content-length': ['1'],
+          },
+        ),
+      );
+      expect(await client.contentLength('https://cdn/v.mp4'), 3000000000);
+      expect(adapter.requests.single.$1.headers['Range'], 'bytes=0-0');
+    });
+
+    // A server that ignores Range sends the whole video. The old code read
+    // it into memory: for a 4 GB film, 4 GB, for every quality at once.
+    test('a server that ignores the range: the size, never the body', () async {
+      final (body, sent, closed) = endless();
+      final (client, _) = _client(
+        (_, _) => ResponseBody(
+          body,
+          200,
+          headers: {
+            'content-length': ['4000000000'],
+          },
+        ),
+      );
+      final size = await client
+          .contentLength('https://cdn/v.mp4')
+          .timeout(const Duration(seconds: 5));
+      expect(size, 4000000000);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(closed(), isTrue, reason: 'the connection is let go');
+      expect(sent(), lessThanOrEqualTo(4 << 20), reason: 'read ${sent()} B');
+    });
+
+    test('an error answer is let go too, and gives no size', () async {
+      final (body, sent, closed) = endless();
+      final (client, _) = _client((_, _) => ResponseBody(body, 403));
+      final size = await client
+          .contentLength('https://cdn/v.mp4')
+          .timeout(const Duration(seconds: 5));
+      expect(size, isNull);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(closed(), isTrue);
+      expect(sent(), lessThanOrEqualTo(4 << 20));
+    });
   });
 }
 

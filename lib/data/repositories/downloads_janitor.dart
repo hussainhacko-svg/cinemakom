@@ -34,8 +34,9 @@ class JanitorReport {
 /// §5.7):
 /// 1. Stray `com.bbflight.background_downloader*` temp files in every engine
 ///    temp folder.
-/// 2. The leftover video of a *failed* download, at that download's own path
-///    (an interrupted copy). Nothing else: the download folders are the
+/// 2. The leftover video of a *failed* download, at that download's own path,
+///    when it's known to be cut short (its size is known and the file isn't
+///    that size; one of unknown size may be whole). Nothing else: the download folders are the
 ///    user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video or
 ///    subtitle no row claims (renamed, from an earlier install, put there by
 ///    hand) and a finished download's video are never deleted (PR #4 review,
@@ -131,9 +132,10 @@ class DownloadsJanitor {
     final rowVideoPaths = <String, String>{};
     final claimedSubtitles = <String>{};
     for (final d in rows) {
-      final videoPath = _norm(await pathOf(d));
+      final rawPath = await pathOf(d);
+      final videoPath = _norm(rawPath);
       rowVideoPaths[d.videoId] = videoPath;
-      if (d.status == DownloadStatus.failed) {
+      if (d.status == DownloadStatus.failed && _cutShort(d, rawPath)) {
         failedVideos.add(videoPath);
       } else {
         keptRowVideos.add(videoPath);
@@ -440,6 +442,17 @@ class DownloadsJanitor {
       }
     }
     return (removed, reclaimed);
+  }
+
+  /// Whether a failed download's file at [path] is a copy cut short: only
+  /// when its size is known and the file isn't that size (or isn't there).
+  /// One of unknown size may be the whole film, finished while the app
+  /// wasn't listening, so it's kept until the download learns its size.
+  static bool _cutShort(Download d, String path) {
+    final file = File(path);
+    if (!file.existsSync()) return true;
+    final total = d.totalBytes;
+    return total != null && total > 0 && _safeLengthSync(file) != total;
   }
 
   static String _norm(String path) => p.normalize(path).toLowerCase();

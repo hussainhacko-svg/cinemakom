@@ -141,6 +141,67 @@ void main() {
     },
   );
 
+  // A failed download's file is only known to be a cut-short copy when its
+  // size is known and the file isn't that size. A file of unknown size may
+  // be the whole film, finished while the app wasn't listening.
+  test('a failed download\'s file of unknown or full size is kept', () async {
+    final unknown = _write(p.join(dlRoot.path, 'U', 'U 1080p.mp4'), 700);
+    final full = _write(p.join(dlRoot.path, 'F', 'F 1080p.mp4'), 800);
+    final fullSub = _write(p.join(dlRoot.path, 'F', 'F 1080p.ar.srt'), 20);
+    final cut = _write(p.join(dlRoot.path, 'C', 'C 1080p.mp4'), 100);
+    final private = Directory(p.join(root.path, 'private'))..createSync();
+    final privUnknown = _write(p.join(private.path, 'P', 'P 1080p.mp4'), 50);
+    final rows = [
+      _row(
+        'u',
+        dir: p.dirname(unknown.path),
+        fileName: 'U 1080p.mp4',
+        status: DownloadStatus.failed,
+      ),
+      _row(
+        'f',
+        dir: p.dirname(full.path),
+        fileName: 'F 1080p.mp4',
+        status: DownloadStatus.failed,
+        totalBytes: 800,
+        subtitles: const [
+          DownloadedSubtitle(
+            language: 'ar',
+            fileName: 'F 1080p.ar.srt',
+            format: 'srt',
+          ),
+        ],
+      ),
+      _row(
+        'c',
+        dir: p.dirname(cut.path),
+        fileName: 'C 1080p.mp4',
+        status: DownloadStatus.failed,
+        totalBytes: 800,
+      ),
+      _row(
+        'pu',
+        dir: p.dirname(privUnknown.path),
+        fileName: 'P 1080p.mp4',
+        status: DownloadStatus.failed,
+      ),
+    ];
+    final report = await DownloadsJanitor(clock: () => now).sweep(
+      rows: rows,
+      tempDirs: [tempDir.path],
+      downloadRoots: [dlRoot.path],
+      privateRoots: [private.path],
+      pathOf: (d) async => p.join(d.directory, d.fileName),
+      canResume: (_) async => false,
+    );
+    expect(unknown.existsSync(), isTrue);
+    expect(full.existsSync(), isTrue);
+    expect(fullSub.existsSync(), isTrue);
+    expect(privUnknown.existsSync(), isTrue);
+    expect(cut.existsSync(), isFalse, reason: 'known size, cut short');
+    expect(report.removedVideos, 1);
+  });
+
   test('keeps every video the user owns; removes only a failed download\'s '
       'leftover, its subtitles and its emptied folder', () async {
     final goodDir = p.join(dlRoot.path, 'Good Movie');
@@ -233,6 +294,7 @@ void main() {
         dir: brokenDir,
         fileName: 'Broken Movie 720p.mp4',
         status: DownloadStatus.failed,
+        totalBytes: 1000, // 300 on disk: a copy cut short
         subtitles: const [
           DownloadedSubtitle(
             language: 'ar',

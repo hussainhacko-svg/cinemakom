@@ -112,19 +112,34 @@ String videoFileStem(
   );
 }
 
-/// Returns [stem] if `[directory]/[stem][ext]` does not exist, otherwise tries
+/// Returns [stem] if `[directory]/[stem][ext]` is free, otherwise tries
 /// `stem (2)`, `stem (3)`, ... so pre-existing user files are never overwritten
-/// (docs/DOWNLOADS.md §5.6).
-String uniqueFileStem(String directory, String stem, {String ext = '.mp4'}) {
-  if (!File(p.join(directory, '$stem$ext')).existsSync()) return stem;
+/// (docs/DOWNLOADS.md §5.6). Free means not on disk and not in [taken]
+/// (paths as [takenKey] gives them): a download's file only appears when it
+/// finishes, so the downloads on their way say which names are theirs.
+String uniqueFileStem(
+  String directory,
+  String stem, {
+  String ext = '.mp4',
+  Set<String> taken = const {},
+}) {
+  bool free(String s) {
+    final path = p.join(directory, '$s$ext');
+    return !taken.contains(takenKey(path)) && !File(path).existsSync();
+  }
+
+  if (free(stem)) return stem;
   for (var n = 2; n < 1000; n++) {
     final candidate = '$stem ($n)';
-    if (!File(p.join(directory, '$candidate$ext')).existsSync()) {
-      return candidate;
-    }
+    if (free(candidate)) return candidate;
   }
   return '$stem (${DateTime.now().millisecondsSinceEpoch})';
 }
+
+/// [path] as [uniqueFileStem]'s `taken` holds it. Without case, since
+/// Android's shared storage and Windows ignore it: on Linux that only costs
+/// a ` (2)` now and then.
+String takenKey(String path) => p.normalize(path).toLowerCase();
 
 /// Pure platform path resolution (unit-tested per platform and Android API
 /// level in `test/data/download_paths_test.dart`, docs/DOWNLOADS.md §5.6).
@@ -244,7 +259,10 @@ Future<LegacyMigration> migrateLegacyDownloads({
 
   var movedCount = 0;
   final restarted = <String>[];
-  for (final d in await store.all()) {
+  final rows = await store.all();
+  // Every row's path, updated as rows move: two never end up on one file.
+  final taken = {for (final d in rows) takenKey(await pathOf(d))};
+  for (final d in rows) {
     final oldPath = await pathOf(d);
     final normOld = p.normalize(oldPath).toLowerCase();
     if (!normOld.startsWith('$normLegacy${p.separator}')) continue;
@@ -257,7 +275,8 @@ Future<LegacyMigration> migrateLegacyDownloads({
       try {
         await cancelTask?.call(d.videoId);
         await Directory(newDir).create(recursive: true);
-        final stem = uniqueFileStem(newDir, baseStem, ext: ext);
+        final stem = uniqueFileStem(newDir, baseStem, ext: ext, taken: taken);
+        taken.add(takenKey(p.join(newDir, '$stem$ext')));
         final subs = await _moveSubtitles(d, oldDir, newDir, baseStem, stem);
         await store.put(
           d.copyWith(
@@ -284,8 +303,14 @@ Future<LegacyMigration> migrateLegacyDownloads({
     if (!oldFile.existsSync()) continue;
     try {
       await Directory(newDir).create(recursive: true);
-      final uniqueStem = uniqueFileStem(newDir, baseStem, ext: ext);
+      final uniqueStem = uniqueFileStem(
+        newDir,
+        baseStem,
+        ext: ext,
+        taken: taken,
+      );
       final newFileName = '$uniqueStem$ext';
+      taken.add(takenKey(p.join(newDir, newFileName)));
       final newVideoPath = p.join(newDir, newFileName);
 
       await _moveFile(oldFile, newVideoPath);

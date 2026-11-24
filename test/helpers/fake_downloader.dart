@@ -78,7 +78,10 @@ class FakeDownloader implements Downloader {
       this.notices = notices;
 
   @override
-  Future<void> askToNotify() async {}
+  Future<void> askToNotify() async => notifyDialog?.future;
+
+  /// Set to hold [askToNotify] like the permission dialog does.
+  Completer<void>? notifyDialog;
 
   @override
   Future<void> askForStorage() async => storageAsks++;

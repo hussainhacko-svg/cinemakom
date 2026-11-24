@@ -128,6 +128,20 @@ void main() {
       File(p.join(dir.path, 'The Odyssey 4K (2).mp4')).writeAsBytesSync([1]);
       expect(uniqueFileStem(dir.path, 'The Odyssey 4K'), 'The Odyssey 4K (3)');
     });
+
+    test('uniqueFileStem skips names a download on its way holds', () {
+      final dir = Directory.systemTemp.createTempSync('dl-unique');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final taken = {
+        takenKey(p.join(dir.path, 'the odyssey 4k.mp4')),
+        takenKey(p.join(dir.path, '.', 'The Odyssey 4K (2).mp4')),
+      };
+      expect(
+        uniqueFileStem(dir.path, 'The Odyssey 4K', taken: taken),
+        'The Odyssey 4K (3)',
+      );
+      expect(uniqueFileStem(dir.path, 'Other', taken: taken), 'Other');
+    });
   });
 
   group('migrateLegacyDownloads', () {

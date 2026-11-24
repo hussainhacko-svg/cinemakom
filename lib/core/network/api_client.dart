@@ -113,14 +113,20 @@ class ApiClient {
   /// `null` when the server doesn't say. The CDN answers HEAD with 403 (the
   /// URLs are signed for GET), so this asks for the first byte and reads
   /// the total from `Content-Range` (docs/API.md §3, File sizes).
+  ///
+  /// Only the headers are read, then the connection is closed: a server
+  /// that ignores the range sends the whole video, which would otherwise be
+  /// held in memory (or still downloaded). `Content-Length` is then the size.
   Future<int?> contentLength(String url) async {
     await _slots.acquire();
+    final headersOnly = CancelToken();
     try {
-      final response = await _dio.get<List<int>>(
+      final response = await _dio.get<ResponseBody>(
         url,
+        cancelToken: headersOnly,
         options: Options(
           headers: {'Range': 'bytes=0-0'},
-          responseType: ResponseType.bytes,
+          responseType: ResponseType.stream,
         ),
       );
       final range = response.headers.value('content-range');
@@ -130,6 +136,8 @@ class ApiClient {
     } on DioException {
       return null;
     } finally {
+      // Dio reads the body itself; only cancelling closes the connection.
+      headersOnly.cancel();
       _slots.release();
     }
   }

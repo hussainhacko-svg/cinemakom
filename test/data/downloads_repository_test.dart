@@ -66,9 +66,9 @@ class Env {
     Duration userPauseGrace = const Duration(seconds: 3),
   }) : dir = Directory.systemTemp.createTempSync('dl-test') {
     api = fixtureApi([
+      ...routes,
       FakeApiClient.path('https://cnth2', srt),
       FakeApiClient.path('size:', (ApiRequest r) => 3000000000),
-      ...routes,
     ]);
     downloader = FakeDownloader(root: dir.path);
     connectivity = FakeConnectivity();
@@ -191,6 +191,34 @@ void main() {
     expect((d.titleId, d.season, d.episode), ('4328', 2, 5));
   });
 
+  // A file only appears on disk when its download finishes, so the disk
+  // alone can't tell that a queued download already took a name. Two
+  // series with the same English title (a dubbed and a subtitled release),
+  // or a season listing one episode twice, must not share a file: one
+  // would overwrite the other, and deleting either would delete both.
+  test('downloads on their way never share a file', () async {
+    await env.start();
+    const dubbed = MediaItem(
+      id: '9001',
+      title: LocalizedText(en: 'Friends'),
+      kind: VideoKind.series,
+    );
+    const src = VideoSource(url: 'https://x', resolution: '1080p');
+    await env.repo.download(series, episode: ep('e1', 1, 1), source: src);
+    await env.repo.download(dubbed, episode: ep('d1', 1, 1), source: src);
+    await env.repo.download(series, episode: ep('e1b', 1, 1), source: src);
+    final paths = {
+      for (final id in ['e1', 'd1', 'e1b'])
+        await env.repo.filePath((await env.store.get(id))!),
+    };
+    expect(paths, hasLength(3));
+    expect(env.downloader.enqueued.map((j) => j.spot.fileName), [
+      'Friends S01E01 1080p.mp4',
+      'Friends S01E01 1080p (2).mp4',
+      'Friends S01E01 1080p (3).mp4',
+    ]);
+  });
+
   test(
     'progress, then complete: playable from disk with its subtitles',
     () async {
@@ -272,6 +300,11 @@ void main() {
     expect(resumed.startedOver, isFalse);
 
     // No partial file left: cancels old task (rule 1), starts over with startedOver.
+    // (It fails first: Resume does nothing to a download already going.)
+    env.downloader.send(
+      const DownloaderStatus('3119279', DownloaderState.failed),
+    );
+    await env.settle();
     env.downloader.resumeAllowed = false;
     await env.repo.resume(movie.id);
     expect(env.downloader.canceled, contains(movie.id));
@@ -376,13 +409,122 @@ void main() {
     File(p.join(env.dir.path, 'b.mp4')).writeAsBytesSync([1, 2, 3]);
     env.downloader.knownStates['b'] = DownloaderState.complete;
     await env.start();
+    await env.settle();
     // Interrupted (unknown to the engine), then continued from its partial
-    // file (docs/DOWNLOADS.md §5.5).
+    // file (docs/DOWNLOADS.md §5.5), once its fresh link is in.
     expect((await env.store.get('a'))!.status, DownloadStatus.queued);
     expect(env.downloader.resumed.map((r) => r.$1), ['a']);
     final b = (await env.store.get('b'))!;
     expect((b.status, b.totalBytes), (DownloadStatus.complete, 3));
   });
+
+  // Finished while the app wasn't listening, with no size on record: the
+  // check after a restart can't tell it from a copy cut short, so it's
+  // "interrupted". The cleanup must keep it, and the automatic continue,
+  // with a fresh link in hand, asks the real size and finishes it.
+  group('a file of unknown size at its place after a restart', () {
+    Future<Download> lostRow(int onDisk, {required int realSize}) async {
+      env.repo.dispose();
+      env.connectivity.close();
+      env.dir.deleteSync(recursive: true);
+      env = Env(routes: [FakeApiClient.path('size:', realSize)]);
+      final row = Download(
+        videoId: movie.id,
+        titleId: movie.id,
+        title: movie.title,
+        quality: '720p',
+        baseDirectory: 'root',
+        directory: env.dir.path,
+        fileName: 'm.mp4',
+        status: DownloadStatus.running,
+        addedAt: DateTime(2026),
+      );
+      await env.store.put(row);
+      File(p.join(env.dir.path, 'm.mp4'))
+          .writeAsBytesSync(List.filled(onDisk, 1));
+      return row;
+    }
+
+    test('the whole file: kept, and finished without downloading', () async {
+      await lostRow(1000, realSize: 1000);
+      await env.start();
+      await env.settle();
+      final d = (await env.store.get(movie.id))!;
+      expect((d.status, d.totalBytes), (DownloadStatus.complete, 1000));
+      expect(File(p.join(env.dir.path, 'm.mp4')).lengthSync(), 1000);
+      expect(env.downloader.resumed, isEmpty);
+      expect(env.downloader.enqueued, isEmpty);
+      expect(await env.repo.playable(movie.id), isNotNull);
+    });
+
+    test('a copy cut short: continues, now knowing its size', () async {
+      await lostRow(400, realSize: 1000);
+      await env.start();
+      await env.settle();
+      final d = (await env.store.get(movie.id))!;
+      expect((d.status, d.totalBytes), (DownloadStatus.queued, 1000));
+      expect(env.downloader.resumed.map((r) => r.$1), [movie.id]);
+    });
+
+    test('the size still unknown: kept, and continued', () async {
+      await lostRow(400, realSize: 0);
+      await env.start();
+      await env.settle();
+      expect(File(p.join(env.dir.path, 'm.mp4')).existsSync(), isTrue);
+      expect((await env.store.get(movie.id))!.status, DownloadStatus.queued);
+    });
+  });
+
+  // Each run of the engine that isn't a resume (its own retries after a
+  // dropped connection) reports 0% before a byte arrives. That is no
+  // measure of what's saved: the partial file is still there. Taken as one,
+  // the row showed 0% and an automatic restart thought nothing was lost.
+  test(
+    'the engine\'s 0% at the start of a retry keeps the saved bytes',
+    () async {
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      final seen = <double>[];
+      final sub = env.repo.watchProgress().listen((m) {
+        if (m[movie.id] case final p?) seen.add(p.fraction);
+      });
+      addTearDown(sub.cancel);
+      env.downloader.send(
+        const DownloaderProgress('3119279', fraction: 0.4, expectedBytes: 1000),
+      );
+      await env.settle();
+      expect((await env.store.get(movie.id))!.downloadedBytes, 400);
+
+      // The connection drops; the engine tries again.
+      for (final e in [
+        const DownloaderStatus('3119279', DownloaderState.queued),
+        const DownloaderStatus('3119279', DownloaderState.running),
+        const DownloaderProgress('3119279', fraction: 0, expectedBytes: 1000),
+        const DownloaderStatus('3119279', DownloaderState.queued),
+      ]) {
+        env.downloader.send(e);
+        await env.settle();
+        expect(
+          (await env.store.get(movie.id))!.downloadedBytes,
+          400,
+          reason: '$e',
+        );
+      }
+      expect(seen, isNot(contains(0.0)));
+      expect(await env.repo.usedBytes(), 400);
+
+      // Real progress counts again, lower too (the engine started over).
+      env.downloader.send(
+        const DownloaderProgress(
+          '3119279',
+          fraction: 0.45,
+          expectedBytes: 1000,
+        ),
+      );
+      await env.settle();
+      expect((await env.store.get(movie.id))!.downloadedBytes, 450);
+    },
+  );
 
   test('events are handled in order', () async {
     await env.start();
@@ -1646,6 +1788,7 @@ void main() {
       await env.settle();
 
       await env.repo.reconcile(force: true);
+      await env.settle();
       expect((await env.store.get(movie.id))!.status, DownloadStatus.queued);
       final e1 = (await env.store.get('e1'))!;
       expect((e1.status, e1.downloadedBytes), (DownloadStatus.failed, 3000));
@@ -1710,6 +1853,232 @@ void main() {
         expect(kept.existsSync(), isFalse);
       },
     );
+  });
+
+  // Engine events and the user's controls wait their turn in one queue. A
+  // slow network or a permission dialog must never be what they wait on:
+  // on a weak connection Pause and Delete would hang for minutes.
+  group('the network never holds up the queue', () {
+    late Completer<void> net;
+    var hang = false;
+
+    /// [env] with every request matching [what] held until [net] completes.
+    void hangOn(bool Function(ApiRequest) what) {
+      env.repo.dispose();
+      env.connectivity.close();
+      env.dir.deleteSync(recursive: true);
+      net = Completer<void>();
+      hang = false;
+      env = Env(
+        routes: [
+          (
+            (r) => hang && what(r) && !r.path.startsWith('size:'),
+            (r) async {
+              await net.future;
+              // Then answered as usual.
+              hang = false;
+              return fixtureApi().fetch(r);
+            },
+          ),
+          FakeApiClient.path('size:', (ApiRequest r) async {
+            if (hang && what(r)) await net.future;
+            return 3000000000;
+          }),
+        ],
+      );
+    }
+
+    /// The episode `e1`, running at 40%.
+    Future<void> runningEpisode() async {
+      await env.repo.download(
+        series,
+        episode: ep('e1', 1, 1),
+        source: const VideoSource(url: 'https://x', resolution: '1080p'),
+      );
+      env.downloader.send(
+        const DownloaderProgress('e1', fraction: 0.4, expectedBytes: 1000),
+      );
+      await env.settle();
+      expect((await env.store.get('e1'))!.status, DownloadStatus.running);
+    }
+
+    /// Pauses `e1` and checks that it happened at once.
+    Future<void> pauseIsPrompt() async {
+      await env.repo.pause('e1').timeout(const Duration(seconds: 2));
+      final e1 = (await env.store.get('e1'))!;
+      expect(e1.status, DownloadStatus.paused);
+      expect(e1.downloadedBytes, 400);
+    }
+
+    test('a Resume waiting for a fresh link', () async {
+      hangOn((r) => r.path.startsWith('transcoddedFiles/id/3119279'));
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      env.downloader.send(
+        const DownloaderStatus('3119279', DownloaderState.failed),
+      );
+      await env.settle();
+      await runningEpisode();
+
+      hang = true;
+      final resuming = env.repo.resume(movie.id);
+      await env.settle();
+      await pauseIsPrompt();
+      expect((await env.store.get(movie.id))!.status, DownloadStatus.failed);
+
+      net.complete();
+      expect(await resuming, isA<ResumeStarted>());
+      expect((await env.store.get(movie.id))!.status, DownloadStatus.queued);
+      expect(env.downloader.resumed.single.$1, movie.id);
+    });
+
+    test('a new download fetching its subtitles: the video starts first, '
+        'the subtitles join it', () async {
+      hangOn((r) => r.path.startsWith('translationFiles/id/3119279'));
+      await env.start();
+      await runningEpisode();
+      final source = await env.source('720p');
+
+      hang = true;
+      final adding = env.repo.download(movie, source: source);
+      await env.settle();
+      await pauseIsPrompt();
+      expect(env.downloader.enqueued.map((j) => j.taskId), contains(movie.id));
+
+      net.complete();
+      await adding;
+      final d = (await env.store.get(movie.id))!;
+      expect(d.subtitles.map((s) => s.language), ['ar', 'en']);
+      final dir = p.dirname(await env.repo.filePath(d));
+      for (final s in d.subtitles) {
+        expect(File(p.join(dir, s.fileName)).existsSync(), isTrue);
+      }
+    });
+
+    test('subtitles that arrive after their download was deleted are '
+        'deleted too, with the folder they made', () async {
+      hangOn((r) => r.path.startsWith('translationFiles/id/3119279'));
+      await env.start();
+      final source = await env.source('720p');
+      hang = true;
+      final adding = env.repo.download(movie, source: source);
+      await env.settle();
+      final d = (await env.store.get(movie.id))!;
+      final dir = p.dirname(await env.repo.filePath(d));
+      await env.repo.delete(movie.id).timeout(const Duration(seconds: 2));
+
+      net.complete();
+      await adding;
+      expect(await env.store.get(movie.id), isNull);
+      expect(Directory(dir).existsSync(), isFalse, reason: 'nothing left');
+    });
+
+    test('a quality switch waiting for the new size', () async {
+      hangOn((r) => r.path.startsWith('size:'));
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      env.downloader.send(
+        const DownloaderStatus('3119279', DownloaderState.failed),
+      );
+      await env.settle();
+      await runningEpisode();
+      final to = await env.source('480p');
+
+      hang = true;
+      final switching = env.repo.resume(movie.id, switchTo: to);
+      await env.settle();
+      await pauseIsPrompt();
+
+      net.complete();
+      expect(await switching, isA<ResumeStarted>());
+      final d = (await env.store.get(movie.id))!;
+      expect((d.quality, d.totalBytes), ('480p', 3000000000));
+    });
+
+    test('the notification permission dialog', () async {
+      hangOn((_) => false);
+      await env.start();
+      await runningEpisode();
+      final source = await env.source('720p');
+
+      final dialog = env.downloader.notifyDialog = Completer<void>();
+      final adding = env.repo.download(movie, source: source);
+      await env.settle();
+      await pauseIsPrompt();
+
+      dialog.complete();
+      await adding;
+      expect((await env.store.get(movie.id))!.status, DownloadStatus.queued);
+    });
+
+    test('a re-download of a removed file waiting for a fresh link', () async {
+      hangOn((r) => r.path.startsWith('transcoddedFiles/id/3119279'));
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      await env.downloader.finish(env.downloader.enqueued.last);
+      await env.settle();
+      final done = (await env.store.get(movie.id))!;
+      expect(done.status, DownloadStatus.complete);
+      File(await env.repo.filePath(done)).deleteSync();
+      await runningEpisode();
+
+      hang = true;
+      final again = env.repo.redownload(movie.id);
+      await env.settle();
+      await pauseIsPrompt();
+
+      net.complete();
+      expect(await again, isA<ResumeStarted>());
+      expect((await env.store.get(movie.id))!.status, DownloadStatus.queued);
+    });
+
+    test('two Resumes at once start the download once', () async {
+      hangOn((r) => r.path.startsWith('transcoddedFiles/id/3119279'));
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      env.downloader.send(
+        const DownloaderStatus('3119279', DownloaderState.failed),
+      );
+      await env.settle();
+
+      hang = true;
+      final first = env.repo.resume(movie.id);
+      final second = env.repo.resume(movie.id);
+      await env.settle();
+      net.complete();
+      expect(await first, isA<ResumeStarted>());
+      expect(await second, isA<ResumeStarted>());
+      expect(env.downloader.resumed, hasLength(1));
+    });
+
+    test('a Pause while an automatic retry fetches its link wins', () async {
+      hangOn((r) => r.path.startsWith('transcoddedFiles/id/3119279'));
+      await env.start();
+      await env.repo.download(movie, source: await env.source('720p'));
+      env.downloader.send(
+        const DownloaderProgress('3119279', fraction: 0.5, expectedBytes: 1000),
+      );
+      await env.settle();
+
+      hang = true;
+      // An expired link: retried by itself with a fresh one.
+      env.downloader.send(
+        const DownloaderStatus(
+          '3119279',
+          DownloaderState.failed,
+          httpCode: 403,
+        ),
+      );
+      await env.settle();
+      await env.repo.pause(movie.id).timeout(const Duration(seconds: 2));
+
+      net.complete();
+      await env.settle();
+      await env.settle();
+      final d = (await env.store.get(movie.id))!;
+      expect((d.status, d.pausedByUser), (DownloadStatus.paused, true));
+      expect(env.downloader.resumed, isEmpty);
+    });
   });
 
   group('DriftDownloadStore', () {

@@ -71,6 +71,15 @@ class PagedMediaNotifier extends Notifier<PagedMedia> {
   /// load again.
   static const keepFor = Duration(minutes: 5);
 
+  /// Pages in a row with titles but none new before the list ends. Every
+  /// endpoint answers an empty page past the end, but one repeating its
+  /// last page instead would be paged forever (lists load on by themselves
+  /// while few titles show). One such page is no end: titles added while
+  /// paging can shift a page onto the one before it.
+  static const maxRepeatedPages = 2;
+
+  var _repeatedPages = 0;
+
   @override
   PagedMedia build() {
     final link = ref.keepAlive();
@@ -79,6 +88,7 @@ class PagedMediaNotifier extends Notifier<PagedMedia> {
       ..onCancel(() => timer = Timer(keepFor, link.close))
       ..onResume(() => timer?.cancel())
       ..onDispose(() => timer?.cancel());
+    _repeatedPages = 0;
     Future.microtask(loadMore);
     return PagedMedia(next: source.firstCursor);
   }
@@ -94,13 +104,17 @@ class PagedMediaNotifier extends Notifier<PagedMedia> {
       final page = await source.load(ref, cursor);
       if (!ref.mounted) return;
       final seen = {for (final i in state.items) i.id};
+      final fresh = [
+        for (final i in page.items)
+          if (seen.add(i.id)) i,
+      ];
+      _repeatedPages = page.items.isNotEmpty && fresh.isEmpty
+          ? _repeatedPages + 1
+          : 0;
+      final ended = _repeatedPages >= maxRepeatedPages;
       state = state.copyWith(
-        items: [
-          ...state.items,
-          for (final i in page.items)
-            if (seen.add(i.id)) i,
-        ],
-        next: () => page.next,
+        items: [...state.items, ...fresh],
+        next: () => ended ? null : page.next,
         isLoading: false,
       );
     } catch (e) {

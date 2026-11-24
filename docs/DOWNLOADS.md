@@ -133,7 +133,7 @@ New columns on `downloads`:
 - `updatedAt`: when the row last changed. The 60 s guard and the stale checks use it.
 - `contentUri` (Android, nullable): the MediaStore entry of the finished file, if §5.6 needs one.
 
-The live speed and time left stay in memory (`watchProgress`). The bar and the bytes come from the row when there are no live numbers, so they never fall back to 0.
+The live speed and time left stay in memory (`watchProgress`). The bar and the bytes come from the row when there are no live numbers, so they never fall back to 0. **The engine's 0% is no measure** *(2026-11-24)*: each run that isn't a resume (its own retries after a dropped connection) reports 0% before a byte arrives, while the partial file is still there. Once bytes are saved, that 0% is ignored; it had set the row to 0, so an automatic restart thought nothing was lost (found by the live test, §9).
 
 ### 5.4 Re-checking the engine (`_reconcile`)
 
@@ -157,7 +157,9 @@ Runs at startup, on `AppLifecycleState.resumed`, and when Downloads opens, throu
 | Other file errors | **Can't save the file** | none |
 | Anything else | **Something went wrong** + Details | none |
 
-**Retry** (`_resume`):
+**Nothing in the queue waits on the network or the user** *(2026-11-24)*. Engine events and every control go through one queue (`_serial`), so a step that waited there for a fresh URL, a file size, subtitles or a permission dialog held up Pause and Delete of every other download (up to minutes on a weak connection). Now a resume fetches outside the queue (`_resumeNow`) and only applies the result in it, if the row is still what it was for (a Pause or Delete in the meantime wins). Resumes of one download run one after another (`_oneAtATime`), so two at once start it once. Automatic resumes from inside the queue are never awaited there (`_resumeLater`). A new download starts its video first, and its subtitles join the row when they arrive (deleted again if the row is gone). Both permission dialogs are asked before the queue.
+
+**Retry** (`_resumeNow` / `_applyResume`):
 1. Fetch a fresh URL (`streams(fresh: true)`). If the stored quality is gone, ask the user before switching quality: it means starting over, and today that happens silently.
 2. If the engine still has resume data (`taskCanResume`), `resume` with the new URL.
 3. Otherwise cancel the old task, delete its resume data and temp file (rule 1), and enqueue from 0, marked `startedOver`.
@@ -188,7 +190,7 @@ D3 tests all of this against the real plugin on Linux (cut the network mid-downl
 - **If it doesn't:** finish with a MediaStore copy (`moveToSharedStorage(SharedStorage.video, directory: 'Cinemakom/<Title>')`), which marks the file as pending until it's complete. The space check (rule 10) then counts the copy, and the UI shows "Saving…" while it runs.
 - `UriDownloadTask` (writing straight into MediaStore) is **not** an option: Android can't resume URI downloads (`prepareInterruptedResume` requires a temp file), and resume is the whole point.
 
-**Names:** `<Title> (<Year>)/<Title> S01E02 1080p.mp4` and subtitles `….ar.srt` / `….en.srt` beside it, so players pick them up. If a file with that name already exists and isn't ours, add ` (2)` and so on.
+**Names:** `<Title> (<Year>)/<Title> S01E02 1080p.mp4` and subtitles `….ar.srt` / `….en.srt` beside it, so players pick them up. If a file with that name already exists and isn't ours, add ` (2)` and so on. **Names other rows hold count too** *(2026-11-24)*: a download's file only appears when it finishes, so two at once with one name (a dubbed and a subtitled release of one series, both `Friends`) got one path, and one overwrote the other and deleting either deleted both. `uniqueFileStem` takes every other row's path (`taken`, compared without case).
 
 **Existing downloads** (from Phase 6, in `Android/data/<pkg>/files/Downloads`): on the first start after the update, move the finished ones to `Movies/Cinemakom` (a rename on the same volume). The row keeps whichever path worked, so nothing breaks if the move fails. Unfinished ones are restarted (they're broken anyway, §3).
 
@@ -198,7 +200,7 @@ D3 tests all of this against the real plugin on Linux (cut the network mid-downl
 
 Runs after each reconcile, after delete, cancel and final failures, and after a quality change.
 1. **Temp files.** List `com.bbflight.background_downloader*` in every folder the engine uses: internal `files`, external `files` and its `.partial`, desktop `.partial`. Since the library doesn't say which temp file is whose, we match by count and age: every **running or queued** row has a slot (a queued one may be waiting to retry from its partial file, up to 512 s between tries, or be the holding queue's next task, started natively before Dart hears of it), and so does a paused or failed row the engine can still resume. The newest files fill the slots, and any file written in the last 2 minutes stays while a row is running or queued. A partial file the engine's resume data (or the kept data, §5.5) names is kept **exactly**, and its row needs no slot; kept data of a download that's gone is forgotten. **Everything else is deleted.** A restart sweeps with its own row excluded, so its old file goes at once. If there are no unfinished tasks at all, every temp file goes. *(Changed 2026-11-22: queued rows had no slot, so a sweep deleted the partial file of a download waiting to retry; PR #4 review, critical 2.)*
-2. **A failed download's leftover video**, at that download's own path (an interrupted copy), is deleted. In the app-private Phase 6 folder (`Android/data/<pkg>/files/Downloads`), which the user can't manage, a video or subtitle no row claims goes too. **Nothing else in a download folder is:** the folders are the user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video no row claims (renamed, from an earlier install or before the app's data was cleared, put there by hand) and a finished download's video, whatever its size, always stay. *(Changed 2026-11-22: the first version deleted every unclaimed video and any size mismatch, which would have deleted renamed files and every earlier download; PR #4 review, critical 1.)*
+2. **A failed download's leftover video**, at that download's own path (an interrupted copy), is deleted, **only when it's known to be cut short**: its size is known and the file isn't that size *(2026-11-24)*. One of unknown size may be the whole film, finished while the app wasn't listening (the re-check can only complete a file of known size, §3.4), so it stays; the automatic continue, with its fresh URL, asks the CDN for the size and completes a whole file without downloading it again, or learns the size of a cut copy. In the app-private Phase 6 folder (`Android/data/<pkg>/files/Downloads`), which the user can't manage, a video or subtitle no row claims goes too. **Nothing else in a download folder is:** the folders are the user's (`Movies/Cinemakom`, `~/Videos/Cinemakom`), so a video no row claims (renamed, from an earlier install or before the app's data was cleared, put there by hand) and a finished download's video, whatever its size, always stay. *(Changed 2026-11-22: the first version deleted every unclaimed video and any size mismatch, which would have deleted renamed files and every earlier download; PR #4 review, critical 1.)*
 3. **Subtitles** of a failed download whose video is gone are deleted; a finished download's subtitles stay even if its video was renamed, and a subtitle no row lists is never touched. Then the failed download's own folder, if that left it empty. *(2026-11-24: a download folder the user can see is never listed or swept as a whole, since on desktop it can be `~/Videos` or the home folder; only the failed rows' exact paths are touched. An empty folder no row owns is the user's. The app-private Phase 6 folder is still swept whole.)*
 4. Each run logs what it removed and how many bytes (`debugPrint`), so a phone check can see it in logcat.
 
@@ -305,7 +307,9 @@ Order: D0 → D1 → D2 → D3 → D4 → D5 → D6 → D7. D2 to D4 don't need 
 
 **Widget:** Downloads rows in every state, in English and Arabic (saved bytes, reasons, "File removed", the storage line). The TV Downloads screen gets the same, plus `expectNoTraps`.
 
-**Integration on Linux (`integration_test/downloads_test.dart`, live CDN, extended):** pause and resume (as today); a failure mid-download, then Retry continues from the same bytes; delete during a download leaves no `.partial` files; a finished file deleted by hand shows "File removed".
+**Integration on Linux (`integration_test/downloads_test.dart`, live CDN, extended):** pause and resume (as today); a failure mid-download, then Retry continues from the same bytes; delete during a download leaves no `.partial` files; a finished file deleted by hand shows "File removed"; *(2026-11-24)* two downloads with one name at once get two files, and deleting one keeps the other; the connection dying under the engine keeps the saved bytes through its retries, and Pause then Retry finishes.
+
+**The queue (unit, 2026-11-24):** a Resume, a new download's subtitles, a quality switch's size, a re-download and the permission dialog each hang while another download's Pause goes through at once; two Resumes at once start one; a Pause during an automatic retry's fetch wins; subtitles that arrive after a delete go with their folder.
 
 **Recovery on Linux (`integration_test/downloads_recovery_test.dart`, live CDN):** a final failure, then Retry continues from the saved bytes; a URL about to expire is replaced before the run starts. Needs `WAYLAND_DISPLAY`/`DISPLAY` set in a shell without them.
 

@@ -232,5 +232,108 @@ void main() {
               .toList()
         : const <File>[];
     expect(strays, isEmpty);
+
+    // Two downloads with one name at once (a dubbed and a subtitled release
+    // of one series): each gets its own file, and deleting one keeps the
+    // other. A file only appears when it finishes, so only the rows can
+    // tell the names apart.
+    const twin = MediaItem(
+      id: 'twin-4328',
+      title: LocalizedText(en: 'Friends'),
+      kind: VideoKind.series,
+    );
+    final twinPilot = Episode(id: 'twin-4328', season: 1, episode: 1);
+    Download? twinRow;
+    Future<void> both() async {
+      row = await tester.runAsync<Download?>(() => repo.get(pilot.id));
+      twinRow = await tester.runAsync<Download?>(() => repo.get(twinPilot.id));
+    }
+
+    refresh = both;
+    for (final (item, episode) in [(friends, pilot), (twin, twinPilot)]) {
+      await tester.runAsync(
+        () => repo.download(
+          item,
+          episode: episode,
+          source: low.source,
+          bytes: low.bytes,
+        ),
+      );
+    }
+    await until(
+      tester,
+      'both complete (${row?.status}, ${twinRow?.status})',
+      () =>
+          row?.status == DownloadStatus.complete &&
+          twinRow?.status == DownloadStatus.complete,
+      seconds: 300,
+    );
+    final one = File(p.join(row!.directory, row!.fileName));
+    final other = File(p.join(twinRow!.directory, twinRow!.fileName));
+    debugPrint('twins: ${one.path} and ${other.path}');
+    expect(one.path, isNot(other.path));
+    expect(one.lengthSync(), low.bytes);
+    expect(other.lengthSync(), low.bytes);
+    await tester.runAsync(() => repo.delete(twinPilot.id));
+    await until(tester, 'the twin gone', () => twinRow == null);
+    expect(other.existsSync(), isFalse);
+    expect(one.lengthSync(), low.bytes, reason: 'the other file stays');
+    await tester.runAsync(() => repo.delete(pilot.id));
+    await until(tester, 'the pilot gone', () => row == null);
+
+    // The connection dies for good part way: the engine retries on its
+    // own, each run reporting 0% first. The saved bytes must hold. Then
+    // Pause and Retry: a fresh link fetched outside the queue, and the
+    // download finishes with the real engine.
+    refresh = () async {
+      row = await tester.runAsync<Download?>(() => repo.get(pilot.id));
+    };
+    await tester.runAsync(
+      () => repo.download(
+        friends,
+        episode: pilot,
+        source: low.source,
+        bytes: low.bytes,
+      ),
+    );
+    fraction = 0;
+    await until(tester, 'progress', () => fraction > 0.1, seconds: 60);
+    await tester.runAsync(() => repo.pause(pilot.id));
+    await until(tester, 'paused', () => row?.status == DownloadStatus.paused);
+    final saved = row!.downloadedBytes;
+    final refused = Uri.parse(low.source.url)
+        .replace(scheme: 'https', host: '127.0.0.1', port: 1)
+        .toString();
+    final engine = container.read(downloaderProvider);
+    await tester.runAsync(() => engine.resume(pilot.id, refused));
+    // The engine's first retries come 2 s and 4 s apart.
+    final watchUntil = DateTime.now().add(const Duration(seconds: 8));
+    var lowest = saved;
+    while (DateTime.now().isBefore(watchUntil)) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await refresh!();
+      if (row!.downloadedBytes < lowest) lowest = row!.downloadedBytes;
+    }
+    debugPrint('while retrying: ${row?.status}, lowest $lowest of $saved');
+    expect(lowest, saved, reason: 'the saved bytes held');
+
+    await tester.runAsync(() => repo.pause(pilot.id));
+    await until(tester, 'paused again', () {
+      return row?.status == DownloadStatus.paused;
+    });
+    final outcome = await tester.runAsync(() => repo.resume(pilot.id));
+    debugPrint('Retry: $outcome');
+    expect(outcome, isA<ResumeStarted>());
+    await until(
+      tester,
+      'complete after Retry (${row?.status})',
+      () => row?.status == DownloadStatus.complete,
+      seconds: 300,
+    );
+    expect(File(p.join(row!.directory, row!.fileName)).lengthSync(), low.bytes);
+    await tester.runAsync(() => repo.delete(pilot.id));
+    await until(tester, 'cleaned up', () => row == null);
   });
 }

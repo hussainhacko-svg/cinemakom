@@ -54,6 +54,44 @@ void main() {
     expect(const LatestSource(VideoKind.movies), isNot(const FeaturedSource()));
   });
 
+  // Every list endpoint answers an empty page past the end (docs/API.md).
+  // One that repeated its last page instead would never end: lists load on
+  // by themselves while few titles show, so the app would ask forever.
+  test('a server repeating one page forever: the list ends', () async {
+    final api = fixtureApi([
+      FakeApiClient.path('featuredMovies/', (ApiRequest r) => rawItems(0, 12)),
+    ]);
+    final c = containerWith(api);
+    const source = FeaturedSource();
+    var s = await settle(c, source);
+    for (var i = 0; i < 10; i++) {
+      s = await more(c, source);
+    }
+    expect(s.items, hasLength(12));
+    expect(s.hasMore, isFalse);
+    expect(api.requests, hasLength(3), reason: 'the page, then two repeats');
+  });
+
+  // Titles added while paging shift a page onto the one before it: one
+  // page of repeats is no end.
+  test('one page of repeats doesn\'t end the list', () async {
+    final pages = [rawItems(0, 12), rawItems(0, 12), rawItems(12, 12)];
+    final api = fixtureApi([
+      FakeApiClient.path('featuredMovies/', (ApiRequest r) {
+        final page = requestedPage(r);
+        return page < pages.length ? pages[page] : const [];
+      }),
+    ]);
+    final c = containerWith(api);
+    const source = FeaturedSource();
+    var s = await settle(c, source);
+    while (s.hasMore) {
+      s = await more(c, source);
+    }
+    expect(s.items, hasLength(24));
+    expect(api.requests, hasLength(4));
+  });
+
   test('a genre pages by item offset and stops on a short page', () async {
     final api = fixtureApi([
       FakeApiClient.path('videosByCategory', (ApiRequest r) {

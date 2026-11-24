@@ -498,7 +498,11 @@ class DownloadsRepository {
             cancelTask: _cancelTask,
           );
           for (final id in result.restarted) {
-            await _resume(id, forceRestart: true, automatic: true);
+            _resumeLater(
+              id,
+              forceRestart: true,
+              when: (d) => d.status == DownloadStatus.failed,
+            );
           }
         });
       }
@@ -564,7 +568,7 @@ class DownloadsRepository {
         if (!d.isWaitingForConnection) continue;
         _reconnectAttempts.remove(d.videoId);
         _log('${d.videoId} network back -> auto-resuming');
-        await _resume(d.videoId, automatic: true);
+        _resumeLater(d.videoId, when: (d) => d.isWaitingForConnection);
       }
       await _continueFailed('network back');
     }
@@ -587,7 +591,7 @@ class DownloadsRepository {
       }
       _autoContinuedAt[d.videoId] = _elapsed();
       _log('${d.videoId} failed (${d.problem!.name}) -> continuing ($why)');
-      await _resume(d.videoId, automatic: true);
+      _resumeLater(d.videoId, when: _failedPassing);
     }
   }
 
@@ -622,7 +626,7 @@ class DownloadsRepository {
           }
           _autoContinuedAt[id] = _elapsed();
           _log('$id failed (${d.problem!.name}) -> continuing (slow retry)');
-          await _resume(id, automatic: true);
+          _resumeLater(id, when: _failedPassing);
         }),
       );
     });
@@ -649,7 +653,7 @@ class DownloadsRepository {
         _serial(() async {
           final d = await _store.get(id);
           if (d != null && d.isWaitingForConnection) {
-            await _resume(id, automatic: true);
+            _resumeLater(id, when: (d) => d.isWaitingForConnection);
           }
         }),
       );
@@ -970,15 +974,51 @@ class DownloadsRepository {
     required VideoSource source,
     int? bytes,
   }) async {
-    // Android 7–9 asks for shared storage first (§5.6), outside the queue:
-    // the dialog waits for the user, and engine events must not.
+    // Android 7–9 asks for shared storage first (§5.6), and Android 13+ for
+    // notifications, outside the queue: a dialog waits for the user, and
+    // engine events must not.
     await _downloader.askForStorage();
-    await _serial(
+    await _downloader.askToNotify();
+    final queued = await _serial(
       () => _download(item, episode: episode, source: source, bytes: bytes),
     );
+    // Subtitles come after the video started: a download never waits on
+    // them, and the queue never waits on the network.
+    if (queued != null) await _addSubtitles(queued);
   }
 
-  Future<void> _download(
+  /// Saves [d]'s subtitles outside the queue, then lists them in its row if
+  /// the row still has that file. If it's gone (deleted meanwhile), the
+  /// files go too.
+  Future<void> _addSubtitles(Download d) async {
+    final saved = await _saveSubtitles(
+      d.videoId,
+      _spot(d),
+      p.basenameWithoutExtension(d.fileName),
+    );
+    if (saved.isEmpty || _disposed) return;
+    await _serial(() async {
+      final now = await _store.get(d.videoId);
+      if (now == null || !_sameFile(now, d)) {
+        await _dropSubtitles(d, saved);
+        return;
+      }
+      final listed = {for (final s in now.subtitles) s.fileName};
+      await _store.put(
+        now.copyWith(
+          subtitles: [
+            ...now.subtitles,
+            for (final s in saved)
+              if (!listed.contains(s.fileName)) s,
+          ],
+        ),
+      );
+    });
+  }
+
+  /// The queue's part of [download]: the row and the engine's task. Returns
+  /// the queued row, or `null` when nothing was started.
+  Future<Download?> _download(
     MediaItem item, {
     Episode? episode,
     required VideoSource source,
@@ -986,7 +1026,9 @@ class DownloadsRepository {
   }) async {
     final videoId = episode?.id ?? item.id;
     final existing = await _store.get(videoId);
-    if (existing != null && existing.status != DownloadStatus.failed) return;
+    if (existing != null && existing.status != DownloadStatus.failed) {
+      return null;
+    }
 
     // Rule 1: a new attempt removes any old task, resume data and temp file.
     _forget(videoId);
@@ -1007,12 +1049,16 @@ class DownloadsRepository {
       fallback: videoId,
     );
     final stem = root.baseDirectory == 'root'
-        ? uniqueFileStem(folder, baseStem, ext: '.mp4')
+        ? uniqueFileStem(
+            folder,
+            baseStem,
+            ext: '.mp4',
+            taken: await _takenPaths(videoId),
+          )
         : baseStem;
     final spot = FileSpot(root.baseDirectory, folder, '$stem.mp4');
     _clearMissing(videoId);
 
-    final subtitles = await _saveSubtitles(videoId, spot, stem);
     final now = _clock();
     final download = Download(
       videoId: videoId,
@@ -1032,7 +1078,6 @@ class DownloadsRepository {
       baseDirectory: spot.baseDirectory,
       directory: spot.directory,
       fileName: spot.fileName,
-      subtitles: subtitles,
       totalBytes: bytes,
       downloadedBytes: 0,
       status: DownloadStatus.queued,
@@ -1042,13 +1087,14 @@ class DownloadsRepository {
       updatedAt: now,
     );
     await _store.put(download);
-    await _downloader.askToNotify();
     _log(
       '$videoId none -> queued quality=${source.label} bytes=0/${bytes ?? "?"}',
     );
     if (!await _downloader.enqueue(_job(download, source.url))) {
       await _fail(download, DownloadProblem.unknown);
+      return null;
     }
+    return download;
   }
 
   /// Queues every episode in [episodes] that isn't downloaded yet, each in
@@ -1255,50 +1301,155 @@ class DownloadsRepository {
   /// ask the user first (docs/DOWNLOADS.md §5.5). Pass [switchTo] once the
   /// user confirms switching quality.
   Future<ResumeOutcome> resume(String videoId, {VideoSource? switchTo}) =>
-      _serial(() {
-        _clearRetryCounters(videoId);
-        return _resume(videoId, switchTo: switchTo);
-      });
+      _oneAtATime(
+        videoId,
+        () => _resumeNow(videoId, switchTo: switchTo, when: _stopped),
+      );
 
-  Future<ResumeOutcome> _resume(
+  /// What the user can resume or retry.
+  static bool _stopped(Download d) =>
+      d.status == DownloadStatus.paused || d.status == DownloadStatus.failed;
+
+  /// A download that failed for a reason that may pass.
+  static bool _failedPassing(Download d) =>
+      d.status == DownloadStatus.failed && passingProblems.contains(d.problem);
+
+  /// Anything but the user's own pause, which no automatic retry overrides.
+  static bool _notPausedByUser(Download d) =>
+      !(d.status == DownloadStatus.paused && d.pausedByUser);
+
+  /// Resumes on their way, by video ID (see [_oneAtATime]).
+  final _resumes = <String, Future<void>>{};
+
+  /// Runs [work] once any resume of [videoId] on its way has ended, so two
+  /// never start the same download: the second sees what the first did.
+  Future<T> _oneAtATime<T>(String videoId, Future<T> Function() work) {
+    final result = (_resumes[videoId] ?? Future<void>.value()).then(
+      (_) => work(),
+    );
+    final tail = result.then<void>((_) {}, onError: (_) {});
+    _resumes[videoId] = tail;
+    unawaited(
+      tail.then((_) {
+        if (identical(_resumes[videoId], tail)) _resumes.remove(videoId);
+      }),
+    );
+    return result;
+  }
+
+  /// An automatic resume of [videoId], if [when] still holds once its fresh
+  /// link is in. Called from inside the queue, so never awaited there: the
+  /// resume waits its turn in the queue.
+  void _resumeLater(
     String videoId, {
+    required bool Function(Download) when,
+    bool forceRestart = false,
+  }) {
+    if (_disposed) return;
+    unawaited(
+      _oneAtATime(
+        videoId,
+        () => _resumeNow(
+          videoId,
+          when: when,
+          automatic: true,
+          forceRestart: forceRestart,
+        ),
+      ).catchError((Object e) {
+        _log('$videoId automatic resume error: $e');
+        return const ResumeFailed();
+      }),
+    );
+  }
+
+  /// Fetches what resuming [videoId] needs (a fresh link, or [switchTo]'s
+  /// size) outside the queue, so a slow network never holds up other
+  /// downloads' events and controls, then applies it in the queue if the
+  /// row still is what [when] asks for (the user may have paused or deleted
+  /// it meanwhile).
+  Future<ResumeOutcome> _resumeNow(
+    String videoId, {
+    required bool Function(Download) when,
     bool forceRestart = false,
     bool automatic = false,
     VideoSource? switchTo,
   }) async {
-    final d = await _store.get(videoId);
-    if (d == null || d.status == DownloadStatus.complete) {
+    final first = await _store.get(videoId);
+    if (first == null || first.status == DownloadStatus.complete) {
       return const ResumeFailed();
     }
+    if (!when(first)) return _alreadyGoing(first);
+
+    List<VideoSource>? sources;
+    int? size;
+    int? realSize;
+    if (switchTo != null) {
+      size = await sizeOf(switchTo);
+    } else {
+      try {
+        sources = await _media.streams(videoId, fresh: true);
+      } on Object {
+        sources = null;
+      }
+      // A file at its place but no size on record: finished while the app
+      // wasn't listening, or a copy cut short. The real size tells.
+      final exact = sources?.where((s) => s.label == first.quality).firstOrNull;
+      if (exact != null &&
+          (first.totalBytes ?? 0) <= 0 &&
+          File(await _downloader.pathOf(_spot(first))).existsSync()) {
+        final bytes = await sizeOf(exact);
+        realSize = bytes != null && bytes > 0 ? bytes : null;
+      }
+    }
+    if (_disposed) return const ResumeFailed();
+
+    return _serial(() async {
+      final d = await _store.get(videoId);
+      if (d == null || d.status == DownloadStatus.complete) {
+        return const ResumeFailed();
+      }
+      if (!when(d)) return _alreadyGoing(d);
+      if (!automatic) _clearRetryCounters(videoId);
+      return _applyResume(
+        d,
+        sources: sources,
+        switchTo: switchTo,
+        switchSize: size,
+        realSize: realSize,
+        forceRestart: forceRestart,
+        automatic: automatic,
+      );
+    });
+  }
+
+  /// A resume that found nothing to do: started already, or stopped again.
+  static ResumeOutcome _alreadyGoing(Download d) =>
+      d.status == DownloadStatus.queued || d.status == DownloadStatus.running
+      ? const ResumeStarted(startedOver: false)
+      : const ResumeFailed();
+
+  /// The queue's part of a resume, with what [_resumeNow] fetched:
+  /// [sources] is `null` when the fresh link couldn't be had, and
+  /// [realSize] the file's size when the row had none.
+  Future<ResumeOutcome> _applyResume(
+    Download row, {
+    required List<VideoSource>? sources,
+    required bool forceRestart,
+    required bool automatic,
+    VideoSource? switchTo,
+    int? switchSize,
+    int? realSize,
+  }) async {
+    var d = row;
+    final videoId = d.videoId;
     _clearTimers(videoId);
 
     if (switchTo != null) {
       // The user confirmed another quality: start over in it (rule 1).
-      return _restartIn(d, switchTo);
+      return _restartIn(d, switchTo, bytes: switchSize);
     }
 
-    final String url;
-    try {
-      final sources = await _media.streams(videoId, fresh: true);
-      final exact = sources.where((s) => s.label == d.quality).firstOrNull;
-      if (exact == null) {
-        final fallback = pickQuality(sources, _height(d.quality));
-        if (fallback == null || automatic) {
-          // Never switch quality silently on an automatic retry.
-          await _fail(d, DownloadProblem.unavailable);
-          return const ResumeFailed(DownloadProblem.unavailable);
-        }
-        _log(
-          '$videoId quality ${d.quality} gone -> asking user (fallback=${fallback.label})',
-        );
-        return ResumeQualityGone(
-          previousQuality: d.quality,
-          fallback: fallback,
-          available: sources,
-        );
-      }
-      url = exact.url;
-    } on Object {
+    if (sources == null) {
       if (automatic && d.isWaitingForConnection) {
         // The network is back but the API isn't reachable yet.
         _retryReconnect(videoId);
@@ -1306,6 +1457,33 @@ class DownloadsRepository {
       }
       await _fail(d, DownloadProblem.network);
       return const ResumeFailed(DownloadProblem.network);
+    }
+    final exact = sources.where((s) => s.label == d.quality).firstOrNull;
+    if (exact == null) {
+      final fallback = pickQuality(sources, _height(d.quality));
+      if (fallback == null || automatic) {
+        // Never switch quality silently on an automatic retry.
+        await _fail(d, DownloadProblem.unavailable);
+        return const ResumeFailed(DownloadProblem.unavailable);
+      }
+      _log(
+        '$videoId quality ${d.quality} gone -> asking user (fallback=${fallback.label})',
+      );
+      return ResumeQualityGone(
+        previousQuality: d.quality,
+        fallback: fallback,
+        available: sources,
+      );
+    }
+    final url = exact.url;
+    if ((d.totalBytes ?? 0) <= 0 && realSize != null) {
+      final file = File(await _downloader.pathOf(_spot(d)));
+      if (file.existsSync() && file.lengthSync() == realSize) {
+        _log('$videoId file already whole ($realSize bytes) -> complete');
+        await _complete(d.copyWith(totalBytes: realSize));
+        return const ResumeStarted(startedOver: false);
+      }
+      d = d.copyWith(totalBytes: realSize);
     }
     _reconnectAttempts.remove(videoId);
 
@@ -1358,11 +1536,11 @@ class DownloadsRepository {
   Future<ResumeOutcome> _restartIn(
     Download d,
     VideoSource source, {
+    required int? bytes,
     bool startedOver = true,
   }) async {
     final videoId = d.videoId;
     await _cancelTask(videoId);
-    final bytes = await sizeOf(source);
     var moved = d;
     if (source.label != d.quality) {
       final oldStem = p.basenameWithoutExtension(d.fileName);
@@ -1375,7 +1553,12 @@ class DownloadsRepository {
           : bare.replaceRange(at, at + d.quality.length, source.label);
       final dir = p.dirname(await _downloader.pathOf(_spot(d)));
       final stem = d.baseDirectory == 'root'
-          ? uniqueFileStem(dir, newBase, ext: ext)
+          ? uniqueFileStem(
+              dir,
+              newBase,
+              ext: ext,
+              taken: await _takenPaths(videoId),
+            )
           : newBase;
       final subtitles = <DownloadedSubtitle>[];
       for (final s in d.subtitles) {
@@ -1433,13 +1616,13 @@ class DownloadsRepository {
   /// can start: when its quality is gone it returns [ResumeQualityGone] so
   /// the UI can ask, then pass the user's pick as [switchTo].
   Future<ResumeOutcome> redownload(String videoId, {VideoSource? switchTo}) =>
-      _serial(() async {
-        final d = await _store.get(videoId);
-        if (d == null) return const ResumeFailed();
-        if (d.status != DownloadStatus.complete) {
-          _clearRetryCounters(videoId);
-          return _resume(videoId, switchTo: switchTo);
+      _oneAtATime(videoId, () async {
+        final first = await _store.get(videoId);
+        if (first == null) return const ResumeFailed();
+        if (first.status != DownloadStatus.complete) {
+          return _resumeNow(videoId, switchTo: switchTo, when: _stopped);
         }
+        // The link, the size and the subtitles, outside the queue.
         final VideoSource source;
         if (switchTo != null) {
           source = switchTo;
@@ -1450,37 +1633,81 @@ class DownloadsRepository {
           } on Object {
             return const ResumeFailed(DownloadProblem.network);
           }
-          final exact = sources.where((s) => s.label == d.quality).firstOrNull;
+          final exact = sources
+              .where((s) => s.label == first.quality)
+              .firstOrNull;
           if (exact == null) {
-            final fallback = pickQuality(sources, _height(d.quality));
+            final fallback = pickQuality(sources, _height(first.quality));
             if (fallback == null) {
               return const ResumeFailed(DownloadProblem.unavailable);
             }
             return ResumeQualityGone(
-              previousQuality: d.quality,
+              previousQuality: first.quality,
               fallback: fallback,
               available: sources,
             );
           }
           source = exact;
         }
-        _forget(videoId);
-        _clearMissing(videoId);
+        final bytes = await sizeOf(source);
         // Subtitles removed with the video come back now, not after it.
-        final path = await _downloader.pathOf(_spot(d));
-        final stem = p.basenameWithoutExtension(d.fileName);
-        final dir = p.dirname(path);
-        final lost = d.subtitles.any(
+        final dir = p.dirname(await _downloader.pathOf(_spot(first)));
+        final lost = first.subtitles.any(
           (s) => !File(p.join(dir, s.fileName)).existsSync(),
         );
-        var row = d;
-        if (lost || d.subtitles.isEmpty) {
-          final saved = await _saveSubtitles(videoId, _spot(d), stem);
-          if (saved.isNotEmpty) row = d.copyWith(subtitles: saved);
-        }
-        _log('$videoId complete (file removed) -> downloading again');
-        return _restartIn(row, source, startedOver: false);
+        final saved = lost || first.subtitles.isEmpty
+            ? await _saveSubtitles(
+                videoId,
+                _spot(first),
+                p.basenameWithoutExtension(first.fileName),
+              )
+            : const <DownloadedSubtitle>[];
+        if (_disposed) return const ResumeFailed();
+
+        return _serial(() async {
+          final d = await _store.get(videoId);
+          if (d == null || !_sameFile(d, first)) {
+            // Deleted meanwhile: what was saved for it goes too.
+            await _dropSubtitles(first, saved);
+            return const ResumeFailed();
+          }
+          if (d.status != DownloadStatus.complete) return _alreadyGoing(d);
+          _forget(videoId);
+          _clearMissing(videoId);
+          final row = saved.isNotEmpty ? d.copyWith(subtitles: saved) : d;
+          _log('$videoId complete (file removed) -> downloading again');
+          return _restartIn(row, source, bytes: bytes, startedOver: false);
+        });
       });
+
+  /// Whether [a] and [b] are the same file.
+  static bool _sameFile(Download a, Download b) =>
+      a.baseDirectory == b.baseDirectory &&
+      a.directory == b.directory &&
+      a.fileName == b.fileName;
+
+  /// Deletes [saved] subtitles of [d], whose row is gone or moved, and their
+  /// folder if that leaves it empty (they may have made it again).
+  Future<void> _dropSubtitles(
+    Download d,
+    List<DownloadedSubtitle> saved,
+  ) async {
+    if (saved.isEmpty) return;
+    final dir = p.dirname(await _downloader.pathOf(_spot(d)));
+    for (final s in saved) {
+      try {
+        await File(p.join(dir, s.fileName)).delete();
+      } on FileSystemException {
+        // Already gone.
+      }
+    }
+    try {
+      final folder = Directory(dir);
+      if (await folder.list().isEmpty) await folder.delete();
+    } on FileSystemException {
+      // Not empty, or gone.
+    }
+  }
 
   /// Stops a download that isn't finished and removes it.
   Future<void> cancel(String videoId) => delete(videoId);
@@ -1611,6 +1838,10 @@ class DownloadsRepository {
     if (d == null) return;
     switch (event) {
       case DownloaderProgress():
+        // Each run that isn't a resume (the engine's own retries) reports
+        // 0% before a byte arrives: no measure of what's saved, since the
+        // partial file is still there. Its `running` status says it runs.
+        if (event.fraction <= 0 && d.downloadedBytes > 0) return;
         final total = event.expectedBytes ?? d.totalBytes;
         final done = total != null && total > 0
             ? (total * event.fraction).round().clamp(0, total)
@@ -1830,14 +2061,14 @@ class DownloadsRepository {
     // HTTP 401/403 (expired signed link): fetch fresh URL and resume once.
     if ((code == 401 || code == 403) && _autoRetried.add(d.videoId)) {
       _log('${d.videoId} HTTP $code -> auto-retrying with fresh URL');
-      await _resume(d.videoId, automatic: true);
+      _resumeLater(d.videoId, when: _notPausedByUser);
       return;
     }
 
     // "Task timed out": shouldn't happen in foreground mode; retry once.
     if (e.timedOut && _timeoutRetried.add(d.videoId)) {
       _log('${d.videoId} timed out -> auto-retrying once');
-      await _resume(d.videoId, automatic: true);
+      _resumeLater(d.videoId, when: _notPausedByUser);
       return;
     }
 
@@ -1846,7 +2077,7 @@ class DownloadsRepository {
       _log(
         '${d.videoId} resume error (HTTP ${code ?? "-"}) -> restarting from 0',
       );
-      await _resume(d.videoId, forceRestart: true, automatic: true);
+      _resumeLater(d.videoId, forceRestart: true, when: _notPausedByUser);
       return;
     }
 
@@ -1866,9 +2097,7 @@ class DownloadsRepository {
         _retryTimers.remove(d.videoId)?.cancel();
         _retryTimers[d.videoId] = Timer(delay, () {
           _retryTimers.remove(d.videoId);
-          if (!_disposed) {
-            unawaited(_serial(() => _resume(d.videoId, automatic: true)));
-          }
+          if (!_disposed) _resumeLater(d.videoId, when: _notPausedByUser);
         });
         return;
       }
@@ -1921,6 +2150,15 @@ class DownloadsRepository {
     await _sweep();
     if (passingProblems.contains(problem)) _scheduleSlowRetry(d.videoId);
   }
+
+  /// The files every other row holds or will hold: a download's file only
+  /// appears when it finishes, so the disk alone would hand its name out
+  /// again, and two rows on one file overwrite and delete each other.
+  Future<Set<String>> _takenPaths(String exceptVideoId) async => {
+    for (final d in await _store.all())
+      if (d.videoId != exceptVideoId)
+        takenKey(await _downloader.pathOf(_spot(d))),
+  };
 
   static FileSpot _spot(Download d) =>
       FileSpot(d.baseDirectory, d.directory, d.fileName);
