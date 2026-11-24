@@ -4,7 +4,7 @@ The plan for shipping Cinemakom on desktop (2026-11-24): where the app keeps
 its files, which packages to make, and in what order. Android is an APK and
 isn't covered here. PLAN.md Phase 8 ("Packaging") points to this file.
 
-Milestones are P0–P5 (§5). Decisions for the owner are in §6.
+Milestones are P0–P4 (§5). Decisions for the owner are in §6.
 
 ---
 
@@ -44,44 +44,99 @@ build.
 
 ## 2. P0: put every file in the right place (before any package)
 
-One small module, `lib/core/platform/app_dirs.dart`, decides every folder.
-Nothing else calls path_provider for these.
+*Built 2026-11-24. Checked on Linux, on the owner's real library: it
+moved out of `~/Documents` with its history intact, the log moved to
+`~/.local/state`, posters fill `~/.cache`, the old files went, and a
+second launch hands over to the open window. Windows is left to check:
+§2.1.*
 
-| Folder | Linux | Windows | Android (unchanged) |
+`AppDirs` (`lib/core/platform/app_dirs.dart`) decides the app's own
+folders on desktop, once, before `runApp`. On Android and in tests
+`AppDirs.current` is `null` and every file stays where it always was
+(moving Android's database would lose people's libraries).
+
+| Folder | Linux | Windows | Android |
 |---|---|---|---|
-| data (database, engine state) | `$XDG_DATA_HOME/<id>` (`~/.local/share/…`) | `%LOCALAPPDATA%\io.github.sharon_xa\Cinemakom` | app support folder |
-| cache (posters, subtitle fonts) | `$XDG_CACHE_HOME/<id>` (`~/.cache/…`) | `%LOCALAPPDATA%\…\cache` | app cache folder |
-| state (logs) | `$XDG_STATE_HOME/<id>` (`~/.local/state/…`) | `%LOCALAPPDATA%\…\logs` | external app folder (for `adb pull`), as now |
-| default downloads | `$(xdg-user-dir VIDEOS)/Cinemakom` | Videos known folder `\Cinemakom` | as now |
-| settings | unchanged (shared_preferences picks it) | unchanged | unchanged |
+| data (library database) | `$XDG_DATA_HOME/<id>` (`~/.local/share/…`) | `%LOCALAPPDATA%\io.github.sharon_xa\Cinemakom` | unchanged |
+| cache (posters, subtitle font) | `$XDG_CACHE_HOME/<id>` (`~/.cache/…`) | `…\Cinemakom\cache` (Local) | unchanged |
+| state (`logs/`) | `$XDG_STATE_HOME/<id>` (`~/.local/state/…`) | `…\Cinemakom\logs` (Local) | unchanged (external folder, for `adb pull`) |
+| default downloads | `XDG_VIDEOS_DIR/Cinemakom` | Videos known folder `\Cinemakom` | unchanged |
+| settings, download engine state | `~/.local/share/<id>` (the packages' own choice) | Roaming AppData (the packages' own choice) | unchanged |
 
-Following the XDG spec: an unset, empty or relative variable falls back to
-the default (`~/.local/share`, `~/.cache`, `~/.local/state`). The
-`xdg_directories` package (already in the tree, through path_provider_linux)
-reads these and `user-dirs.dirs`.
+The last row can't move: shared_preferences and background_downloader
+pick the app support folder themselves. On Linux that's already the XDG
+data folder. On Windows it's Roaming, which works; it only matters on
+company networks that sync Roaming between PCs.
 
-Work:
-- **Database:** `driftDatabase(name: 'cinemakom', native:
-  DriftNativeOptions(databaseDirectory: …))`.
-- **Image cache:** one `CacheManager(Config(…, fileSystem: IOFileSystem(<cache>/images)))`
-  passed to `MediaImage`, with the index kept next to it.
-- **Logs and subtitle fonts:** `logDirectory()` uses state, `subtitle_fonts.dart`
-  uses cache.
-- **Default download folder:** `defaultDesktopFolder()` asks the OS. A folder
-  the user picked in Settings is kept as is.
-- **Windows:** set the hidden attribute on `.partial`.
-- **Migration, once, on startup:** move `cinemakom.sqlite` from Documents
-  (and its `-wal`, `-shm` and `-journal` files, if any) when the new
-  location is empty. Never overwrite. Then delete the old `libass-fonts/`
-  and `fonts/` folders and the stale cache index. If anything fails, log it
-  and keep the old file where it is. Losing the library is the one thing
-  this must never do.
-- **Tests:** `AppDirs` resolves from an environment map, so the XDG rules
-  (unset, empty, relative, `user-dirs.dirs` with `$HOME/…` and translated
-  names) are unit tests. The migration is tested on a temp folder: moved,
-  kept when the target exists, a failure keeps the old file.
-- **Docs:** this table goes into the AGENTS.md rules ("files go through
-  `AppDirs`").
+XDG rules followed (and unit-tested, `test/core/platform/app_dirs_test.dart`):
+an unset, empty or relative variable falls back to the default; the
+videos folder comes from `user-dirs.dirs` (`$HOME/…`, translated names,
+absolute paths), else `XDG_VIDEOS_DIR`, else `~/Videos`; a value of just
+`$HOME` means the folder is turned off.
+
+What changed:
+- **Database:** `appDatabaseDirectory` (`lib/core/storage/legacy_files.dart`)
+  is drift's `databaseDirectory`. On desktop it first moves an old
+  `cinemakom.sqlite` (and any `-journal`, `-wal`, `-shm`) from Documents:
+  copied first, switched into place when every copy is written (the
+  database last), and the old files deleted only then. A library already
+  in the new folder is never overwritten; a failed copy keeps the old
+  files and is logged. A start that stops halfway finishes on the next.
+- **Posters:** one cache, `appImageCache` (`lib/core/storage/image_cache.dart`),
+  for `MediaImage`, `TvImage` and the seek preview, files and index in
+  `<cache>/images`.
+- **Logs:** `logDirectory()` uses `<state>/logs`; the old log moves there
+  before the log opens its file, so the last session's survives.
+- **Subtitle font:** `<cache>/subtitle-fonts`.
+- **Downloads:** `defaultDesktopFolder()` uses the videos folder. A folder
+  picked in Settings is kept. On Windows the `.partial` folder gets the
+  hidden attribute.
+- **Cleanup, in the background:** the old `libass-fonts/` and `fonts/`
+  (only if it holds nothing but fonts), the old cache index and the old
+  poster files in the temp folder.
+- **One instance, in release builds:** Linux is a unique `GApplication`
+  (a second launch presents the open window); Windows takes a named mutex
+  and brings the open window forward. Debug builds stay non-unique, so
+  `flutter run` and the integration tests start while the installed app
+  is open.
+
+### 2.1 Left to check on Windows
+
+The Windows code compiles only on Windows, and `main.cpp`'s change has
+never been built. Get a build either way:
+- **From CI (no tools needed):** run the Release workflow by hand
+  (Actions → Release → Run workflow, version `v0.0.0-dev`; it publishes
+  nothing), then download the `release-windows` artifact and unzip it.
+- **On the Windows machine:** Flutter 3.47.9 through fvm, Visual Studio
+  2022 with "Desktop development with C++", then
+  `fvm flutter build windows --release`; the app is in
+  `build\windows\x64\runner\Release`.
+
+Steps (about 15 minutes):
+1. **An old library to move.** Unzip an earlier release (v1.0.x from
+   GitHub), start it, play any title for a few seconds and add one to
+   your list, then close it. `Documents\cinemakom.sqlite` now exists.
+2. **Start the new build.** Continue watching and My list show what you
+   did in step 1.
+3. **Files:**
+   - `Documents\cinemakom.sqlite` is gone.
+   - `%LOCALAPPDATA%\io.github.sharon_xa\Cinemakom\` has
+     `cinemakom.sqlite`, `logs\current.log` and `cache\images\` (filling as
+     posters show).
+   - `%APPDATA%\io.github.sharon_xa\Cinemakom\` still has the settings
+     and the download engine's folders (expected, see above).
+4. **Activity log** (Settings → Help): the first lines say
+   `folders: data … · videos …` and `moved the library from …`. Save a
+   copy works.
+5. **Downloads:** Settings shows `<your Videos folder>\Cinemakom`; if
+   Videos is moved (OneDrive, another drive), the moved one. Start a
+   download: `Cinemakom\.partial` only shows in Explorer with hidden
+   items turned on.
+6. **One instance:** with the app open, start `cinemakom.exe` again. No
+   second window opens; the open one comes to the front, also when it was
+   minimized.
+7. If anything is off, Settings → Help → Activity log → Save a copy, and
+   send the file.
 
 ## 3. Linux
 
@@ -103,7 +158,7 @@ sends. A distro patches its own copy; ours stays as old as our last
 release. So:
 
 - **Bundled:** libmpv and what it brings (FFmpeg, libass, libplacebo), in
-  the Flatpak, the tarball and on Windows. **Rule: an FFmpeg or mpv
+  the Flatpak and on Windows. **Rule: an FFmpeg or mpv
   security release means a Cinemakom release.** CI can warn us: Flathub's
   update checker for the Flatpak modules, and a scheduled job comparing
   our versions with the latest.
@@ -115,71 +170,55 @@ release. So:
 - **Licences:** mpv and FFmpeg are GPL or LGPL, and the app is MIT, which
   is compatible. Each package includes their licence texts and links to
   the exact sources we built.
-- **AUR:** uses the system mpv. That's Arch's convention, and Arch's copy
-  is always current.
 
-### Formats, in order
+### Format: Flatpak only (decision 2026-11-24)
 
-1. **Flatpak (the main package).** It brings its own runtime (glibc, GTK)
-   and our libmpv and FFmpeg, so one build runs the same on every distro.
-   It's sandboxed, updates through GNOME Software and KDE Discover, and
-   Flathub is where Linux users look first.
-   - **Manifest** `linux/flatpak/io.github.sharon_xa.cinemakom.yml`:
-     - Runtime: the GNOME Platform, which includes GTK 3.
-     - Modules: libmpv and its libraries (libass, libplacebo, FFmpeg) built
-       from source, as other mpv-based apps on Flathub do.
-     - The app: the Flutter release bundle.
-   - **Permissions:**
-     - `--share=network`, `--share=ipc`
-     - `--socket=wayland`, `--socket=fallback-x11`, `--device=dri`
-     - `--socket=pulseaudio`
-     - `--filesystem=xdg-videos`, for downloads
-     - Other folders, and Save a copy of the log, go through the file
-       chooser portal.
-     - Keeping the screen on already uses the Inhibit portal
-       (wakelock_plus), so it needs no permission.
-   - **AppStream metainfo** `io.github.sharon_xa.cinemakom.metainfo.xml`:
-     the description in English and Arabic, screenshots (from
-     `integration_test/screenshots_test.dart`), release notes and the
-     required OARS content declaration. That declaration describes the app
-     for the store; it isn't a ratings feature.
-   - **First** attach a `.flatpak` bundle to each GitHub release, built in
-     CI. **Then** submit to Flathub. Flathub reviews apps and prefers
-     source builds: check its current rules for Flutter apps when
-     submitting. The app ID already matches the `io.github.<user>` form
-     Flathub verifies through GitHub.
-2. **AUR `cinemakom-bin` (Arch, Manjaro).** A PKGBUILD that installs the
-   release tarball in `/opt/cinemakom`, a launcher in `/usr/bin`, the
-   desktop file, the icons and the metainfo. `depends=(mpv gtk3)`. Small,
-   and Arch users expect it.
-3. **The tarball, done properly** (for everyone else):
-   - Add `install.sh` and `uninstall.sh` that do what the README asks
-     people to type: a per-user install into `~/.local`, a symlink in
-     `~/.local/bin`, the desktop file, icons and metainfo.
-   - Bundle libmpv and FFmpeg in `lib/`, built in CI from pinned sources,
-     so nothing has to be installed first. The launcher sets the library
-     path to the bundle's `lib/`.
-   - Build on `ubuntu-22.04`, not `ubuntu-latest`: a runner that jumps
-     ahead silently raises the glibc the app needs. That makes 2022 or
-     newer distros the requirement.
-   - Write the real requirements in the README: GTK 3 and a 2022 or newer
-     distro. Drop the "install libmpv" table.
-4. **Later, if people ask:** a `.deb` (Debian, Ubuntu) and an `.rpm`
-   (Fedora, where mpv comes from RPM Fusion). Flatpak covers both today.
-5. **Not planned:**
-   - **AppImage:** we would have to bundle libmpv, FFmpeg and GTK, glibc
-     would still tie it to old build machines, and it doesn't update.
-     Flatpak covers the same "one file for every distro" need better.
-   - **Snap:** Flatpak covers the same users.
+One Linux package (owner's decision): one thing to keep working.
+
+**Flatpak, for every Linux user.** It brings its own runtime
+(glibc, GTK) and our libmpv and FFmpeg, so one build runs the same on
+every distro, with nothing to install first. It's sandboxed, updates
+through GNOME Software and KDE Discover, and Flathub is where Linux
+users look first.
+- **Manifest** `linux/flatpak/io.github.sharon_xa.cinemakom.yml`:
+  - Runtime: the GNOME Platform, which includes GTK 3.
+  - Modules: libmpv and its libraries (libass, libplacebo, FFmpeg) built
+    from source, as other mpv-based apps on Flathub do.
+  - The app: the Flutter release bundle.
+- **Permissions:**
+  - `--share=network`, `--share=ipc`
+  - `--socket=wayland`, `--socket=fallback-x11`, `--device=dri`
+  - `--socket=pulseaudio`
+  - `--filesystem=xdg-videos`, for downloads
+  - Other folders, and Save a copy of the log, go through the file
+    chooser portal.
+  - Keeping the screen on already uses the Inhibit portal
+    (wakelock_plus), so it needs no permission.
+- **AppStream metainfo** `io.github.sharon_xa.cinemakom.metainfo.xml`:
+  the description in English and Arabic, screenshots (from
+  `integration_test/screenshots_test.dart`), release notes and the
+  required OARS content declaration. That declaration describes the app
+  for the store; it isn't a ratings feature.
+- **First** attach a `.flatpak` bundle to each GitHub release, built in
+  CI. **Then** submit to Flathub. Flathub reviews apps and prefers
+  source builds: check its current rules for Flutter apps when
+  submitting. The app ID already matches the `io.github.<user>` form
+  Flathub verifies through GitHub.
+
+**The tarball** stays a release download only until the Flatpak ships
+(P2), so Linux users have something to install meanwhile. Then the
+release workflow stops attaching it, and the README points to the
+Flatpak only: its "install libmpv" table and manual steps go.
+
+**Not offered:** AppImage, AUR, `.deb`, `.rpm`, Snap. Flatpak covers all
+of those users with one package that updates itself, and runs on Arch
+too.
 
 ### Desktop integration (what makes it feel native)
 - Done: desktop file with an Arabic name, `StartupWMClass` matching the app
   ID, icons at every size plus SVG.
-- **One instance:** the runner uses `G_APPLICATION_NON_UNIQUE`, so a second
-  launch starts a second process with its own download engine, writing to
-  the same database. It also renames the first one's `current.log`. Make
-  the app unique, so a second launch brings the open window to the front.
-  On Windows, do the same with a named mutex in `main.cpp`.
+- Done in P0: one instance (a second launch brings the open window to the
+  front instead of running a second download engine on the same library).
 - **Metainfo:** GNOME Software and Discover show apps from it (Flatpak
   item above).
 - **To check on GNOME and KDE, Wayland and X11:** full screen in the
@@ -253,21 +292,20 @@ release. So:
 
 | | What | Done when |
 |---|---|---|
-| **P0** | Folders (§2), migration, one instance on both OSs | Tests green. On this machine the library moves out of `~/Documents` with nothing lost, posters survive a reboot, logs are in `~/.local/state` |
+| **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: the §2.1 steps |
 | **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | In Windows Sandbox: installs, starts, updates over itself and uninstalls cleanly. On the owner's machine: plays up to 4K and downloads |
-| **P2** | Linux: metainfo, Flatpak bundle in CI, tarball with libmpv bundled and `install.sh`, built on `ubuntu-22.04`, README fixed | The `.flatpak` installs and plays on Fedora, Ubuntu 24.04 and Arch, in GNOME and KDE. The tarball plays on Ubuntu 22.04 with no mpv installed |
-| **P3** | AUR `cinemakom-bin` | `yay -S cinemakom-bin` works |
-| **P4** | Flathub and winget | Listed, and updates arrive by themselves |
-| **P5** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
+| **P2** | Linux: metainfo, Flatpak bundle in CI, the tarball dropped, README points to the Flatpak | The `.flatpak` installs and plays on Fedora, Ubuntu 24.04 and Arch, in GNOME and KDE |
+| **P3** | Flathub and winget | Listed, and updates arrive by themselves |
+| **P4** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
 
 ## 6. Decisions for the owner
 
 1. **Publishing on Flathub and winget:** both are public listings with a
    review. OK to submit once P2 and P1 are done?
-2. **"Update available" for the zip, tarball and installer:** these don't
+2. **"Update available" for the zip and the installer:** these don't
    update themselves. A check against GitHub Releases would be a
    third-party call, and AGENTS.md allows only the status page. Allow this
-   one exception, or rely on Flathub, AUR and winget for updates?
+   one exception, or rely on Flathub and winget for updates?
 3. **Settings in `~/.config`:** strict XDG, but it needs our own settings
    file instead of shared_preferences on Linux. Recommendation: not worth
    it now. Every other file moves in P0.
