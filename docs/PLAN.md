@@ -297,7 +297,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 - Empty, error and offline states, accessibility (semantics, text scaling), and performance (image cache size, list `cacheExtent`).
   - *Done 2026-11-19:* Android asks for the display's fastest refresh rate (`MainActivity`). OnePlus/ColorOS had held the app at 60 Hz. On the owner's OnePlus (120 Hz) the frame-timing check (`integration_test/scroll_perf_test.dart`) measured: UI thread about 1.5 ms and raster about 4.2 ms on average against an 8.3 ms budget, with under 1% of frames late while scrolling and about 1.5% when opening a title. Those late frames are the page-transition snapshot, which is how Flutter is built. Re-run the check after big UI changes.
 - *Done 2026-11-24:* a flight recorder for bugs that happen once (`lib/core/diagnostics`): uncaught errors, freezes (frames over 700 ms, the event loop blocked 1 s or more), the player's state changes, the remote's keys with the focus, screens, network failures and download steps, kept on the device in `logs/current.log` and `previous.log` (the last session). Settings → Help → Activity log shows it and hands it over: the share sheet on phones, Save a copy on computers, a QR code on the TV that opens it on a phone on the same Wi-Fi (`LogServer`, a random link, only while the panel is open). A part of a screen that fails to build shows the background in release builds (`BrokenPart`), not Flutter's grey box.
-- Packaging: the plan is `docs/PACKAGING.md` (2026-11-24): files in the right folders first (XDG on Linux, Local/Roaming on Windows), then a per-user Inno Setup installer and winget on Windows, and a Flatpak (then Flathub) as the only Linux package. Android is the APK. *P0 done on Linux 2026-11-24.*
+- Packaging: the plan is `docs/PACKAGING.md` (2026-11-24): files in the right folders first (XDG on Linux, Local/Roaming on Windows), then a per-user Inno Setup installer and winget on Windows, and an AppImage with an install script as the only Linux package (Flatpak dropped 2026-11-24: Flathub won't take an AI-written app). Android is the APK. *P0 done on Linux 2026-11-24.*
 
 ---
 
@@ -306,7 +306,7 @@ Each phase ends with something that runs. **Every phase is tested on Android and
 | Risk | Mitigation |
 |---|---|
 | `cached_network_image` → sqflite crashes on Linux and Windows | ✅ Handled: `main.dart` calls `sqfliteFfiInit(); databaseFactory = databaseFactoryFfi;` on desktop. It shares sqlite3 3.x with drift, so there's no version conflict |
-| libmpv is missing on a user's Linux install | List it as a dependency in the Flatpak or AppImage. Show a clear error if the player fails to start |
+| libmpv is missing on a user's Linux install | The AppImage bundles it (docs/PACKAGING.md §3). Show a clear error if the player fails to start |
 | The API checks headers (Referer, Origin, User-Agent) | All requests go through the shared header map. If streams break on one platform, compare against the Kotlin app first |
 | The API is undocumented and can change without warning | Parsers stay tolerant. Fixture tests catch changes. Re-run the capture script to compare |
 | ~~Unknown stream formats (mp4 vs HLS)~~ | ✅ Resolved: every stream is progressive MP4 (H.264 + one AAC track), with no HLS or DASH (API.md §3) |

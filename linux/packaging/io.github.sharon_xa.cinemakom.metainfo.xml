@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- AppStream metadata: what GNOME Software, KDE Discover and Flathub show
-     (docs/PACKAGING.md §3). Validate: appstreamcli validate - -no-net <this> -->
+<!-- AppStream metadata, inside the AppImage (docs/PACKAGING.md §3): what
+     software centres and AppImage catalogues show about the app.
+     Validate: appstreamcli validate - -no-net <this> -->
 <component type="desktop-application">
   <id>io.github.sharon_xa.cinemakom</id>
   <metadata_license>CC0-1.0</metadata_license>

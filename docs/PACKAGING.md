@@ -17,7 +17,7 @@ On Windows, path_provider names folders `io.github.sharon_xa\Cinemakom`
 
 | What | Linux now | Windows now | Problem |
 |---|---|---|---|
-| Library database (`cinemakom.sqlite`: history, favorites, downloads list) | `~/Documents/` | `Documents\` | drift_flutter's default is `getApplicationDocumentsDirectory`. It's the user's own folder, it's often synced to OneDrive on Windows, and **inside a Flatpak it isn't writable at all** |
+| Library database (`cinemakom.sqlite`: history, favorites, downloads list) | `~/Documents/` | `Documents\` | drift_flutter's default is `getApplicationDocumentsDirectory`. It's the user's own folder, and it's often synced to OneDrive on Windows |
 | Image cache (posters) | `/tmp/libCachedImageData` | `%TEMP%` | flutter_cache_manager's default. On tmpfs it uses RAM and is gone at every reboot, while its index (in the data folder) still lists the files |
 | Settings (`shared_preferences.json`) | `~/.local/share/<id>/` | `%APPDATA%\…` (Roaming) | Fine. XDG's place for settings is `~/.config`, but moving them needs a custom store (§6) |
 | Download engine state, kept resume data | `~/.local/share/<id>/` | Roaming | Fine on Linux. On Windows it belongs in Local: it's machine-specific |
@@ -35,10 +35,6 @@ build.
 - **Users expect it.** Backups and dotfile sync cover `~/.local/share` and
   `~/.config`. Cleaners empty `~/.cache` and `/tmp`. An app that drops a
   database in `~/Documents` looks broken or rude.
-- **Flatpak depends on it.** Inside the sandbox the XDG variables point into
-  `~/.var/app/<id>/`, so an app that follows XDG needs no special case there.
-  `~/Documents` isn't reachable without an extra permission, so the
-  database wouldn't open.
 - **Windows has the same split:** Roaming for small settings, Local for
   machine-specific data and caches, the Videos known folder for videos.
 
@@ -142,14 +138,15 @@ Steps (about 15 minutes):
 
 ### What limits a plain binary (checked 2026-11-24)
 - **libmpv 2 is a hard dependency.** `libmedia_kit_video_plugin.so` links
-  `libmpv.so.2`, so the app doesn't start on systems that only have
-  libmpv 1 (Ubuntu 22.04, Debian 11). The README's "Older Debian and
-  Ubuntu: `libmpv1`" row is wrong and should go.
+  `libmpv.so.2`, so a plain build doesn't start on systems that only have
+  libmpv 1 (Ubuntu 22.04, Debian 11).
 - **glibc:** a binary needs a glibc at least as new as the one on the
-  machine that built it. The local build needs GLIBC_2.38. CI builds on
-  `ubuntu-latest`, which moves to new Ubuntu versions by itself.
-- GTK 3 and the codecs come from the user's system, so behaviour varies
-  between distros.
+  machine that built it. The development machine has glibc 2.44, and CI's
+  `ubuntu-latest` moves to new Ubuntu versions by itself. So the AppImage
+  is built in an Ubuntu 22.04 container (glibc 2.35).
+- GTK 3 comes from the user's system. It's on every Linux desktop, and the
+  system's copy brings its themes, input methods (Arabic keyboards) and
+  Wayland support.
 
 ### What we ship and what comes from the system
 Bundling the player's libraries makes the app work the same everywhere,
@@ -157,93 +154,130 @@ but their security fixes become ours. FFmpeg parses whatever file the CDN
 sends. A distro patches its own copy; ours stays as old as our last
 release. So:
 
-- **Bundled:** libmpv, libass and libplacebo in the Flatpak; libmpv with
-  its FFmpeg on Windows. **Rule: a security release of any of them means
-  a Cinemakom release.** CI can warn us: Flathub's update checker for the
-  Flatpak modules, and a scheduled job comparing our versions with the
-  latest.
-- **FFmpeg in the Flatpak comes from the runtime** (GNOME 51: FFmpeg 8.1,
-  with H.264 and the other patented codecs through
-  `org.freedesktop.Platform.codecs-extra`), so its security fixes arrive
-  with runtime updates, not with ours. FFmpeg is the library that parses
-  what the CDN sends, so that's where it matters most.
-- **Never bundled:** glibc (a binary needs at least the build machine's),
-  GPU drivers (Mesa or NVIDIA, libGL and EGL, VA-API drivers: they must
-  match the kernel and GPU), and GTK where possible (themes, input
-  methods for Arabic keyboards, Wayland). In the Flatpak, Flathub's
-  runtime provides and patches these.
-- **Licences:** mpv and FFmpeg are GPL or LGPL, and the app is MIT, which
-  is compatible. Each package includes their licence texts and links to
-  the exact sources we built.
+- **In the AppImage:** FFmpeg 8.1.3, libmpv (mpv 0.42.0), libass 0.17.5,
+  libplacebo 7.387.0 and libva 2.24.1, all built from release archives
+  pinned by checksum (`linux/appimage/Dockerfile`). On Windows: libmpv with
+  its FFmpeg. **Rule: a security release of any of them means a Cinemakom
+  release.** Later, a scheduled CI job can compare our versions with the
+  latest and warn us.
+- **From the user's system**, the list in `linux/appimage/bundle_libs.py`
+  (`SYSTEM`):
+  - glibc and the compiler runtime.
+  - GTK 3 and what it's built on (GLib, Pango, Cairo, HarfBuzz, FreeType,
+    Fontconfig, FriBidi, X11).
+  - The GPU's libraries: libGL, EGL, libdrm and the VA-API drivers. They
+    must match the kernel and the GPU (Mesa or NVIDIA).
+  - **GnuTLS** (FFmpeg's TLS for every stream), PulseAudio's client
+    library and ALSA. Their security fixes reach us with system updates.
+    Not OpenSSL: Fedora 45 moved to OpenSSL 4, and a library linked to
+    OpenSSL 3 didn't load there (found in testing). GnuTLS's library name
+    hasn't changed since 2015, and even the bare Ubuntu, Debian, Fedora
+    and Arch container images have it.
+  - **libGLESv2**, which the Flutter engine loads: desktops have it. A
+    minimal Debian or Ubuntu without a desktop needs `libgles2`.
 
-### Format: Flatpak only (decision 2026-11-24)
+  Every desktop Linux with GTK 3 from 2022 on has these. The build stops
+  if anything else is needed and isn't ours, so nothing joins the AppImage,
+  or is left out of it, without a decision in that file.
+- **libva is ours** so that current VA-API drivers load: an older libva
+  can't load a driver built for a newer one. It looks for the system's
+  drivers in the Debian/Ubuntu, Fedora/openSUSE, Arch and NixOS folders.
+- **Licenses:** mpv is GPL (2 or later), and FFmpeg and libplacebo are
+  LGPL. The app is MIT, which is compatible: together they're distributed
+  under the GPL. The AppImage carries every license
+  text in `usr/share/licenses/`, and the Dockerfile names the exact sources.
+  **To do before the next release:** attach those source archives to the
+  GitHub release too (the GPL's "corresponding source").
 
-One Linux package (owner's decision): one thing to keep working.
+### Format: AppImage only (decision 2026-11-24)
 
-**Flatpak, for every Linux user.** It brings its own runtime (glibc, GTK,
-FFmpeg) and our libmpv, so one build runs the same on every distro, with
-nothing to install first. It's sandboxed, updates through GNOME Software
-and KDE Discover, and Flathub is where Linux users look first.
+There is one Linux package (the owner's decision), so there's one thing to keep working.
 
-*Built and checked on Linux 2026-11-24* (`tool/build_flatpak.sh`, 36 MB
-bundle): it starts in the sandbox, loads Home over the network, keeps its
-files in `~/.var/app/<id>/` (library, posters, log) with downloads in the
-host's Videos folder, reaches NetworkManager, names the host system in
-the log header and bug reports ("EndeavourOS (Flatpak)"), and a second
-launch hands over to the open window. libmpv inside it plays H.264 and
-AAC to the end through the runtime's FFmpeg. Left: the release workflow's
-Linux job has never run (the AppArmor workaround in particular), and
-playback of a real stream through the UI.
+**Why not Flatpak (dropped the same day, after it was built):**
+- **Flathub won't take the app.** Its policy (read 2026-11-24): manifests
+  must not be AI-written; an AI-generated app may be rejected without
+  review; and AI tools must not open or write submissions. Flathub also
+  requires apps built from source offline, and rarely takes new projects.
+- **Without Flathub, the Flatpak's advantages go.** A downloaded `.flatpak`
+  doesn't update itself. And a first install pulls in the GNOME runtime,
+  1.1 GB installed, plus about 460 MB of graphics drivers. That's a lot to
+  ask before the app even starts, especially on a slow or metered
+  connection. The manifest is in git history (commit dbc43ad).
 
-- **Manifest** `linux/flatpak/io.github.sharon_xa.cinemakom.yml`:
-  - Runtime: the GNOME Platform 51 (GTK 3, FFmpeg).
-  - Modules: libass 0.17.5, libplacebo 7.387.0 (OpenGL, no Vulkan) and
-    libmpv from mpv 0.42.0 (OpenGL, Wayland, VA-API with Wayland and
-    dmabuf interop, PulseAudio, PipeWire), pinned by checksum.
-  - The app: the Flutter release bundle, built first on the host (CI:
-    Ubuntu 24.04). Everything it links is in the runtime but libmpv.
-  - mpv has no X11 support here (the SDK lacks some X11 libraries): on an
-    X11-only desktop playback works, but hardware decoding may fall back
-    to software. Wayland desktops are fine.
-- **Permissions:**
-  - `--share=network`, `--share=ipc`
-  - `--socket=wayland`, `--socket=fallback-x11`, `--device=dri`
-  - `--socket=pulseaudio`
-  - `--filesystem=xdg-videos`, for downloads
-  - `--system-talk-name=org.freedesktop.NetworkManager`: connectivity_plus
-    asks it whether the device is online.
-  - Other folders, and Save a copy of the log, go through the file
-    chooser portal.
-  - Keeping the screen on already uses the Inhibit portal
-    (wakelock_plus), so it needs no permission.
-- **AppStream metainfo** `linux/packaging/io.github.sharon_xa.cinemakom.metainfo.xml`:
-  English and Arabic, two screenshots (`docs/screenshots/desktop-*.png`),
-  releases, and the required OARS content declaration (empty). That
-  declaration describes the app for the store; it isn't a ratings
-  feature. `appstreamcli validate` passes. Before Flathub: the
-  screenshots show real film posters and a film frame, which reviewers
-  may question.
-- **Releases:** the release workflow builds the `.flatpak` (Linux job, on
-  `ubuntu-24.04`) and attaches it. **Then** submit to Flathub (P3).
-  Flathub reviews apps and prefers source builds: check its current rules
-  for Flutter apps when submitting (building Flutter inside the SDK,
-  offline). The app ID already matches the `io.github.<user>` form
-  Flathub verifies through GitHub.
+**The AppImage:** one file with everything the player needs: 24 MB.
+- **Runs straight away:** `chmod +x` and run. It uses the static AppImage
+  runtime, which needs FUSE but not the old libfuse2 that newer distros
+  dropped. Without FUSE, `--appimage-extract-and-run` works.
+- **Or install it:** `install.sh`, attached to each release:
+  `curl -fsSL …/releases/latest/download/install.sh | bash`. It works per
+  user, with no sudo:
+  - It downloads the release's AppImage and checks it against the
+    release's `SHA256SUMS.txt`.
+  - It unpacks it into `~/.local/lib/cinemakom`, so the installed app runs
+    without FUSE and starts without mounting anything.
+  - It adds `~/.local/bin/cinemakom`, and a menu entry with the icons in
+    `~/.local/share`.
+  - **Updates:** run the script again. It finds the latest release through
+    GitHub's `/releases/latest` redirect (no API token), and swaps the
+    folder only once the new one is complete.
+  - `--version`, `--file` and `--uninstall` are the other options.
+    Uninstalling keeps the library and downloads, and says where they are.
+- **Files:** plain XDG (§2), with no sandbox and no `~/.var/app`.
+- **Build:** `tool/build_appimage.sh` (Docker), locally and in the release
+  workflow:
+  1. The image `linux/appimage/Dockerfile` (Ubuntu 22.04) builds the
+     libraries into `/opt/deps`, and holds Flutter 3.47.9.
+  2. `linux/appimage/build.sh` copies the source into the container, runs
+     `flutter build linux --release` and assembles the AppDir. The
+     source's own `build/` isn't touched.
+  3. `bundle_libs.py` adds our libraries, makes them find each other
+     (RUNPATH `$ORIGIN`), and stops on anything undecided.
+  4. The squashfs (zstd) is appended to the pinned type2 runtime. That
+     runtime is only published as "continuous": when its checksum stops
+     matching, look at what changed upstream before taking the new one.
 
-**The tarball is gone** (2026-11-24): the release workflow builds the
-Flatpak instead, and the README's Linux section is one `flatpak install`.
+  CI caches the image's layers, so FFmpeg and mpv only rebuild when the
+  Dockerfile changes. The first local run takes about 15 minutes.
+- **The player inside:**
+  - libmpv draws through the OpenGL context the app gives it (`plain-gl`).
+    It has no X11 or Wayland code: mpv 0.42's Wayland code needs
+    libwayland 1.23, and Ubuntu 22.04 has 1.20.
+  - **Hardware decoding:** NVIDIA decodes on the GPU and hands frames to
+    OpenGL without copies (CUDA; driver 530 or newer). Intel and AMD use
+    VA-API with copy-back (`vaapi-copy`): the GPU decodes, and each frame
+    passes through memory once. That's fine up to 4K on recent hardware.
+    Without either, mpv decodes in software (`hwdec=auto`).
 
-**Not offered:** AppImage, AUR, `.deb`, `.rpm`, Snap. Flatpak covers all
-of those users with one package that updates itself, and runs on Arch
-too.
+*Checked 2026-11-24:*
+- **Clean containers:** Ubuntu 22.04, Debian 12, Fedora 45 and Arch, with
+  only GTK 3, Mesa and sound libraries installed. Every library resolves.
+  The bundled libmpv plays H.264 with AAC, and HEVC, to the end, and opens
+  HTTPS through the system's GnuTLS. The app starts (Xvfb), stays up, and
+  writes its log in the XDG folders.
+- **This machine** (EndeavourOS, Wayland, NVIDIA): the AppImage runs
+  through FUSE with the real library, and a second launch hands over to
+  the open window. HEVC decodes on the GPU (`nvdec-copy` in the test;
+  without the copy in the app).
+- **`install.sh`:** install, reinstall and uninstall in a clean Ubuntu
+  container; a release without an AppImage gives a clear error.
+- **Left:**
+  - The release workflow's Linux job has never run.
+  - Playback of a real stream through the UI.
+  - A try on a real Ubuntu or Fedora desktop (GNOME, KDE), and VA-API on
+    Intel or AMD.
+
+**Not offered:** Flatpak or Flathub (above), AUR, `.deb`, `.rpm`, Snap.
 
 ### Desktop integration (what makes it feel native)
 - Done: desktop file with an Arabic name, `StartupWMClass` matching the app
   ID, icons at every size plus SVG.
 - Done in P0: one instance (a second launch brings the open window to the
   front instead of running a second download engine on the same library).
-- **Metainfo:** GNOME Software and Discover show apps from it (Flatpak
-  item above).
+- **Metainfo** `linux/packaging/io.github.sharon_xa.cinemakom.metainfo.xml`,
+  inside the AppImage: English and Arabic, screenshots and releases, for
+  AppImage catalogues. `appstreamcli validate` passes. Its OARS content
+  declaration (required, empty) describes the app for a store; it isn't a
+  ratings feature.
 - **To check on GNOME and KDE, Wayland and X11:** full screen in the
   player, fractional scaling, the screen staying on during playback, and
   hardware decoding (VA-API) with Intel, AMD and NVIDIA.
@@ -317,18 +351,20 @@ too.
 |---|---|---|
 | **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: the §2.1 steps |
 | **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | In Windows Sandbox: installs, starts, updates over itself and uninstalls cleanly. On the owner's machine: plays up to 4K and downloads |
-| **P2** | Linux: metainfo, Flatpak bundle in CI, the tarball dropped, README points to the Flatpak | Built and checked on Arch (§3). Left: the first CI run, a real stream played through the UI, and a try on Fedora or Ubuntu in GNOME and KDE |
-| **P3** | Flathub and winget | Listed, and updates arrive by themselves |
+| **P2** | Linux: the AppImage and `install.sh` in CI, the tarball dropped, README points to the script | Built and checked (§3). Left: the first CI run, a real stream through the UI, a real Ubuntu or Fedora desktop |
+| **P3** | winget (Flathub is out, §3) | Listed, and updates arrive by themselves |
 | **P4** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
 
 ## 6. Decisions for the owner
 
-1. **Publishing on Flathub and winget:** both are public listings with a
-   review. OK to submit once P2 and P1 are done?
-2. **"Update available" for the zip and the installer:** these don't
-   update themselves. A check against GitHub Releases would be a
-   third-party call, and AGENTS.md allows only the status page. Allow this
-   one exception, or rely on Flathub and winget for updates?
+1. **Publishing on winget:** a public listing with a review. Check its
+   rules on AI-written apps before planning on it (Flathub's ruled us
+   out). OK to submit once P1 is done? *Flathub: out (2026-11-24, §3).*
+2. **"Update available" in the app:** the AppImage, the zip and the
+   installer don't update themselves (on Linux, `install.sh` updates when
+   it's run). A check against GitHub Releases would be a third-party call,
+   and AGENTS.md allows only the status page. Allow this one exception, or
+   rely on `install.sh` and winget for updates?
 3. **Settings in `~/.config`:** strict XDG, but it needs our own settings
    file instead of shared_preferences on Linux. Recommendation: not worth
    it now. Every other file moves in P0.

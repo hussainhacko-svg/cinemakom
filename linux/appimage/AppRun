@@ -1,0 +1,5 @@
+#!/bin/sh
+# Starts Cinemakom from the AppImage, or from where install.sh unpacked it.
+# The app finds its data/ and lib/ next to its own path.
+here="$(dirname "$(readlink -f "$0")")"
+exec "$here/usr/lib/cinemakom/cinemakom" "$@"

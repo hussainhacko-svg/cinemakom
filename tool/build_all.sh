@@ -9,7 +9,7 @@
 #   cinemakom-<label>-android-arm64-v8a.apk    phones (and most TVs)
 #   cinemakom-<label>-android-armeabi-v7a.apk  32-bit phones and TVs
 #   cinemakom-<label>-android-x86_64.apk       emulators, Chromebooks
-#   cinemakom-<label>-linux-x64.flatpak        Linux (tool/build_flatpak.sh)
+#   cinemakom-<label>-linux-x64.AppImage       Linux (tool/build_appimage.sh)
 # <label> is `git describe` (a tag such as v1.2.0, else the commit, with
 # "-dirty" when there are uncommitted changes).
 #
@@ -60,9 +60,9 @@ build_android() {
 
 build_linux() {
   [[ "$(uname -s)" == Linux ]] || { echo "Linux builds need a Linux machine." >&2; return 1; }
-  step "Linux (Flatpak)"
-  tool/build_flatpak.sh -o "$out" --label "$label" || return 1
-  built+=("cinemakom-${label}-linux-x64.flatpak")
+  step "Linux (AppImage)"
+  tool/build_appimage.sh -o "$out" --label "$label" || return 1
+  built+=("cinemakom-${label}-linux-x64.AppImage")
 }
 
 # Java 24+ warns when Gradle's launcher loads its native library

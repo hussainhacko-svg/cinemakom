@@ -116,11 +116,15 @@ Cinemakom appears in the TV's app list and opens in the TV interface.
 > **Upgrading from v1.0.0:** v1.0.0 was signed with a temporary key, so Android won't install newer versions over it. Uninstall it once, then install the new APK. From then on, each update installs over the last and keeps your library and downloads.
 
 ### Linux
-Download `cinemakom-<version>-linux-x64.flatpak` and install it:
+Install it for your user (no `sudo`):
 ```bash
-flatpak install --user cinemakom-<version>-linux-x64.flatpak
+curl -fsSL https://github.com/sharon-xa/cinemakom/releases/latest/download/install.sh | bash
 ```
-It works on any distro with [Flatpak](https://flatpak.org/setup/) (most have it already) and brings everything the player needs, so there's nothing else to install. Cinemakom then shows up in your app menu, or run `flatpak run io.github.sharon_xa.cinemakom`. To remove it: `flatpak uninstall io.github.sharon_xa.cinemakom`.
+Cinemakom then shows up in your app menu, or run `cinemakom`. Run the same command again to update. To remove it: `curl -fsSL https://github.com/sharon-xa/cinemakom/releases/latest/download/install.sh | bash -s -- --uninstall` (your library and downloads stay).
+
+Or download `cinemakom-<version>-linux-x64.AppImage`, make it executable and run it: `chmod +x cinemakom-*.AppImage && ./cinemakom-*.AppImage`.
+
+It runs on any 64-bit distro from 2022 on (glibc 2.35, such as Ubuntu 22.04, Debian 12, Fedora, Arch) and brings everything the player needs, so there's nothing else to install.
 
 ### Windows
 Extract `cinemakom-<version>-windows-x64.zip` and run `cinemakom.exe`. Everything it needs, libmpv included, is in the folder. Windows hasn't been tested yet, so please report anything that doesn't work (Settings → Help → Report a bug, or [open an issue](https://github.com/sharon-xa/cinemakom/issues)).
@@ -159,7 +163,7 @@ These are deliberate choices:
 
 ### Requirements
 - [fvm](https://fvm.app). The project is pinned to **Flutter 3.47.9** (Dart 3.13) in `.fvmrc`, so always run `fvm flutter`, not `flutter`. Newer Flutter versions draw a quarter of the window on Linux with NVIDIA's driver ([flutter#195885](https://github.com/flutter/flutter/issues/195885)).
-- **Linux:** `clang cmake ninja-build pkg-config`, GTK 3 headers and libmpv (on Debian/Ubuntu: `libgtk-3-dev libmpv-dev`).
+- **Linux:** `clang cmake ninja-build pkg-config`, GTK 3 headers and libmpv (on Debian/Ubuntu: `libgtk-3-dev libmpv-dev`). Building the AppImage needs only Docker.
 - **Android:** the Android SDK and JDK 17 or newer.
 - **Windows:** Visual Studio 2022 with the "Desktop development with C++" workload.
 
@@ -184,7 +188,7 @@ The `integration_test/` folder has live end-to-end tests (the player, downloads,
 ### Release builds
 ```bash
 fvm flutter build apk --release --split-per-abi   # APKs in build/app/outputs/flutter-apk/
-tool/build_all.sh                                  # Android APKs and the Linux Flatpak into dist/<git describe>/
+tool/build_all.sh                                  # Android APKs and the Linux AppImage into dist/<git describe>/
 ```
 Pushing a `v*` tag runs [the release workflow](.github/workflows/release.yml): it runs analyze and tests, then builds Android, Linux and Windows and publishes a GitHub release. Release APKs are signed with one permanent key. Locally, `android/key.properties` (gitignored) points to it. Without that file, a local build falls back to the debug key, which can't install over an official release.
 

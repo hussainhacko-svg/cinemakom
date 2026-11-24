@@ -39,8 +39,8 @@ fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver
 fvm flutter drive --profile --no-dds -d <tv-ip:port> --driver=test_driver/perf_driver.dart --target=integration_test/tv_perf_test.dart  # the TV UI's frame times (Home rows held, the 4K player) and memory on the TV. Uninstalls the app at the end, wiping its data
 tool/tv_cadence.sh <tv-ip:port>          # how evenly the real app shows video frames on the TV (start playback first)
 fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flutter-apk/ (phones: app-arm64-v8a-release.apk)
-tool/build_flatpak.sh --install          # the Linux Flatpak into dist/<git describe>/, installed for this user to try (needs flatpak-builder and org.gnome.Sdk//51)
-tool/build_all.sh                        # every release this machine can build (Android APKs, the Linux Flatpak) into dist/<git describe>/
+tool/build_appimage.sh --install         # the Linux AppImage into dist/<git describe>/ (in Docker, Ubuntu 22.04; the first run builds FFmpeg and mpv, ~15 min), installed for this user to try
+tool/build_all.sh                        # every release this machine can build (Android APKs, the Linux AppImage) into dist/<git describe>/
 ```
 **Why 3.47.9:** Flutter 3.50.0 has a Linux bug on NVIDIA's proprietary driver: the frame is drawn shifted by half the window, so you only see a quarter of the UI ([flutter#195885](https://github.com/flutter/flutter/issues/195885), [#196695](https://github.com/flutter/flutter/issues/196695)). The development machine has an NVIDIA GPU. Move back up (`fvm use <version>`, then restore `window_manager: ^0.7.0` and `sdk: ^3.14.0` in pubspec) only once a 3.50.x release fixes it, and check `fvm flutter run -d linux` renders the whole window. If a command fails because the SDK is missing, report it instead of installing toolchains yourself.
 

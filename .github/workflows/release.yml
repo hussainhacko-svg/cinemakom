@@ -102,37 +102,35 @@ jobs:
           if-no-files-found: error
 
   linux:
-    # The Flatpak, the only Linux package (docs/PACKAGING.md §3).
-    name: Build Linux (Flatpak)
-    runs-on: ubuntu-24.04
+    # The AppImage, the only Linux package (docs/PACKAGING.md §3), built in
+    # Ubuntu 22.04 (linux/appimage/Dockerfile), and its install script.
+    name: Build Linux (AppImage)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install build dependencies
+      - name: Make room for the build image
+        # It's ~6.5 GB (FFmpeg, mpv, Flutter), and buildx keeps a second
+        # copy while loading it. The runner's preinstalled SDKs we don't use
+        # take ~25 GB.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev \
-            libmpv-dev mpv \
-            libasound2-dev libpulse-dev \
-            libx11-dev libxrandr-dev \
-            flatpak flatpak-builder
-      - name: Allow the Flatpak build sandbox
-        # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces
-        # bubblewrap (flatpak-builder's sandbox) needs.
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - name: Install the GNOME runtime and SDK
-        run: |
-          flatpak remote-add --user --if-not-exists flathub \
-            https://dl.flathub.org/repo/flathub.flatpakrepo
-          rt=$(sed -n "s/^runtime-version: '\(.*\)'/\1/p" \
-            linux/flatpak/io.github.sharon_xa.cinemakom.yml)
-          flatpak install --user --noninteractive flathub \
-            "org.gnome.Platform//$rt" "org.gnome.Sdk//$rt"
-      - uses: subosito/flutter-action@v2
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Flutter version
+        id: flutter
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        # Cached between runs: FFmpeg and mpv only build again when the
+        # Dockerfile changes.
+        uses: docker/build-push-action@v6
         with:
-          flutter-version-file: .fvmrc
-          cache: true
+          context: linux/appimage
+          build-args: FLUTTER_VERSION=${{ steps.flutter.outputs.version }}
+          tags: cinemakom-appimage
+          load: true
+          cache-from: type=gha,scope=appimage
+          cache-to: type=gha,mode=max,scope=appimage
       - name: Compute build version
         id: ver
         shell: bash
@@ -140,14 +138,15 @@ jobs:
           raw="${TAG_NAME#v}"
           echo "name=${raw%%-*}" >> "$GITHUB_OUTPUT"
           echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-      - run: flutter pub get
-      - name: Build the Flatpak
+      - name: Build the AppImage
         env:
-          FLUTTER: flutter
+          IMAGE: cinemakom-appimage
         run: >-
-          tool/build_flatpak.sh -o dist --label "$TAG_NAME" --
+          tool/build_appimage.sh -o dist --label "$TAG_NAME" --
           --build-name="${{ steps.ver.outputs.name }}"
           --build-number="${{ steps.ver.outputs.number }}"
+      - name: Add the install script
+        run: cp linux/appimage/install.sh dist/install.sh
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
