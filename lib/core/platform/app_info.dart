@@ -25,7 +25,7 @@ Future<AppInfo> readAppInfo() async {
           '${a.manufacturer} ${a.model} · Android ${a.version.release} '
           '(API ${a.version.sdkInt})';
     } else if (Platform.isLinux) {
-      device = flatpakHostName() ?? (await info.linuxInfo).prettyName;
+      device = (await info.linuxInfo).prettyName;
     } else if (Platform.isWindows) {
       final w = await info.windowsInfo;
       device = '${w.productName} ${w.displayVersion}';
@@ -34,40 +34,4 @@ Future<AppInfo> readAppInfo() async {
     // The platform's name is enough.
   }
   return (version: version, device: device);
-}
-
-/// Inside a Flatpak, `/etc/os-release` is the runtime's ("GNOME 51"): the
-/// user's system is in `/run/host/os-release`. "EndeavourOS (Flatpak)", or
-/// `null` outside a Flatpak.
-String? flatpakHostName() {
-  try {
-    if (!File('/.flatpak-info').existsSync()) return null;
-    final host = File('/run/host/os-release');
-    final name = host.existsSync()
-        ? osReleaseName(host.readAsStringSync())
-        : null;
-    return '${name ?? 'Linux'} (Flatpak)';
-  } on Object {
-    return null;
-  }
-}
-
-/// `PRETTY_NAME` (else `NAME`) of an os-release file, unquoted.
-String? osReleaseName(String text) {
-  String? value(String key) {
-    for (final line in text.split('\n')) {
-      final l = line.trim();
-      if (!l.startsWith('$key=')) continue;
-      var v = l.substring(key.length + 1).trim();
-      if (v.length >= 2 &&
-          (v.startsWith('"') && v.endsWith('"') ||
-              v.startsWith("'") && v.endsWith("'"))) {
-        v = v.substring(1, v.length - 1);
-      }
-      return v.isEmpty ? null : v;
-    }
-    return null;
-  }
-
-  return value('PRETTY_NAME') ?? value('NAME');
 }
