@@ -1,15 +1,11 @@
 name: CI
 
-# Analyze and test every push to main (commits go straight there, so a
-# breaking one shows the same day, not on release day), and pull requests.
-# The release workflow runs the same checks again before building.
+# Analyze and test pull requests, and when started by hand (Actions → CI →
+# Run workflow). Pushes to main don't run it (the owner's decision,
+# 2026-11-25). The release workflow runs analyze and the tests again before
+# it publishes.
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   pull_request:
   workflow_dispatch:
 
@@ -17,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  # A newer push makes the older run pointless.
+  # A newer push to the pull request makes the older run pointless.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
