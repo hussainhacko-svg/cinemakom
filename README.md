@@ -127,7 +127,11 @@ Or download `cinemakom-<version>-linux-x64.AppImage`, make it executable and run
 It runs on any 64-bit distro from 2022 on (glibc 2.35, such as Ubuntu 22.04, Debian 12, Fedora, Arch) and brings everything the player needs, so there's nothing else to install.
 
 ### Windows
-Extract `cinemakom-<version>-windows-x64.zip` and run `cinemakom.exe`. Everything it needs, libmpv included, is in the folder. Windows hasn't been tested yet, so please report anything that doesn't work (Settings → Help → Report a bug, or [open an issue](https://github.com/sharon-xa/cinemakom/issues)).
+Run `cinemakom-<version>-windows-x64-setup.exe`. It installs for your user, with no admin rights, and adds Cinemakom to the Start menu. To update, run the next version's installer: it installs over the last one and keeps your library. To remove it, use Settings → Apps → Installed apps. It asks before deleting your library, and never deletes your downloaded videos.
+
+Or extract `cinemakom-<version>-windows-x64.zip` and run `cinemakom.exe`. Everything it needs, libmpv included, is in the folder.
+
+The installer isn't signed, so the first time it runs, Windows SmartScreen says "Windows protected your PC". Click **More info**, then **Run anyway**. It has been tested on Windows 11. Please report anything that doesn't work (Settings → Help → Report a bug, or [open an issue](https://github.com/sharon-xa/cinemakom/issues)).
 
 ## Desktop player shortcuts
 

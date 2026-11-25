@@ -289,3 +289,12 @@ jobs:
           files: dist/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+      - name: Update the website
+        # The site shows the latest release's install steps, so it rebuilds
+        # now rather than at its own check, up to 6 hours later. Same hook
+        # as the site repo's RENDER_DEPLOY_HOOK secret.
+        if: ${{ !contains(github.ref_name, '-') }}   # prereleases don't change the site
+        continue-on-error: true                       # a failed ping never fails a release
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "$HOOK" > /dev/null
