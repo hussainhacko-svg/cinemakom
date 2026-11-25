@@ -83,6 +83,18 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="2.0.0" date="2026-11-25">
+      <description>
+        <p>Cinemakom for Linux is now an AppImage, with an install script.</p>
+        <ul>
+          <li>Install for your user with one command, and run it again to update. AppImage managers can update it too.</li>
+          <li>The player brings its own libmpv and FFmpeg, and uses your GPU to decode where it can.</li>
+          <li>Your library, posters and logs are kept in the standard folders, and opening the app again shows the window that's already open.</li>
+          <li>Downloads are more reliable: they pick up where they stopped, and never delete your videos.</li>
+          <li>Settings → Help has an Activity log and a way to report a bug.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-11-20">
       <description>
         <p>The first release.</p>

@@ -30,12 +30,15 @@ ENV PKG_CONFIG_PATH=/opt/deps/lib/pkgconfig \
     CXXFLAGS="-O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2"
 WORKDIR /tmp/src
 
-# fetch <url> <sha256>: downloads and unpacks into the current folder.
+# fetch <url> <sha256>: downloads into /opt/sources and unpacks into the
+#   current folder. The archives stay: build.sh ships them with each
+#   release, as the GPL's corresponding source (docs/PACKAGING.md §3).
 # lic <name> <files>: keeps a library's license, shipped in the AppImage.
-RUN printf '%s\n' '#!/bin/sh' 'set -eu' \
-      'f=$(basename "$1"); curl -fsSL -o "$f" "$1"' \
+RUN mkdir -p /opt/sources \
+    && printf '%s\n' '#!/bin/sh' 'set -eu' \
+      'f=/opt/sources/$(basename "$1"); curl -fsSL -o "$f" "$1"' \
       'echo "$2  $f" | sha256sum -c -' \
-      'tar xf "$f" && rm "$f"' > /usr/local/bin/fetch \
+      'tar xf "$f"' > /usr/local/bin/fetch \
     && printf '%s\n' '#!/bin/sh' 'set -eu' \
       'd=$PREFIX/share/licenses/$1; shift; mkdir -p "$d"; cp "$@" "$d"/' \
       > /usr/local/bin/lic \
@@ -90,6 +93,8 @@ RUN fetch https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.
 RUN git clone --depth 1 --branch v7.387.0 --recurse-submodules --shallow-submodules \
       https://code.videolan.org/videolan/libplacebo.git \
     && test "$(git -C libplacebo rev-parse HEAD)" = 275f7dea27924cdd34ab2e6c20e448b6bc4fab65 \
+    && tar -cJf /opt/sources/libplacebo-7.387.0-with-submodules.tar.xz \
+      --exclude=.git --sort=name --mtime=@0 --owner=0 --group=0 libplacebo \
     && meson setup placebo-build libplacebo --prefix=$PREFIX --libdir=lib \
       --buildtype=release -Dauto_features=disabled -Dopengl=enabled \
       -Ddovi=enabled -Ddemos=false -Dtests=false -Dbench=false -Dfuzz=false \

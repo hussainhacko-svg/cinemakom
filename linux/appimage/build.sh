@@ -13,6 +13,7 @@ label="$1"
 shift
 app_id=io.github.sharon_xa.cinemakom
 file="cinemakom-${label}-linux-x64.AppImage"
+sources="cinemakom-${label}-linux-x64-sources.tar"
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 
@@ -87,7 +88,34 @@ rm /work/app.squashfs /work/runtime
 # Made after the update information is in, from the final file. Its URL is
 # relative: the AppImage sits next to it in the release.
 (cd /out && zsyncmake -u "$file" -o "$file.zsync" "$file" >/dev/null)
+
+step "Sources"
+# The GPL's corresponding source for the libraries in the AppImage (mpv is
+# GPL, FFmpeg and libplacebo LGPL): the exact archives the image built
+# them from, checked by their SHA-256 there, and the scripts that built
+# them. The app's own source is the release's tag.
+mkdir -p /work/sources/build
+cp /opt/sources/* /work/sources/
+cp linux/appimage/Dockerfile linux/appimage/build.sh \
+  linux/appimage/bundle_libs.py linux/appimage/AppRun /work/sources/build/
+cat > /work/sources/README.txt <<README
+Cinemakom $label for Linux: the source of the libraries in the AppImage.
+
+These are the release archives they were built from (libplacebo: its git
+tag v7.387.0 with its submodules). build/Dockerfile says, for each one,
+where it comes from, its SHA-256 and the options it was built with: build
+it with "docker build" to get the same libraries. build.sh assembles the
+AppImage, bundle_libs.py picks the libraries it carries, and AppRun starts
+the app.
+
+Licenses: mpv is GPL 2 or later, FFmpeg and libplacebo LGPL 2.1 or later,
+libva and nv-codec-headers MIT, libass ISC. Cinemakom itself is MIT:
+https://github.com/sharon-xa/cinemakom (this release's tag).
+README
+tar -cf "/out/$sources" -C /work/sources --sort=name --owner=0 --group=0 .
+rm -rf /work/sources
+
 # The files belong to whoever ran the build, not root.
-chown "${HOST_UID:-0}:${HOST_GID:-0}" "/out/$file" "/out/$file.zsync"
-echo "Built $file ($(du -h "/out/$file" | cut -f1)), and its .zsync"
+chown "${HOST_UID:-0}:${HOST_GID:-0}" "/out/$file" "/out/$file.zsync" "/out/$sources"
+echo "Built $file ($(du -h "/out/$file" | cut -f1)), its .zsync, and $sources ($(du -h "/out/$sources" | cut -f1))"
 echo "Updates from: $("/out/$file" --appimage-updateinformation)"

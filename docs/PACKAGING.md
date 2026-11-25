@@ -203,9 +203,18 @@ release. So:
 - **Licenses:** mpv is GPL (2 or later), and FFmpeg and libplacebo are
   LGPL. The app is MIT, which is compatible: together they're distributed
   under the GPL. The AppImage carries every license
-  text in `usr/share/licenses/`, and the Dockerfile names the exact sources.
-  **To do before the next release:** attach those source archives to the
-  GitHub release too (the GPL's "corresponding source").
+  text in `usr/share/licenses/`.
+  - **Corresponding source (Linux, 2026-11-25):** each build writes
+    `cinemakom-<version>-linux-x64-sources.tar` next to the AppImage, and
+    the release publishes it with the AppImage. It holds the exact archives
+    the image built from (`fetch` keeps them in `/opt/sources`, checked by
+    SHA-256), and libplacebo's tag with its submodules. It also has the
+    build scripts (`build/`) and a README.
+  - **Windows has no source to attach yet.** shinchiro's mpv-winbuild-cmake
+    builds mpv, FFmpeg and the rest from their git trees, and publishes
+    only the binaries. It records only mpv's commit, so the exact source of
+    our `libmpv-2.dll` isn't available anywhere. It's GPL too, so this is
+    open for Windows releases: §4.
 
 ### Format: AppImage only (decision 2026-11-24)
 
@@ -374,6 +383,11 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   clean `WM_CLOSE` exit with 0 lingering processes, and clean uninstall.
 
 ### Still remaining on Windows
+- **libmpv's source (GPL):** the release ships `libmpv-2.dll` without its
+  corresponding source, which isn't published for shinchiro's builds (§3,
+  Licenses). Either build libmpv ourselves from pinned sources, as on
+  Linux, so the source can ship with it, or use a build whose source is
+  published.
 - **Unsigned:** Windows SmartScreen warns ("Windows protected your PC")
   the first time a downloaded `.exe` or installer runs.
 - **Windows Sandbox check:** verify a clean Windows (no Visual C++
