@@ -112,7 +112,7 @@ lib/
 | `ytdl` | `no` | Otherwise mpv runs its youtube-dl hook on every failed URL (seen in M0): a slow, useless subprocess |
 | `network-timeout` | `20` | The default 5 s drops slow CDN nodes on the tail read that non-fast-start files need |
 | `demuxer-readahead-secs` / `cache-secs` | 20 / 60 (desktop), 20 / 30 (mobile) | Fast seeks near the playhead without filling a phone's memory |
-| `cache-on-disk` | `yes` desktop, **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0) |
+| `cache-on-disk` / `demuxer-cache-dir` | `yes` desktop (`<cache>/mpv-cache`), **`no` mobile** | On Android the disk cache fails ("Failed to create file cache", M0). On Windows it failed with the same error until `demuxer-cache-dir` was set; on Linux it also keeps the cache out of tmpfs `/tmp` |
 | `framedrop` | default desktop, **`no` mobile** | On a real phone (CPH2423) 4K dropped 14–20 frames per 25 s that were never late (`vo-delayed-frame-count` 0): a visible stutter. With `no`: 0 dropped, full 23.976 fps. Rendering tweaks (1080p surface, `gpu-dumb-mode`, `opengl-swapinterval=0`, `display-resample`) didn't help; `mediacodec_embed` only halved it. (Measured by `player_4k_test.dart`, removed at M9 with decision 7.) |
 | `hwdec` | `auto` (default) | 4K H.264 needs hardware decoding on phones. Fall back to `no` once on decoder errors |
 | `libass` | `true` | Needed for the styled ASS track (§7.2) |

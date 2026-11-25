@@ -371,11 +371,13 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   `Documents\cinemakom.sqlite*`) and never deletes downloaded videos.
 - **Windows runner hardening:** unique window class
   (`CINEMAKOM_WIN32_WINDOW`) so single-instance handoff works in Arabic as
-  well as English; dark title bar matching Marquee even in Windows Light
-  Mode; high-DPI work-area clamping and centering on startup; 3 s shutdown
-  watchdog on `OnDestroy` so a hung plugin or DLL detach never leaves a
-  windowless zombie process holding the single-instance mutex; and deferred
-  fullscreen exit when leaving the player mid-frame.
+  well as English; pins `LIBMPV_LIBRARY_PATH` to the bundled `libmpv-2.dll`
+  beside `cinemakom.exe` so an external `LIBMPV_LIBRARY_PATH` never loads a
+  second `libmpv` into the process; dark title bar matching Marquee even in
+  Windows Light Mode; high-DPI work-area clamping and centering on startup;
+  3 s shutdown watchdog on `OnDestroy` so a hung plugin or DLL detach never
+  leaves a windowless zombie process holding the single-instance mutex; and
+  deferred fullscreen exit when leaving the player mid-frame.
 - **Local & CI build:** `tool/build_windows_installer.ps1` builds the
   release, portable zip and Setup `.exe` into `dist/`. The `windows` job in
   `.github/workflows/release.yml` verifies the bundled DLLs, packages both
