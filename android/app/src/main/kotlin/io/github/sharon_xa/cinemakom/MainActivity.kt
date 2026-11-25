@@ -12,6 +12,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
+import android.os.Debug
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -74,6 +75,12 @@ open class MainActivity : FlutterActivity() {
                     },
                 )
                 "sdkInt" -> result.success(Build.VERSION.SDK_INT)
+                // The app's memory as `dumpsys meminfo` sums it (Java heap,
+                // native, graphics…), in kB, for the memory test
+                // (docs/MEMORY.md §4.1).
+                "memoryStats" -> result.success(
+                    Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }.memoryStats,
+                )
                 "publicMoviesDir" -> result.success(
                     try {
                         @Suppress("DEPRECATION")

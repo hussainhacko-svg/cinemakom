@@ -17,6 +17,7 @@ import '../../data/models/playback_models.dart';
 import '../../data/models/playback_request.dart';
 import '../../data/models/watch_progress.dart';
 import '../../core/diagnostics/event_log.dart';
+import '../../core/diagnostics/memory.dart';
 import '../../data/repositories/downloads_repository.dart';
 import '../../data/repositories/library_repository.dart';
 import '../../data/repositories/media_repository.dart';
@@ -83,6 +84,9 @@ class PlayerController extends Notifier<PlayerState> {
   late final PlayerEngine engine;
   late final LibraryRepository _library;
   int _saveTicks = 0;
+
+  /// Seconds played, for the memory line after a minute (MEMORY.md §4.5).
+  int _playedSeconds = 0;
 
   /// The playhead. Kept out of [state] so only the seek bar and the clock
   /// repaint every tick.
@@ -183,6 +187,7 @@ class PlayerController extends Notifier<PlayerState> {
           '${request.start == null ? '' : ' at ${formatClock(request.start!)}'}'
           ' (${engine.runtimeType})',
     );
+    MemoryLog.playerOpened();
     listenSelf((before, after) {
       final change = describePlayerChange(before, after);
       if (change != null) _log(change);
@@ -211,6 +216,7 @@ class PlayerController extends Notifier<PlayerState> {
       s.cancel();
     }
     unawaited(engine.dispose());
+    MemoryLog.playerClosed();
     position.dispose();
     buffered.dispose();
     subtitleLines.dispose();
@@ -500,6 +506,7 @@ class PlayerController extends Notifier<PlayerState> {
   void _tick() {
     if (_recovering || !ref.mounted) return;
     if (state.playing && state.phase == PlayerPhase.ready) {
+      if (++_playedSeconds == 60) MemoryLog.note('after 60 s of playback');
       if (++_saveTicks >= saveEverySeconds) {
         _saveTicks = 0;
         saveProgress();

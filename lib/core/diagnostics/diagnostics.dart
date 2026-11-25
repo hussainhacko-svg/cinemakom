@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../platform/app_dirs.dart';
 import '../platform/app_info.dart';
 import 'event_log.dart';
+import 'memory.dart';
 
 /// Where the log files are. On Android it's the app's external folder,
 /// which `adb pull` reaches without root
@@ -39,6 +40,7 @@ Future<void> startDiagnostics({required String ui}) async {
   installErrorCapture();
   FreezeWatch.instance.start();
   _LifecycleLog.start();
+  MemoryLog.start();
   try {
     final info = await readAppInfo().timeout(const Duration(seconds: 2));
     final header = [

@@ -81,6 +81,8 @@ dev_dependencies:
     sdk: flutter
   video_player_platform_interface: ^6.9.0
   shared_preferences_platform_interface: ^2.4.2
+  # The memory test reads the Dart heap through the app's VM service.
+  vm_service: ^15.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

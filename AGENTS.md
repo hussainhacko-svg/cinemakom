@@ -39,6 +39,8 @@ fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver
 fvm flutter drive --profile --no-dds -d <android-device-id> --driver=test_driver/perf_driver.dart --target=integration_test/scroll_perf_test.dart  # frame times on the phone at 120 Hz. Uninstalls the app first, wiping its data
 fvm flutter drive --profile --no-dds -d <tv-ip:port> --driver=test_driver/perf_driver.dart --target=integration_test/tv_perf_test.dart  # the TV UI's frame times (Home rows held, the 4K player) and memory on the TV. Uninstalls the app at the end, wiping its data
 tool/tv_cadence.sh <tv-ip:port>          # how evenly the real app shows video frames on the TV (start playback first)
+fvm flutter drive --profile -d linux --driver=test_driver/memory_driver.dart --target=integration_test/memory_test.dart --dart-define=MEMORY_SCENARIO=cycle  # memory over 10 open/play/close cycles of 4K (docs/MEMORY.md §4); browse and long are the other scenarios. On a phone or TV add --no-dds -d <device>; it reinstalls the app, wiping its data
+fvm dart run tool/memory_report.dart     # the memory test's runs in build/memory/ as tables, against the targets
 fvm flutter build apk --release --split-per-abi  # APKs in build/app/outputs/flutter-apk/ (phones: app-arm64-v8a-release.apk)
 tool/build_appimage.sh --install         # the Linux AppImage into dist/<git describe>/ (in Docker, Ubuntu 22.04; the first run builds FFmpeg and mpv, ~15 min), installed for this user to try
 tool/build_all.sh                        # every release this machine can build (Android APKs, the Linux AppImage) into dist/<git describe>/

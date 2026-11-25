@@ -1,0 +1,371 @@
+// The app's memory over a session (docs/MEMORY.md §4): profile mode, live
+// API, the real engine (mpv on desktop, ExoPlayer on Android), the phone or
+// TV UI as the device has it. Three scenarios:
+//
+//   cycle   open a 4K video, play PLAY_SECONDS, close, wait 30 s; CYCLES
+//           times. Does closing give memory back (T1), and do ten videos
+//           use more than one (T2)?
+//   browse  Home three times, 3 genre pages scrolled far, 10 titles, then
+//           IDLE_MINUTES idle. Does browsing level off (T3)?
+//   long    LONG_MINUTES of 4K with seeks and a quality switch (T4).
+//
+//   fvm flutter drive --profile -d linux \
+//     --driver=test_driver/memory_driver.dart \
+//     --target=integration_test/memory_test.dart \
+//     --dart-define=MEMORY_SCENARIO=cycle
+//
+// On a phone or TV add --no-dds and -d <device-id>. `flutter drive`
+// reinstalls the app there, which wipes its data. The driver writes
+// build/memory/<device>-<ui>-<scenario>.json and prints the table
+// (tool/memory_report.dart).
+import 'dart:developer' as developer;
+import 'dart:isolate';
+
+import 'package:cinemakom/app/app.dart';
+import 'package:cinemakom/app/catalog_providers.dart';
+import 'package:cinemakom/app/router.dart';
+import 'package:cinemakom/app/widgets/poster_card.dart';
+import 'package:cinemakom/core/diagnostics/memory.dart';
+import 'package:cinemakom/core/network/api_endpoints.dart';
+import 'package:cinemakom/core/platform/app_info.dart';
+import 'package:cinemakom/core/platform/platform_info.dart';
+import 'package:cinemakom/core/player/media_kit_engine.dart';
+import 'package:cinemakom/core/storage/preferences.dart';
+import 'package:cinemakom/data/models/localized_text.dart';
+import 'package:cinemakom/data/models/media_item.dart';
+import 'package:cinemakom/data/models/playback_request.dart';
+import 'package:cinemakom/data/repositories/library_repository.dart';
+import 'package:cinemakom/features/player/player_controller.dart';
+import 'package:cinemakom/features/player/player_state.dart';
+import 'package:cinemakom/main.dart' show noRetry;
+import 'package:cinemakom/tv/tv_app.dart';
+import 'package:cinemakom/tv/tv_router.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:vm_service/vm_service.dart' as vm;
+import 'package:vm_service/vm_service_io.dart';
+
+const scenario = String.fromEnvironment(
+  'MEMORY_SCENARIO',
+  defaultValue: 'cycle',
+);
+const cycles = int.fromEnvironment('CYCLES', defaultValue: 10);
+const playSeconds = int.fromEnvironment('PLAY_SECONDS', defaultValue: 60);
+const longMinutes = int.fromEnvironment('LONG_MINUTES', defaultValue: 20);
+const idleMinutes = int.fromEnvironment('IDLE_MINUTES', defaultValue: 10);
+const quality = int.fromEnvironment('MEMORY_QUALITY', defaultValue: 2160);
+
+/// How long after closing the player a "closed" sample waits (T1).
+const afterClose = Duration(seconds: 30);
+
+/// Avengers: Endgame: 4K, as in the perf tests.
+const request = PlaybackRequest(
+  item: MediaItem(
+    id: '301561',
+    title: LocalizedText(en: 'Avengers: Endgame'),
+    kind: VideoKind.movies,
+  ),
+  start: Duration(minutes: 20),
+);
+
+void main() {
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+  // As the app starts it: an AppImage-style bundle uses its own libmpv.
+  initMediaKit();
+
+  Future<void> wait(Duration d) => binding.delayed(d);
+
+  testWidgets('memory: $scenario', timeout: const Timeout(Duration(hours: 3)), (
+    tester,
+  ) async {
+    final tv = useTvUi;
+    if (tv && !isAndroid) {
+      // A desktop dry run of the TV UI gets the TV's 960 × 540 dp canvas.
+      tester.view
+        ..physicalSize = const Size(1920, 1080)
+        ..devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+    }
+    final heap = await _DartHeap.connect();
+    final clock = Stopwatch()..start();
+    final samples = <Map<String, Object?>>[];
+
+    /// One sample. [gc] collects Dart's garbage first, so the heap shows
+    /// what is really kept.
+    Future<void> sample(String label, {bool gc = false}) async {
+      final dart = await heap?.read(gc: gc);
+      final memory = await readMemory();
+      final row = {
+        'label': label,
+        't_s': clock.elapsed.inSeconds,
+        ...memory.toJson(),
+        ...?dart,
+        if (!isAndroid) 'players': MediaKitEngine.livePlayers,
+      };
+      samples.add(row);
+      debugPrint('memory ${row['t_s']}s $label: ${memory.describe()}');
+    }
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: noRetry,
+        overrides: [
+          preferenceStoreProvider.overrideWith(
+            (ref) => MemoryPreferenceStore({
+              PreferenceKeys.language: 'en',
+              PreferenceKeys.defaultQuality: quality,
+            }),
+          ),
+          libraryRepositoryProvider.overrideWithValue(
+            MemoryLibraryRepository(),
+          ),
+        ],
+        child: tv ? const TvApp() : const CinemakomApp(),
+      ),
+    );
+    // Home's first rows and their artwork.
+    await wait(const Duration(seconds: 10));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(tv ? TvApp : CinemakomApp)),
+    );
+    final GoRouter router = container.read(
+      tv ? tvRouterProvider : routerProvider,
+    );
+    await sample('start', gc: true);
+
+    PlayerState player() => container.read(playerControllerProvider(request));
+    Future<void> openPlayer() async {
+      router.push('${AppRoutes.watch}/${request.videoId}', extra: request);
+      final end = DateTime.now().add(const Duration(seconds: 60));
+      while (!(player().phase == PlayerPhase.ready && player().playing)) {
+        if (DateTime.now().isAfter(end)) fail('the video never played');
+        await wait(const Duration(milliseconds: 200));
+      }
+    }
+
+    final keys = _Keys(wait);
+
+    switch (scenario) {
+      case 'cycle':
+        for (var i = 1; i <= cycles; i++) {
+          await openPlayer();
+          await wait(const Duration(seconds: playSeconds));
+          await sample('playing #$i (${player().quality?.label})');
+          router.pop();
+          await wait(afterClose);
+          await sample('closed #$i', gc: true);
+        }
+      case 'browse':
+        final genres = (await container.read(genresProvider.future))
+            .take(3)
+            .toList();
+        for (var pass = 1; pass <= 3; pass++) {
+          tv ? await keys.browseTvHome() : await _scrollAll(tester, wait);
+          await sample('home pass $pass');
+        }
+        var titles = 0;
+        for (final genre in genres) {
+          router.push('${AppRoutes.home}/genre/${genre.id}', extra: genre);
+          await wait(const Duration(seconds: 4));
+          // About 10 pages of 30 titles, loading as it goes.
+          tv
+              ? await keys.hold(LogicalKeyboardKey.arrowDown, repeats: 120)
+              : await _scrollAll(tester, wait, steps: 40, back: false);
+          await sample('genre ${genre.id} scrolled');
+          for (var i = 0; i < (genres.last == genre ? 4 : 3); i++) {
+            tv ? await keys.press(keys.ok) : await _openPoster(tester, i);
+            await wait(const Duration(seconds: 4));
+            tv ? await keys.press(LogicalKeyboardKey.escape) : router.pop();
+            await wait(const Duration(seconds: 1));
+            titles++;
+            if (tv) await keys.press(LogicalKeyboardKey.arrowRight);
+          }
+          router.pop();
+          await wait(const Duration(seconds: 2));
+        }
+        await sample('after $titles titles', gc: true);
+        for (var half = 1; half <= idleMinutes * 2; half++) {
+          await wait(const Duration(seconds: 30));
+          await sample('idle ${half * 30} s', gc: half == idleMinutes * 2);
+        }
+      case 'long':
+        await openPlayer();
+        final controller = container.read(
+          playerControllerProvider(request).notifier,
+        );
+        for (var half = 1; half <= longMinutes * 2; half++) {
+          await wait(const Duration(seconds: 30));
+          final minute = half / 2;
+          if (minute == 5 || minute == 10 || minute == 15) {
+            await controller.seekBy(const Duration(minutes: 5));
+          }
+          if (minute == 8) {
+            // Down one quality and straight back up.
+            final sources = player().sources;
+            final now = player().quality;
+            final lower = sources.where((s) => s != now).firstOrNull;
+            if (lower != null && now != null) {
+              await controller.selectQuality(lower);
+              await wait(const Duration(seconds: 20));
+              await controller.selectQuality(now);
+            }
+          }
+          await sample('playing ${half * 30} s (${player().quality?.label})');
+        }
+        router.pop();
+        await wait(afterClose);
+        await sample('closed', gc: true);
+      default:
+        fail('unknown MEMORY_SCENARIO "$scenario" (cycle, browse, long)');
+    }
+
+    final info = await readAppInfo();
+    binding.reportData = {
+      'memory': {
+        'scenario': scenario,
+        'device': info.device,
+        'ui': tv ? 'tv' : (isDesktop ? 'desktop' : 'phone'),
+        'version': info.version,
+        'quality': quality,
+        'samples': samples,
+      },
+    };
+    heap?.dispose();
+  });
+}
+
+/// The vertical list on screen (Home's, a genre grid's).
+Finder get _vertical => find
+    .byWidgetPredicate(
+      (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+    )
+    .first;
+
+/// Down the page in [steps] drags, letting pages and artwork load, then
+/// back to the top unless [back] is false.
+Future<void> _scrollAll(
+  WidgetTester tester,
+  Future<void> Function(Duration) wait, {
+  int steps = 15,
+  bool back = true,
+}) async {
+  for (var i = 0; i < steps; i++) {
+    await tester.drag(_vertical, const Offset(0, -600));
+    await wait(const Duration(milliseconds: 700));
+  }
+  if (!back) return;
+  for (var i = 0; i < steps; i++) {
+    await tester.drag(_vertical, const Offset(0, 600));
+    await wait(const Duration(milliseconds: 300));
+  }
+}
+
+/// Opens the [i]th poster on screen.
+Future<void> _openPoster(WidgetTester tester, int i) async {
+  final posters = find.byType(PosterCard).hitTestable();
+  final count = posters.evaluate().length;
+  if (count == 0) fail('no poster on screen to open');
+  await tester.tap(posters.at(i % count));
+}
+
+/// The remote, for the TV UI (as in tv_perf_test.dart).
+class _Keys {
+  _Keys(this.wait);
+
+  final Future<void> Function(Duration) wait;
+
+  /// OK: Select on the TV, Enter on a desktop dry run.
+  LogicalKeyboardKey get ok =>
+      isAndroid ? LogicalKeyboardKey.select : LogicalKeyboardKey.enter;
+
+  /// Profile builds drop the keys' debug names, which
+  /// `simulateKeyDownEvent` needs to find the physical key itself.
+  static PhysicalKeyboardKey _physical(LogicalKeyboardKey key) => switch (key) {
+    LogicalKeyboardKey.arrowUp => PhysicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowDown => PhysicalKeyboardKey.arrowDown,
+    LogicalKeyboardKey.arrowLeft => PhysicalKeyboardKey.arrowLeft,
+    LogicalKeyboardKey.arrowRight => PhysicalKeyboardKey.arrowRight,
+    LogicalKeyboardKey.select => PhysicalKeyboardKey.select,
+    LogicalKeyboardKey.enter => PhysicalKeyboardKey.enter,
+    LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
+    _ => throw ArgumentError('No physical key for $key'),
+  };
+
+  Future<void> press(LogicalKeyboardKey key, {int times = 1}) async {
+    for (var i = 0; i < times; i++) {
+      await simulateKeyDownEvent(key, physicalKey: _physical(key));
+      await simulateKeyUpEvent(key, physicalKey: _physical(key));
+      await wait(const Duration(milliseconds: 350));
+    }
+  }
+
+  /// A held arrow: the key repeats every 50 ms, as on a remote.
+  Future<void> hold(LogicalKeyboardKey key, {int repeats = 40}) async {
+    await simulateKeyDownEvent(key, physicalKey: _physical(key));
+    await wait(const Duration(milliseconds: 400));
+    for (var i = 0; i < repeats; i++) {
+      await simulateKeyRepeatEvent(key, physicalKey: _physical(key));
+      await wait(const Duration(milliseconds: 50));
+    }
+    await simulateKeyUpEvent(key, physicalKey: _physical(key));
+    await wait(const Duration(milliseconds: 600));
+  }
+
+  /// Down through Home, along every third row, and back up.
+  Future<void> browseTvHome() async {
+    for (var row = 0; row < 12; row++) {
+      await press(LogicalKeyboardKey.arrowDown);
+      if (row % 3 == 1) {
+        await hold(LogicalKeyboardKey.arrowRight);
+        await hold(LogicalKeyboardKey.arrowLeft);
+      }
+    }
+    await press(LogicalKeyboardKey.arrowUp, times: 14);
+  }
+}
+
+/// The Dart heap, through the app's own VM service (profile and debug
+/// builds). `null` where there is none.
+class _DartHeap {
+  _DartHeap(this._service, this._isolate);
+
+  final vm.VmService _service;
+  final String _isolate;
+
+  static Future<_DartHeap?> connect() async {
+    try {
+      final info = await developer.Service.getInfo();
+      final uri = info.serverWebSocketUri;
+      final id = developer.Service.getIsolateId(Isolate.current);
+      if (uri == null || id == null) return null;
+      return _DartHeap(await vmServiceConnectUri(uri.toString()), id);
+    } on Object catch (e) {
+      debugPrint('memory: no VM service ($e), so no Dart heap numbers');
+      return null;
+    }
+  }
+
+  /// Used and reserved heap, and the native memory Dart objects hold
+  /// (images, buffers), in MB. [gc] collects garbage first.
+  Future<Map<String, Object?>> read({bool gc = false}) async {
+    try {
+      if (gc) await _service.getAllocationProfile(_isolate, gc: true);
+      final usage = await _service.getMemoryUsage(_isolate);
+      int mb(int? bytes) => ((bytes ?? 0) / (1 << 20)).round();
+      return {
+        'heap_mb': mb(usage.heapUsage),
+        'heap_capacity_mb': mb(usage.heapCapacity),
+        'external_mb': mb(usage.externalUsage),
+      };
+    } on Object {
+      return const {};
+    }
+  }
+
+  void dispose() => _service.dispose();
+}
