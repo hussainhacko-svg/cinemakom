@@ -15,11 +15,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   HANDLE instance_mutex =
       ::CreateMutexW(nullptr, TRUE, L"Local\\io.github.sharon_xa.cinemakom");
   if (instance_mutex != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {
-    HWND existing =
-        ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Cinemakom");
+    // Match by our unique window class rather than title, so handoff works
+    // in Arabic ("سينماكم") as well as English ("Cinemakom").
+    HWND existing = ::FindWindowW(L"CINEMAKOM_WIN32_WINDOW", nullptr);
     if (existing != nullptr) {
       if (::IsIconic(existing)) {
         ::ShowWindow(existing, SW_RESTORE);
+      } else {
+        ::ShowWindow(existing, SW_SHOW);
       }
       ::SetForegroundWindow(existing);
     }
@@ -59,6 +62,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::DispatchMessage(&msg);
   }
 
+#ifndef _DEBUG
+  if (instance_mutex != nullptr) {
+    ::CloseHandle(instance_mutex);
+  }
+#endif
   ::CoUninitialize();
   return EXIT_SUCCESS;
 }

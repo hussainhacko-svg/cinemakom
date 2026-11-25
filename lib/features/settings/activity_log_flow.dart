@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -58,7 +59,7 @@ class DeviceLogActions implements ActivityLogActions {
 
   @override
   Future<File> export() async => EventLog.instance.export(
-    Directory('${(await getTemporaryDirectory()).path}/activity-log'),
+    Directory(p.join((await getTemporaryDirectory()).path, 'activity-log')),
   );
 
   @override

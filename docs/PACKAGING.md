@@ -292,21 +292,64 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
 
 ## 4. Windows
 
-### What's missing today
-- **The Visual C++ runtime isn't shipped.** The zip has no `msvcp140.dll`,
-  `vcruntime140.dll` or `vcruntime140_1.dll`. On a PC without the
-  "Microsoft Visual C++ Redistributable", the app won't start ("VCRUNTIME140_1.dll
-  was not found"). Flutter's docs say to ship them next to the `.exe`:
-  copy them in `windows/CMakeLists.txt`'s install step.
-- **Never run on a real Windows machine** (README). The new CI job runs the
-  tests there but doesn't open the app.
-- **libmpv is from 2023-09-24.** `media_kit_libs_windows_video` downloads
-  that fixed build, with the FFmpeg of its time, so the bundled player is
-  three years behind on security fixes. Move to a current build (a newer
-  media_kit package, or our own build of libmpv in CI) and follow the
-  §3 rule from then on.
+### What's built (2026-11-25)
+- **Visual C++ runtime DLLs bundled:** `windows/CMakeLists.txt` uses
+  `InstallRequiredSystemLibraries` so `msvcp140.dll` (and companions),
+  `vcruntime140.dll`, `vcruntime140_1.dll` and `concrt140.dll` ship next to
+  `cinemakom.exe` in Profile and Release builds (both the installer and the
+  portable zip).
+- **Current `libmpv-2.dll` pinned by SHA256:** `windows/CMakeLists.txt`
+  replaces `media_kit_libs_windows_video`'s 2023-09-24 DLL with
+  `shinchiro/mpv-winbuild-cmake` `mpv-dev-x86_64-20261111-git-bcde6b93cc.7z`,
+  verified against its SHA256 checksum (depends only on built-in Windows
+  DLLs and the bundled `vulkan-1.dll`). Follow the §3 rule: an FFmpeg or
+  mpv security release means bumping this pin and shipping a Cinemakom
+  release.
+- **Inno Setup installer (`windows/packaging/cinemakom.iss`):** per user
+  (`%LOCALAPPDATA%\Programs\Cinemakom`, no admin rights), fixed `AppId`
+  (`io.github.sharon_xa.cinemakom`), Windows Restart Manager
+  (`CloseApplications=yes`) so a running instance closes cleanly on upgrade
+  or uninstall (including silent upgrades like winget), Start menu +
+  optional desktop shortcut, Installed apps entry, English and Arabic setup
+  screens (Inno Setup 6.5+, UTF-8 BOM), and an uninstall prompt that asks
+  before removing the library/settings (including any legacy
+  `Documents\cinemakom.sqlite*`) and never deletes downloaded videos.
+- **Windows runner hardening:** unique window class
+  (`CINEMAKOM_WIN32_WINDOW`) so single-instance handoff works in Arabic as
+  well as English; dark title bar matching Marquee even in Windows Light
+  Mode; high-DPI work-area clamping and centering on startup; 3 s shutdown
+  watchdog on `OnDestroy` so a hung plugin or DLL detach never leaves a
+  windowless zombie process holding the single-instance mutex; and deferred
+  fullscreen exit when leaving the player mid-frame.
+- **Local & CI build:** `tool/build_windows_installer.ps1` builds the
+  release, portable zip and Setup `.exe` into `dist/`. The `windows` job in
+  `.github/workflows/release.yml` verifies the bundled DLLs, packages both
+  the zip and Setup `.exe`, and runs a silent install → launch → uninstall
+  smoke test.
+
+*Checked on Windows 11 Pro 25H2 (2026-11-25):*
+- `fvm flutter analyze` clean and full `fvm flutter test` passing.
+- `integration_test/player_engine_test.dart -d windows` passing on the
+  2026-11-11 `libmpv-2.dll` (1080p → 720p switch, 4K playback 19.4 s in
+  20.1 s, Arabic subtitles).
+- `integration_test/downloads_test.dart -d windows` passing (live CDN
+  download, pause, resume, offline play, delete).
+- Installer lifecycle: fresh install (files, Start menu shortcut, Installed
+  apps entry), launch (`Cinemakom 1.0.0 (1)` in log), single-instance
+  handoff (`CINEMAKOM_WIN32_WINDOW`), `AppDirs` folders and Activity log in
+  `%LOCALAPPDATA%\io.github.sharon_xa\Cinemakom`, legacy cache cleanup,
+  live upgrade while the app is running (`ExitCode=0`, app closed cleanly),
+  clean `WM_CLOSE` exit with 0 lingering processes, and clean uninstall.
+
+### Still remaining on Windows
 - **Unsigned:** Windows SmartScreen warns ("Windows protected your PC") the
-  first time a downloaded `.exe` or installer runs.
+  first time a downloaded `.exe` or installer runs (P4).
+- **Windows Sandbox check:** verify a clean Windows (no Visual C++
+  Redistributable preinstalled) for first install, update, uninstall and
+  portable zip.
+- **Interactive UI pass & first CI run:** 150%/200% DPI scaling, fullscreen,
+  Arabic keyboard input, moved Videos folder, and the release workflow's
+  first Windows installer run.
 
 ### Formats, in order
 1. **An installer (Inno Setup), per user, no admin rights:**
@@ -355,8 +398,8 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
 
 | | What | Done when |
 |---|---|---|
-| **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: the §2.1 steps |
-| **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | In Windows Sandbox: installs, starts, updates over itself and uninstalls cleanly. On the owner's machine: plays up to 4K and downloads |
+| **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: folders, legacy cleanup, Activity log and one instance checked 2026-11-25 (left: old v1.0.x library move & moved Videos folder) |
+| **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | Built & checked on Windows 11 Pro 2026-11-25 (4K playback, downloads, installer lifecycle). Left: Windows Sandbox clean-PC run, first CI release run, scaling/Arabic UI pass |
 | **P2** | Linux: the AppImage and `install.sh` in CI, the tarball dropped, README points to the script | Built and checked (§3). Left: the first CI run, a real stream through the UI, a real Ubuntu or Fedora desktop |
 | **P3** | winget (Flathub is out, §3) | Listed, and updates arrive by themselves |
 | **P4** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
