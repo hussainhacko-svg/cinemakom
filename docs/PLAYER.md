@@ -390,6 +390,7 @@ Measured with the `mpv` 0.42 command line (the same libmpv media_kit uses on Lin
 | ExoPlayer's failures differ from mpv's | It stops on every error and resets its position; handled with `errorsStopPlayback` (§6) and a unit test. A minute in airplane mode recovers on the phone (2026-11-19); the 403 check is still to do (§13) |
 | Some Android phones can't decode 4K in hardware | ExoPlayer can't fall back to software like mpv, so the decoder fallback goes to a lower quality (§6, M9) |
 | Windows has no dev machine yet | M8 needs a Windows machine or VM. The NVIDIA Linux bug (AGENTS.md) doesn't affect Windows |
+| Possible 4K micro-stutter on weaker Windows 11 PCs *(unproven, 2026-11-26)* | Not reproduced on RTX 5070 (`d3d11va`, 0 dropped frames, `raster p95 = 0.56 ms`). Measure `hwdec-current` and drop counts on weaker hardware before changing defaults; see `docs/PACKAGING.md` §4 (Windows ANGLE double-4K `CopyResource` + `glFinish()` and `video-timing-offset=0` are Windows-only; `hwdec=auto` fallback and `framedrop=vo` are shared with Linux; Android uses ExoPlayer and is unaffected) |
 
 ## 15. M9 results (2026-11-19)
 
