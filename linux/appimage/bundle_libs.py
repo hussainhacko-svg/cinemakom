@@ -124,6 +124,15 @@ def main():
                     and not os.path.islink(path)):
                 subprocess.run(['patchelf', '--set-rpath', '$ORIGIN', path],
                                check=True)
+    # media_kit_video looks libmpv up by name, `libmpv.so` first, whatever
+    # path the app gave media_kit (queryDecoders, as each video opens). The
+    # engine (RUNPATH $ORIGIN) finds this link before the system's
+    # /usr/lib/libmpv.so, and it is the libmpv.so.2 already loaded: one
+    # libmpv in the process (docs/PACKAGING.md §3, issue #6).
+    if not os.path.exists(os.path.join(lib, 'libmpv.so.2')):
+        print('error: lib/libmpv.so.2 is missing', file=sys.stderr)
+        sys.exit(1)
+    os.symlink('libmpv.so.2', os.path.join(lib, 'libmpv.so'))
     print('Bundled: ' + ', '.join(sorted(copied)))
 
 

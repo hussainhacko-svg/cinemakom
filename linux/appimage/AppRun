@@ -32,4 +32,9 @@ if [ "$system" -lt "$ours" ]; then
   export LD_LIBRARY_PATH
 fi
 
+# Our libmpv, wherever media_kit looks it up by name (docs/PACKAGING.md §3):
+# this wins over the system's, even when LD_LIBRARY_PATH lists it.
+LIBMPV_LIBRARY_PATH="$app/lib/libmpv.so.2"
+export LIBMPV_LIBRARY_PATH
+
 exec "$app/cinemakom" "$@"

@@ -293,6 +293,22 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
     opens (it crashed on this machine, which has mpv). So `initMediaKit`
     (`media_kit_engine.dart`) passes the `lib/libmpv.so.2` next to the
     app. The container tests couldn't catch it: none had mpv installed.
+  - **That wasn't enough (v2.0.0, issue #6).** As each video opens,
+    media_kit_video's `queryDecoders` calls
+    `NativeLibrary.ensureInitialized()` with no path. That resets the path
+    media_kit uses to its default lookup, `libmpv.so` first, which is the
+    system's again. It then calls the system's `mpv_get_property` with a
+    handle from ours. With mpv 0.42 on this machine (the same version as
+    ours) that went unnoticed. With Arch's 0.41 it segfaulted. So now:
+    - `bundle_libs.py` adds `lib/libmpv.so → libmpv.so.2`. The lookup runs
+      in the engine (`libflutter_linux_gtk.so`, RUNPATH `$ORIGIN`), so it
+      finds the link before `/usr/lib` and gets the library that's already
+      loaded. This works however the app is started.
+    - AppRun exports `LIBMPV_LIBRARY_PATH`, which media_kit's lookup reads
+      before any name. It wins over an `LD_LIBRARY_PATH` that lists the
+      system's libmpv, and over the user's own `LIBMPV_LIBRARY_PATH`.
+    - To check: play a video. `/proc/<pid>/maps` must list only
+      `usr/lib/cinemakom/lib/libmpv.so.2`.
 
 *Checked 2026-11-24:*
 - **Clean containers:** Ubuntu 22.04, Debian 12, Fedora 45 and Arch, with

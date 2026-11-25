@@ -19,6 +19,11 @@ import 'subtitle_fonts.dart';
 /// copy, while the video plugin is linked to ours. Two libmpv in one
 /// process abort as the video opens (mpv's "group_index >= 0" assertion,
 /// seen on Arch with mpv installed).
+///
+/// This covers media_kit's players only: media_kit_video's decoder check
+/// calls `NativeLibrary.ensureInitialized()` again with no path, which
+/// forgets this one. The AppImage covers that itself (a `lib/libmpv.so`
+/// link and AppRun's `LIBMPV_LIBRARY_PATH`, docs/PACKAGING.md §3).
 void initMediaKit() => MediaKit.ensureInitialized(libmpv: bundledLibmpv());
 
 /// `<app>/lib/libmpv.so.2` when the app carries its own libmpv, else `null`
