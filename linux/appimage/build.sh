@@ -56,9 +56,38 @@ python3 linux/appimage/bundle_libs.py "$appdir/usr/lib/cinemakom"
 step "AppImage"
 mksquashfs "$appdir" /work/app.squashfs -root-owned -noappend \
   -comp zstd -Xcompression-level 19 -quiet
-cat /opt/runtime-x86_64 /work/app.squashfs > "/out/$file"
+# Where AppImage updaters (AppImageUpdate, Gear Lever, AppImageLauncher)
+# look for a newer version: the .zsync of the latest GitHub release, which
+# says which blocks changed, so only those download. Written into the
+# runtime's .upd_info section (1 KB, zero-filled), as appimagetool does.
+update_info="gh-releases-zsync|sharon-xa|cinemakom|latest|cinemakom-*-linux-x64.AppImage.zsync"
+cp /opt/runtime-x86_64 /work/runtime
+python3 - /work/runtime "$update_info" <<'EOF'
+import subprocess, sys
+path, info = sys.argv[1], sys.argv[2].encode()
+sections = subprocess.run(['readelf', '-SW', path], check=True,
+                          capture_output=True, text=True).stdout
+for line in sections.splitlines():
+    f = line.replace('[', ' ').replace(']', ' ').split()
+    if '.upd_info' in f:
+        i = f.index('.upd_info')
+        offset, size = int(f[i + 3], 16), int(f[i + 4], 16)
+        break
+else:
+    sys.exit('the runtime has no .upd_info section')
+if len(info) >= size:
+    sys.exit('the update information is too long for .upd_info')
+with open(path, 'r+b') as runtime:
+    runtime.seek(offset)
+    runtime.write(info.ljust(size, b'\0'))
+EOF
+cat /work/runtime /work/app.squashfs > "/out/$file"
 chmod 755 "/out/$file"
-rm /work/app.squashfs
+rm /work/app.squashfs /work/runtime
+# Made after the update information is in, from the final file. Its URL is
+# relative: the AppImage sits next to it in the release.
+(cd /out && zsyncmake -u "$file" -o "$file.zsync" "$file" >/dev/null)
 # The files belong to whoever ran the build, not root.
-chown "${HOST_UID:-0}:${HOST_GID:-0}" "/out/$file"
-echo "Built $file ($(du -h "/out/$file" | cut -f1))"
+chown "${HOST_UID:-0}:${HOST_GID:-0}" "/out/$file" "/out/$file.zsync"
+echo "Built $file ($(du -h "/out/$file" | cut -f1)), and its .zsync"
+echo "Updates from: $("/out/$file" --appimage-updateinformation)"

@@ -62,7 +62,8 @@ build_linux() {
   [[ "$(uname -s)" == Linux ]] || { echo "Linux builds need a Linux machine." >&2; return 1; }
   step "Linux (AppImage)"
   tool/build_appimage.sh -o "$out" --label "$label" || return 1
-  built+=("cinemakom-${label}-linux-x64.AppImage")
+  built+=("cinemakom-${label}-linux-x64.AppImage"
+    "cinemakom-${label}-linux-x64.AppImage.zsync")
 }
 
 # Java 24+ warns when Gradle's launcher loads its native library

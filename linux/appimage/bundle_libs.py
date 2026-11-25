@@ -7,7 +7,7 @@ doesn't have (docs/PACKAGING.md §3). Runs in the build image (Dockerfile).
 Each library the app or a copied library asks for (its NEEDED entries) is:
   - already in <bundle>/lib: checked in turn;
   - in SYSTEM: left to the user's system, which has it wherever GTK 3 runs;
-  - built by us (/opt/deps/lib): copied;
+  - built by us (/opt/deps/lib): copied (libva into lib/libva: FALLBACK);
   - anything else stops the build, so nothing joins the AppImage, or is
     left out of it, without a decision here.
 Copied libraries find each other next to themselves (RUNPATH $ORIGIN).
@@ -44,6 +44,14 @@ SYSTEM = {
     'libasound.so.2', 'libpulse.so.0', 'libgnutls.so.30',
 }
 
+# Ours, but only for systems whose own is older or missing: they go in
+# lib/libva, which nothing searches, and AppRun adds it when needed. The
+# system's libva opens the system's VA-API drivers, and a driver built for a
+# newer libva than ours (Mesa's, after the distro updates libva) won't open
+# with ours: video would quietly decode on the CPU.
+FALLBACK = {'libva.so.2', 'libva-drm.so.2'}
+FALLBACK_DIR = 'libva'
+
 # Asked for, but never loaded on desktop: jni's library (an Android plugin's
 # dependency) needs Java's libjvm.so.
 NEVER_LOADED = {'libjvm.so'}
@@ -75,16 +83,28 @@ def main():
         for name in needed(path):
             if name in SYSTEM or name in NEVER_LOADED:
                 continue
-            here = os.path.join(lib, name)
-            if os.path.exists(here):
+            fallback = name in FALLBACK
+            into = os.path.join(lib, FALLBACK_DIR) if fallback else lib
+            here = os.path.join(into, name)
+            if os.path.lexists(here):
                 todo.append(here)
                 continue
             ours = os.path.join(DEPS, name)
             if os.path.exists(ours):
-                shutil.copy2(os.path.realpath(ours), here)
-                os.chmod(here, 0o755)
-                subprocess.run(['strip', '--strip-unneeded', here], check=True)
-                copied.append(name)
+                real = os.path.realpath(ours)
+                os.makedirs(into, exist_ok=True)
+                if fallback:
+                    # Under its full name (libva.so.2.2400.0: VA-API 1.24),
+                    # which AppRun compares with the system's.
+                    dest = os.path.join(into, os.path.basename(real))
+                    os.symlink(os.path.basename(real), here)
+                else:
+                    dest = here
+                shutil.copy2(real, dest)
+                os.chmod(dest, 0o755)
+                subprocess.run(['strip', '--strip-unneeded', dest], check=True)
+                copied.append(os.path.join(FALLBACK_DIR, name) if fallback
+                              else name)
                 todo.append(here)
                 continue
             unknown.setdefault(name, set()).add(os.path.basename(path))
@@ -96,10 +116,14 @@ def main():
         sys.exit(1)
     # Plugins and copied libraries look for their dependencies next to
     # themselves. The app itself already does ($ORIGIN/lib).
-    for f in os.listdir(lib):
-        if '.so' in f and f not in UNTOUCHED:
-            subprocess.run(['patchelf', '--set-rpath', '$ORIGIN',
-                            os.path.join(lib, f)], check=True)
+    # libva-drm finds libva the same way, in lib/libva.
+    for d in (lib, os.path.join(lib, FALLBACK_DIR)):
+        for f in os.listdir(d) if os.path.isdir(d) else []:
+            path = os.path.join(d, f)
+            if ('.so' in f and f not in UNTOUCHED
+                    and not os.path.islink(path)):
+                subprocess.run(['patchelf', '--set-rpath', '$ORIGIN', path],
+                               check=True)
     print('Bundled: ' + ', '.join(sorted(copied)))
 
 

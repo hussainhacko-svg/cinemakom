@@ -4,7 +4,7 @@ The plan for shipping Cinemakom on desktop (2026-11-24): where the app keeps
 its files, which packages to make, and in what order. Android is an APK and
 isn't covered here. PLAN.md Phase 8 ("Packaging") points to this file.
 
-Milestones are P0–P4 (§5). Decisions for the owner are in §6.
+Milestones are P0–P2 (§5). Decisions for the owner are in §6.
 
 ---
 
@@ -179,9 +179,27 @@ release. So:
   Every desktop Linux with GTK 3 from 2022 on has these. The build stops
   if anything else is needed and isn't ours, so nothing joins the AppImage,
   or is left out of it, without a decision in that file.
-- **libva is ours** so that current VA-API drivers load: an older libva
-  can't load a driver built for a newer one. It looks for the system's
-  drivers in the Debian/Ubuntu, Fedora/openSUSE, Arch and NixOS folders.
+- **libva: the system's, or ours when the system's is older or missing.**
+  A VA-API driver opens only with a libva at least as new as the one it
+  was built for. A driver built for a newer libva is skipped, and video
+  quietly decodes on the CPU. We tested this with a driver faked to need
+  1.25 (2026-11-25). Distros build Mesa's drivers against their own
+  libva (Arch's Mesa wants 1.24).
+  - **Ours** (2.24.1) is for systems whose libva is older (Ubuntu 22.04
+    has 2.14, Debian 12 has 2.17, Ubuntu 24.04 has 2.20) or that have none.
+    It looks for the system's drivers in the Debian/Ubuntu, Fedora/openSUSE,
+    Arch and NixOS folders.
+  - **The system's** is used when it's at least as new as ours, so a distro
+    that updates libva and Mesa together keeps working without a new
+    Cinemakom.
+  - **How:** ours is in `lib/libva/`, which nothing searches. `AppRun`
+    compares the versions in the two files' names (`libva.so.2.2400.0` is
+    1.24), and adds that folder to `LD_LIBRARY_PATH` only when ours is
+    needed. Every launch goes through `AppRun`: the installed app, the
+    menu entry and `~/.local/bin/cinemakom` all point to it.
+  - **Checked 2026-11-25:** Ubuntu 22.04 with and without libva, Ubuntu
+    24.04 and Debian 12 load ours. Fedora 45 and Arch (2.24) load the
+    system's, and so does a faked newer system libva (2.25).
 - **Licenses:** mpv is GPL (2 or later), and FFmpeg and libplacebo are
   LGPL. The app is MIT, which is compatible: together they're distributed
   under the GPL. The AppImage carries every license
@@ -222,6 +240,20 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
     folder only once the new one is complete.
   - `--version`, `--file` and `--uninstall` are the other options.
     Uninstalling keeps the library and downloads, and says where they are.
+- **Or let an AppImage manager update it** (decision 2026-11-25): the
+  AppImage carries update information,
+  `gh-releases-zsync|sharon-xa|cinemakom|latest|cinemakom-*-linux-x64.AppImage.zsync`,
+  in its runtime's `.upd_info` section (`build.sh` writes it, as
+  appimagetool does). AppImageUpdate, Gear Lever and AppImageLauncher read
+  it, take the `.zsync` file from the latest release (published next to
+  the AppImage), and download only the blocks that changed.
+  - **"Latest"** is GitHub's latest release, so prereleases (`v1.2.0-rc1`)
+    are never offered.
+  - **The `.zsync` is made from the final file**, after the update
+    information is written. Its URL is just the file's name, so it's
+    relative to the release it's in.
+  - The copy `install.sh` unpacks isn't an AppImage, so these tools don't
+    see it: running `install.sh` again still updates it.
 - **Files:** plain XDG (§2), with no sandbox and no `~/.var/app`.
 - **Build:** `tool/build_appimage.sh` (Docker), locally and in the release
   workflow:
@@ -230,8 +262,9 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   2. `linux/appimage/build.sh` copies the source into the container, runs
      `flutter build linux --release` and assembles the AppDir. The
      source's own `build/` isn't touched.
-  3. `bundle_libs.py` adds our libraries, makes them find each other
-     (RUNPATH `$ORIGIN`), and stops on anything undecided.
+  3. `bundle_libs.py` adds our libraries (libva apart, in `lib/libva`),
+     makes them find each other (RUNPATH `$ORIGIN`), and stops on anything
+     undecided.
   4. The squashfs (zstd) is appended to the pinned type2 runtime. That
      runtime is only published as "continuous": when its checksum stops
      matching, look at what changed upstream before taking the new one.
@@ -259,7 +292,8 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   only GTK 3, Mesa and sound libraries installed. Every library resolves.
   The bundled libmpv plays H.264 with AAC, and HEVC, to the end, and opens
   HTTPS through the system's GnuTLS. The app starts (Xvfb), stays up, and
-  writes its log in the XDG folders.
+  writes its log in the XDG folders. On 2026-11-25 Ubuntu 24.04 passed
+  too, with the libva choice above.
 - **This machine** (EndeavourOS, Wayland, NVIDIA): the AppImage runs
   through FUSE with the real library, and a second launch hands over to
   the open window. HEVC decodes on the GPU (`nvdec-copy` in the test;
@@ -287,8 +321,6 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
 - **To check on GNOME and KDE, Wayland and X11:** full screen in the
   player, fractional scaling, the screen staying on during playback, and
   hardware decoding (VA-API) with Intel, AMD and NVIDIA.
-- **Optional feature:** MPRIS, so media keys, headset buttons and the
-  desktop's media controls work with the player.
 
 ## 4. Windows
 
@@ -309,7 +341,7 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   (`%LOCALAPPDATA%\Programs\Cinemakom`, no admin rights), fixed `AppId`
   (`io.github.sharon_xa.cinemakom`), Windows Restart Manager
   (`CloseApplications=yes`) so a running instance closes cleanly on upgrade
-  or uninstall (including silent upgrades like winget), Start menu +
+  or uninstall (including silent upgrades), Start menu +
   optional desktop shortcut, Installed apps entry, English and Arabic setup
   screens (Inno Setup 6.5+, UTF-8 BOM), and an uninstall prompt that asks
   before removing the library/settings (including any legacy
@@ -342,8 +374,8 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   clean `WM_CLOSE` exit with 0 lingering processes, and clean uninstall.
 
 ### Still remaining on Windows
-- **Unsigned:** Windows SmartScreen warns ("Windows protected your PC") the
-  first time a downloaded `.exe` or installer runs (P4).
+- **Unsigned:** Windows SmartScreen warns ("Windows protected your PC")
+  the first time a downloaded `.exe` or installer runs.
 - **Windows Sandbox check:** verify a clean Windows (no Visual C++
   Redistributable preinstalled) for first install, update, uninstall and
   portable zip.
@@ -365,15 +397,7 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
      Inno Setup first.
 2. **The portable zip, kept**, with the runtime DLLs, for people who don't
    want an installer.
-3. **winget:** a manifest in `microsoft/winget-pkgs` pointing at the
-   installer, so `winget install Cinemakom` works and updates. The release
-   workflow can update it (`wingetcreate`).
-4. **Code signing**, to stop the SmartScreen warning: apply to SignPath
-   Foundation (free signing for open-source projects), or Azure Trusted
-   Signing (paid monthly, identity checks, not offered everywhere). Not
-   needed to ship, but it's the main thing that makes Windows users trust
-   a download.
-5. **Later:** MSIX and the Microsoft Store (updates, and Microsoft signs
+3. **Later:** MSIX and the Microsoft Store (updates, and Microsoft signs
    it). MSIX redirects writes to AppData and limits the file system, so the
    downloads engine and the folder picker need checking there first.
 
@@ -401,23 +425,11 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
 | **P0** | Folders (§2), migration, one instance on both OSs | ✅ Linux 2026-11-24. Windows: folders, legacy cleanup, Activity log and one instance checked 2026-11-25 (left: old v1.0.x library move & moved Videos folder) |
 | **P1** | Windows: runtime DLLs, a current libmpv, first real-machine run, Inno installer in CI | Built & checked on Windows 11 Pro 2026-11-25 (4K playback, downloads, installer lifecycle). Left: Windows Sandbox clean-PC run, first CI release run, scaling/Arabic UI pass |
 | **P2** | Linux: the AppImage and `install.sh` in CI, the tarball dropped, README points to the script | Built and checked (§3). Left: the first CI run, a real stream through the UI, a real Ubuntu or Fedora desktop |
-| **P3** | winget (Flathub is out, §3) | Listed, and updates arrive by themselves |
-| **P4** | Signing (SignPath), MPRIS, update notice (§6) | As decided |
 
 ## 6. Decisions for the owner
 
-1. **Publishing on winget:** a public listing with a review. Check its
-   rules on AI-written apps before planning on it (Flathub's ruled us
-   out). OK to submit once P1 is done? *Flathub: out (2026-11-24, §3).*
-2. **"Update available" in the app:** the AppImage, the zip and the
-   installer don't update themselves (on Linux, `install.sh` updates when
-   it's run). A check against GitHub Releases would be a third-party call,
-   and AGENTS.md allows only the status page. Allow this one exception, or
-   rely on `install.sh` and winget for updates?
-3. **Settings in `~/.config`:** strict XDG, but it needs our own settings
+1. **Settings in `~/.config`:** strict XDG, but it needs our own settings
    file instead of shared_preferences on Linux. Recommendation: not worth
    it now. Every other file moves in P0.
-4. **Code signing:** apply to SignPath Foundation? It needs the project's
-   public repository and a short application.
-5. **Windows installer:** per user (recommended: no admin, installs over
+2. **Windows installer:** per user (recommended: no admin, installs over
    itself quietly) or for all users?

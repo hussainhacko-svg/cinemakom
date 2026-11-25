@@ -2,7 +2,8 @@
 # Builds the Linux AppImage (docs/PACKAGING.md §3) in an Ubuntu 22.04
 # container, so it runs on any Linux with glibc 2.35 or newer:
 #
-#   tool/build_appimage.sh             # dist/<label>/cinemakom-<label>-linux-x64.AppImage
+#   tool/build_appimage.sh             # dist/<label>/cinemakom-<label>-linux-x64.AppImage,
+#                                      # and its .zsync (for AppImage updaters)
 #   tool/build_appimage.sh -o ~/out    # another output folder
 #   tool/build_appimage.sh --install   # also install it for this user, to try it
 #   tool/build_appimage.sh --label v1.2.0 -- --build-name=1.2.0 --build-number=7

@@ -122,7 +122,7 @@ curl -fsSL https://github.com/sharon-xa/cinemakom/releases/latest/download/insta
 ```
 Cinemakom then shows up in your app menu, or run `cinemakom`. Run the same command again to update. To remove it: `curl -fsSL https://github.com/sharon-xa/cinemakom/releases/latest/download/install.sh | bash -s -- --uninstall` (your library and downloads stay).
 
-Or download `cinemakom-<version>-linux-x64.AppImage`, make it executable and run it: `chmod +x cinemakom-*.AppImage && ./cinemakom-*.AppImage`.
+Or download `cinemakom-<version>-linux-x64.AppImage`, make it executable and run it: `chmod +x cinemakom-*.AppImage && ./cinemakom-*.AppImage`. AppImage managers such as [Gear Lever](https://flathub.org/apps/it.mijorus.gearlever) and AppImageLauncher can update it, downloading only what changed.
 
 It runs on any 64-bit distro from 2022 on (glibc 2.35, such as Ubuntu 22.04, Debian 12, Fedora, Arch) and brings everything the player needs, so there's nothing else to install.
 

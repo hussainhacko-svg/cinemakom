@@ -1,5 +1,35 @@
 #!/bin/sh
-# Starts Cinemakom from the AppImage, or from where install.sh unpacked it.
-# The app finds its data/ and lib/ next to its own path.
+# Starts Cinemakom: from the mounted AppImage, or from its unpacked copy
+# (install.sh). docs/PACKAGING.md §3.
 here="$(dirname "$(readlink -f "$0")")"
-exec "$here/usr/lib/cinemakom/cinemakom" "$@"
+app="$here/usr/lib/cinemakom"
+
+# libva: the system's when it's at least as new as ours, else ours
+# (bundle_libs.py). The system's VA-API drivers open only with a libva as new
+# as the one they were built for, or video decodes on the CPU. The version is
+# in the file's name: libva.so.2.2400.0 is VA-API 1.24, "2400" here; 0 when
+# it isn't a 64-bit libva.
+va_version() {
+  f=$(readlink -f "$1" 2>/dev/null) || { echo 0; return; }
+  [ "$(od -An -tx1 -j4 -N1 "$f" 2>/dev/null | tr -d ' ')" = 02 ] ||
+    { echo 0; return; }
+  v=${f##*/libva.so.2.}
+  v=${v%%.*}
+  case $v in '' | *[!0-9]*) echo 0 ;; *) echo "$v" ;; esac
+}
+ours=$(va_version "$app/lib/libva/libva.so.2")
+system=0
+# Where distros keep 64-bit libraries: Debian and Ubuntu, then Fedora and
+# openSUSE (their /usr/lib is 32-bit), then Arch.
+for d in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
+  if [ -e "$d/libva.so.2" ] && [ -e "$d/libva-drm.so.2" ]; then
+    system=$(va_version "$d/libva.so.2")
+    [ "$system" -gt 0 ] && break
+  fi
+done
+if [ "$system" -lt "$ours" ]; then
+  LD_LIBRARY_PATH="$app/lib/libva${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  export LD_LIBRARY_PATH
+fi
+
+exec "$app/cinemakom" "$@"

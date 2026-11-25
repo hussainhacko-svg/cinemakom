@@ -13,7 +13,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git xz-utils bzip2 unzip file rsync patchelf \
-      squashfs-tools python3 python3-pip \
+      squashfs-tools zsync python3 python3-pip \
       build-essential clang cmake ninja-build pkg-config nasm \
       libstdc++-12-dev libgtk-3-dev liblzma-dev libx11-dev libxi-dev \
       libdrm-dev libgnutls28-dev zlib1g-dev libasound2-dev libpulse-dev \
