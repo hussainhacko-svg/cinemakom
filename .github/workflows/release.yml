@@ -246,9 +246,31 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  windows-sources:
+    # The source of the Windows libmpv-2.dll (mpv and FFmpeg are GPL):
+    # exactly what windows/packaging/libmpv-sources.lock.json names
+    # (docs/PACKAGING.md §4).
+    name: Windows libmpv sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and pack them
+        run: |
+          mkdir -p dist
+          python3 tool/windows_libmpv_sources.py fetch \
+            --lock windows/packaging/libmpv-sources.lock.json \
+            --cmake windows/CMakeLists.txt --label "$TAG_NAME" \
+            --out "dist/cinemakom-${TAG_NAME}-windows-x64-sources.tar.zst"
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-sources
+          path: dist/*
+          if-no-files-found: error
+
   publish:
     name: Publish GitHub Release
-    needs: [verify, android, linux, windows]
+    needs: [verify, android, linux, windows, windows-sources]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

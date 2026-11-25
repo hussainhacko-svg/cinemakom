@@ -210,11 +210,9 @@ release. So:
     the image built from (`fetch` keeps them in `/opt/sources`, checked by
     SHA-256), and libplacebo's tag with its submodules. It also has the
     build scripts (`build/`) and a README.
-  - **Windows has no source to attach yet.** shinchiro's mpv-winbuild-cmake
-    builds mpv, FFmpeg and the rest from their git trees, and publishes
-    only the binaries. It records only mpv's commit, so the exact source of
-    our `libmpv-2.dll` isn't available anywhere. It's GPL too, so this is
-    open for Windows releases: §4.
+  - **Corresponding source (Windows, 2026-11-25):** the release publishes
+    `cinemakom-<version>-windows-x64-sources.tar.zst` (§4, "libmpv's
+    source").
 
 ### Format: AppImage only (decision 2026-11-24)
 
@@ -383,11 +381,35 @@ There is one Linux package (the owner's decision), so there's one thing to keep 
   clean `WM_CLOSE` exit with 0 lingering processes, and clean uninstall.
 
 ### Still remaining on Windows
-- **libmpv's source (GPL):** the release ships `libmpv-2.dll` without its
-  corresponding source, which isn't published for shinchiro's builds (§3,
-  Licenses). Either build libmpv ourselves from pinned sources, as on
-  Linux, so the source can ship with it, or use a build whose source is
-  published.
+- **libmpv's source (GPL), reconstructed (2026-11-25):** shinchiro's
+  mpv-winbuild-cmake publishes only binaries. It builds mpv, FFmpeg and 85
+  other packages from their git branches, and records only mpv's commit.
+  `windows/packaging/libmpv-sources.lock.json` names the exact source of
+  our DLL, worked out by `tool/windows_libmpv_sources.py lock` from the
+  recipes (commit `bda10a28`) and the build's public logs:
+  - **58 packages: logged.** Every update step prints each branch that
+    moved. The logs of the build (run 42927840447, the "mpv clang"
+    workflow) and of every run since 2026-08-28 give each branch's last
+    move, so its commit is exact.
+  - **10 pinned** in the recipes (a commit, or an archive with its hash),
+    and **2 named** in the release's file names (mpv, FFmpeg).
+  - **16 by date:** branches that never moved in those logs. Each is its
+    last commit before 2026-08-28. Every one of them is older than that.
+  - **curl, by its version:** the recipes never update curl, so it kept
+    whatever an old cache cloned, and no record shows the commit. The DLL
+    reports libcurl 8.22.0-DEV, so the archive has curl 8.21.0 and every
+    commit after it up to 8.22.0, as patches (the history between them
+    is linear).
+  - Checked: the date method alone got 2 of 55 wrong (commits pushed later
+    with older dates), which is why the logs come first.
+
+  The release job `windows-sources` runs `fetch`. It downloads exactly
+  what the lock names (git by commit, with submodules, Rust crates through
+  `cargo vendor`, and archives checked by hash), adds the recipes with
+  their patches, and packs it. It refuses to run if
+  `windows/CMakeLists.txt` ships a different DLL than the lock is for.
+  **When the DLL changes, run `lock` again within 90 days of that build**:
+  GitHub deletes the logs after that. Or build libmpv ourselves.
 - **Unsigned:** Windows SmartScreen warns ("Windows protected your PC")
   the first time a downloaded `.exe` or installer runs.
 - **Windows Sandbox check:** verify a clean Windows (no Visual C++

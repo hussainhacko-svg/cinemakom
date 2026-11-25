@@ -1,0 +1,959 @@
+{
+ "build": {
+  "release": "20261111",
+  "run": "https://github.com/shinchiro/mpv-winbuild-cmake/actions/runs/42927840447",
+  "recipes_commit": "bda10a2816ce9908d419b3f4b564227330457e76",
+  "named": {
+   "mpv": "bcde6b93cc"
+  },
+  "window": {
+   "curl": {
+    "from": "curl-8_21_0",
+    "to": "curl-8_22_0",
+    "evidence": "libmpv-2.dll reports libcurl 8.22.0-DEV"
+   }
+  }
+ },
+ "recipes": {
+  "url": "https://github.com/shinchiro/mpv-winbuild-cmake.git",
+  "commit": "bda10a2816ce9908d419b3f4b564227330457e76"
+ },
+ "packages": [
+  {
+   "name": "amf-headers",
+   "kind": "git",
+   "url": "https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git",
+   "branch": "master",
+   "commit": "57ee0cfb0e1a08d9041f77435653794c1b012be0",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "amf/public/include"
+   ],
+   "evidence": "2026-10-17T00:00:02Z_38984269935.log"
+  },
+  {
+   "name": "angle-headers",
+   "kind": "git",
+   "url": "https://github.com/google/angle.git",
+   "branch": "main",
+   "commit": "b4e3e8b5216fc18e0d2c76701660715892e1b4ea",
+   "how": "log",
+   "submodules": false,
+   "sparse": [
+    "include/EGL",
+    "include/KHR"
+   ],
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "aom",
+   "kind": "git",
+   "url": "https://aomedia.googlesource.com/aom",
+   "branch": "main",
+   "commit": "e72b85589b0117347dcf52915646209a4d1dc418",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "avisynth-headers",
+   "kind": "git",
+   "url": "https://github.com/AviSynth/AviSynthPlus.git",
+   "branch": "master",
+   "commit": "21fdc997f9724b994896ba5520ddf64d677976b3",
+   "how": "pinned",
+   "submodules": false,
+   "sparse": [
+    "/*",
+    "!distrib"
+   ]
+  },
+  {
+   "name": "brotli",
+   "kind": "git",
+   "url": "https://github.com/google/brotli.git",
+   "branch": "master",
+   "commit": "d89c4b1c52e25ddafe047bc78bbee5c1e24b1809",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!tests",
+    "!js",
+    "!java",
+    "!research"
+   ],
+   "evidence": "2026-10-29T00:00:03Z_40791115986.log"
+  },
+  {
+   "name": "bzip2",
+   "kind": "git",
+   "url": "https://gitlab.com/bzip2/bzip2.git",
+   "branch": "master",
+   "commit": "66c46b8c9436613fd81bc5d03f63a61933a4dcc3",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "c-ares",
+   "kind": "git",
+   "url": "https://github.com/c-ares/c-ares.git",
+   "branch": "main",
+   "commit": "46266f4ae2d309ce52009d85fc6198b5f0db6225",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-02T00:00:02Z_41364798085.log"
+  },
+  {
+   "name": "curl",
+   "kind": "git-window",
+   "url": "https://github.com/curl/curl.git",
+   "since": "2026-06-24T07:52:50+02:00",
+   "from": "curl-8_21_0",
+   "from_commit": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
+   "to": "curl-8_22_0",
+   "to_commit": "01346829096c61b372692f6dc43ffa778c6caccd",
+   "evidence": "libmpv-2.dll reports libcurl 8.22.0-DEV",
+   "how": "window"
+  },
+  {
+   "name": "dav1d",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/dav1d.git",
+   "branch": "master",
+   "commit": "662868772f73be8c055a6aa7e30f222be13a5f65",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "davs2",
+   "kind": "git",
+   "url": "https://github.com/saindriches/davs2.git",
+   "branch": "master",
+   "commit": "f50435051b72c168c2b566c544e27fcff71ba61a",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "fast_float",
+   "kind": "git",
+   "url": "https://github.com/fastfloat/fast_float.git",
+   "branch": "main",
+   "commit": "8ec59686a1430867ba609c2777ca15143dd81003",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "ffmpeg",
+   "kind": "git",
+   "url": "https://github.com/FFmpeg/FFmpeg.git",
+   "branch": "master",
+   "commit": "cd4e96eb314630788b7ff2f9820c395788c023e2",
+   "how": "named",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!tests/ref/fate"
+   ]
+  },
+  {
+   "name": "fontconfig",
+   "kind": "git",
+   "url": "https://gitlab.freedesktop.org/fontconfig/fontconfig.git",
+   "branch": "main",
+   "commit": "548591665a8e0dcf5c49cc34fb59ad34c503fa1a",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "freetype2",
+   "kind": "git",
+   "url": "https://github.com/freetype/freetype.git",
+   "branch": "master",
+   "commit": "6065d6a40effdef3d5756642378c2b683dfc51d5",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "fribidi",
+   "kind": "git",
+   "url": "https://github.com/fribidi/fribidi.git",
+   "branch": "master",
+   "commit": "15393e4937aa95bcf865d92143735746aeb654fa",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!test"
+   ],
+   "evidence": "2026-10-30T00:00:02Z_40976824247.log"
+  },
+  {
+   "name": "glad",
+   "kind": "git",
+   "url": "https://github.com/Dav1dde/glad.git",
+   "branch": "glad2",
+   "commit": "0a7cf1af9e25e02821587bd4095807fc90b6426a",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-09-29T00:00:02Z_36500873646.log"
+  },
+  {
+   "name": "glslang",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/glslang.git",
+   "branch": "main",
+   "commit": "b2e081c8eb3ee90415908b7637c1ae429994bddc",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!Test"
+   ],
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "graphengine",
+   "kind": "git",
+   "url": "https://github.com/sekrit-twc/graphengine.git",
+   "branch": "master",
+   "commit": "91c6af4c795c5396d8b974f24b4d2e2ecca04e2d",
+   "how": "date",
+   "submodules": false,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "harfbuzz",
+   "kind": "git",
+   "url": "https://github.com/harfbuzz/harfbuzz.git",
+   "branch": "main",
+   "commit": "edca03eadb7aca72b847d80220d7c4466a66508c",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!test"
+   ],
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "highway",
+   "kind": "git",
+   "url": "https://github.com/google/highway.git",
+   "branch": "master",
+   "commit": "a385a8a7c7eef6af4e19014ab4cdaaaed7758271",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "lame",
+   "kind": "git",
+   "url": "https://gitlab.com/shinchiro/lame.git",
+   "branch": "master",
+   "commit": "9a5b35c430a2e6d150d65a96c7d7acdd64962a8f",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "lcms2",
+   "kind": "git",
+   "url": "https://github.com/mm2/Little-CMS.git",
+   "branch": "master",
+   "commit": "780da288c125aab1550619b82d8f869e5b48ecfb",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libarchive",
+   "kind": "git",
+   "url": "https://github.com/libarchive/libarchive.git",
+   "branch": "master",
+   "commit": "d0bf2da07ebaa3964090ee936edea538d1602449",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libaribcaption",
+   "kind": "git",
+   "url": "https://github.com/xqq/libaribcaption.git",
+   "branch": "master",
+   "commit": "c4a0fd12bc37278073478ca14aabe45fc5a1296b",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-09T00:00:03Z_42537825317.log"
+  },
+  {
+   "name": "libass",
+   "kind": "git",
+   "url": "https://github.com/libass/libass.git",
+   "branch": "master",
+   "commit": "21b5a54fceff49c126c201d4b51c6445287a5072",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libbluray",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/libbluray.git",
+   "branch": "master",
+   "commit": "f33a738fd7bb8b5e1148b0a5424778db7342450b",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-10-23T00:00:02Z_39875367443.log"
+  },
+  {
+   "name": "libbs2b",
+   "kind": "git",
+   "url": "https://github.com/alexmarsev/libbs2b.git",
+   "branch": "master",
+   "commit": "5ca2d59888df047f1e4b028e3a2fd5be8b5a7277",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libdvdcss",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/libdvdcss.git",
+   "branch": "master",
+   "commit": "811ce97a1d4d1c9d936f4b2707f533a9ef768251",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libdvdnav",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/libdvdnav.git",
+   "branch": "master",
+   "commit": "8147ccd35e5aae4afdd21171cf7b6b4d8f179d28",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libdvdread",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/libdvdread.git",
+   "branch": "master",
+   "commit": "0f30df53125b564ef45903714403ce0a1e6c5e9e",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libiconv",
+   "kind": "archive",
+   "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz",
+   "hash": "sha256:3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+   "how": "pinned"
+  },
+  {
+   "name": "libjpeg",
+   "kind": "git",
+   "url": "https://github.com/libjpeg-turbo/libjpeg-turbo.git",
+   "branch": "main",
+   "commit": "3ef3367eb68aabbc25ce91bf2136c87ed4ec7218",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "libjxl",
+   "kind": "git",
+   "url": "https://github.com/libjxl/libjxl.git",
+   "branch": "main",
+   "commit": "153aa4adf1f25a3373aa9324885c777aca8f0904",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libmodplug",
+   "kind": "git",
+   "url": "https://github.com/Konstanty/libmodplug.git",
+   "branch": "master",
+   "commit": "6b3937da975eff2627fa8f73fa093b7769c1bff5",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-03T00:00:02Z_41549600510.log"
+  },
+  {
+   "name": "libmysofa",
+   "kind": "git",
+   "url": "https://github.com/hoene/libmysofa.git",
+   "branch": "main",
+   "commit": "648eed03472e6720a1ea45d1a1f86c4efb569ff9",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!tests"
+   ],
+   "evidence": "2026-09-09T00:00:03Z_34293082577.log"
+  },
+  {
+   "name": "libopenmpt",
+   "kind": "archive",
+   "url": "https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.7.12+release.autotools.tar.gz",
+   "hash": "sha256:79ab3ce3672601e525b5cc944f026c80c03032f37d39caa84c8ca3fdd75e0c98",
+   "how": "pinned"
+  },
+  {
+   "name": "libplacebo",
+   "kind": "git",
+   "url": "https://github.com/haasn/libplacebo.git",
+   "branch": "master",
+   "commit": "c2cf6e72daee00cbb8ef089059a5d12c06018cbd",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libpng",
+   "kind": "git",
+   "url": "https://github.com/glennrp/libpng.git",
+   "branch": "libpng18",
+   "commit": "b47027503c4b20ce8b6751fbcb9ed23e664718ab",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "libpsl",
+   "kind": "git",
+   "url": "https://github.com/rockdaboot/libpsl.git",
+   "branch": "master",
+   "commit": "aa3a80e18f25caf3916636c8668dcc0fff7c016d",
+   "how": "pinned",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!/fuzz",
+    "!tests",
+    "!tools",
+    "tools/meson.build"
+   ]
+  },
+  {
+   "name": "libsamplerate",
+   "kind": "git",
+   "url": "https://github.com/libsndfile/libsamplerate.git",
+   "branch": "master",
+   "commit": "0844c208f683527c08ea8a80acc13b398aa9c8bf",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libsdl2",
+   "kind": "git",
+   "url": "https://github.com/libsdl-org/SDL.git",
+   "branch": "SDL2",
+   "commit": "cee83f2d9a916e9de30c5712e798541fdc134b06",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!test"
+   ],
+   "evidence": "2026-11-01T00:00:02Z_41254798351.log"
+  },
+  {
+   "name": "libsixel",
+   "kind": "git",
+   "url": "https://github.com/saitoha/libsixel.git",
+   "branch": "master",
+   "commit": "af12e5bc6f3f69ad83479da85ddb371420da9b17",
+   "how": "pinned",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!images"
+   ]
+  },
+  {
+   "name": "libsoxr",
+   "kind": "git",
+   "url": "https://gitlab.com/shinchiro/soxr.git",
+   "branch": "master",
+   "commit": "945b592b70470e29f917f4de89b4281fbbd540c0",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "libsrt",
+   "kind": "git",
+   "url": "https://github.com/Haivision/srt.git",
+   "branch": "master",
+   "commit": "80e0bc48adb8dbc0d4d4635a65a08f31ebd20022",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libssh",
+   "kind": "git",
+   "url": "https://gitlab.com/libssh/libssh-mirror.git",
+   "branch": "master",
+   "commit": "904cbd21a53928f8f687092c77de59f45410dcce",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-07T00:00:02Z_42315459116.log"
+  },
+  {
+   "name": "libudfread",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/libudfread.git",
+   "branch": "master",
+   "commit": "b0bc6957e7e07d5f35391f210596d9eb71cffdd9",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-08-31T00:00:03Z_33343257132.log"
+  },
+  {
+   "name": "libunibreak",
+   "kind": "git",
+   "url": "https://github.com/adah1972/libunibreak.git",
+   "branch": "master",
+   "commit": "32555542453f59101356ecbb8686f5e198f92b62",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-05T00:00:02Z_41938005205.log"
+  },
+  {
+   "name": "libva",
+   "kind": "git",
+   "url": "https://github.com/intel/libva.git",
+   "branch": "master",
+   "commit": "f052e984e0c8bf10784198cc311b23c567b1367f",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-24T00:00:02Z_40042711022.log"
+  },
+  {
+   "name": "libvpl",
+   "kind": "git",
+   "url": "https://github.com/intel/libvpl.git",
+   "branch": "main",
+   "commit": "412c5cffe3022d5ebb8a955c3b30afe7bd2e3929",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-05T00:00:02Z_41938005205.log"
+  },
+  {
+   "name": "libvpx",
+   "kind": "git",
+   "url": "https://chromium.googlesource.com/webm/libvpx.git",
+   "branch": "main",
+   "commit": "d3335af9e8ec27395f66206be08e786e3de05e60",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "libwebp",
+   "kind": "git",
+   "url": "https://chromium.googlesource.com/webm/libwebp.git",
+   "branch": "main",
+   "commit": "c3fe5bb655e99ede84f7b2766fc75a8f1d8bbf9e",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "libxml2",
+   "kind": "git",
+   "url": "https://github.com/GNOME/libxml2.git",
+   "branch": "master",
+   "commit": "febeb5c91fffeca92b84162d57a1832fe5a60b09",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!result",
+    "!test"
+   ],
+   "evidence": "2026-11-05T00:00:02Z_41938005205.log"
+  },
+  {
+   "name": "libzimg",
+   "kind": "git",
+   "url": "https://github.com/sekrit-twc/zimg.git",
+   "branch": "master",
+   "commit": "67e0603271c080e22c8429856dd4a8a56587e61e",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-09-05T00:00:02Z_33931486622.log"
+  },
+  {
+   "name": "libzvbi",
+   "kind": "git",
+   "url": "https://github.com/zapping-vbi/zvbi.git",
+   "branch": "main",
+   "commit": "34bb6f660c5c1bacd4a66cc7b22311e4ca3c1ab5",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-23T00:00:02Z_39875367443.log"
+  },
+  {
+   "name": "luajit",
+   "kind": "git",
+   "url": "https://github.com/openresty/luajit2.git",
+   "branch": "v2.1-agentzh",
+   "commit": "a9381a0912c2423a51fb1986d2d6f19ca9e8daed",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-07T00:00:02Z_42315459116.log"
+  },
+  {
+   "name": "lzo",
+   "kind": "archive",
+   "url": "https://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz",
+   "hash": "sha1:4924676a9bae5db58ef129dc1cebce3baa3c4b5d",
+   "how": "pinned"
+  },
+  {
+   "name": "mpv",
+   "kind": "git",
+   "url": "https://github.com/mpv-player/mpv.git",
+   "branch": "master",
+   "commit": "bcde6b93cca4d128d84e1a60d1a6db2cd81c889e",
+   "how": "named",
+   "submodules": true
+  },
+  {
+   "name": "mujs",
+   "kind": "git",
+   "url": "https://codeberg.org/ccxvii/mujs.git",
+   "branch": "master",
+   "commit": "21768ba7c0b7d82633c987a3f02c7e97eeec7919",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "nghttp2",
+   "kind": "git",
+   "url": "https://github.com/nghttp2/nghttp2.git",
+   "branch": "master",
+   "commit": "d4f22e4bbc168b0aec60e948bb8690e6036ddbb2",
+   "how": "log",
+   "submodules": false,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "nghttp3",
+   "kind": "git",
+   "url": "https://github.com/ngtcp2/nghttp3.git",
+   "branch": "main",
+   "commit": "a1a435bf85dc1cf1f18d799ca81d1e75ac27b7a1",
+   "how": "log",
+   "submodules": true,
+   "sparse": [
+    "/*",
+    "!tests"
+   ],
+   "evidence": "2026-11-09T00:00:03Z_42537825317.log"
+  },
+  {
+   "name": "ngtcp2",
+   "kind": "git",
+   "url": "https://github.com/ngtcp2/ngtcp2.git",
+   "branch": "main",
+   "commit": "e82176c8105490eeedb1ee1c805578d9ea867672",
+   "how": "log",
+   "submodules": false,
+   "sparse": [
+    "/*",
+    "!tests"
+   ],
+   "evidence": "2026-11-04T00:00:12Z_41743495736.log"
+  },
+  {
+   "name": "nvcodec-headers",
+   "kind": "git",
+   "url": "https://github.com/FFmpeg/nv-codec-headers.git",
+   "branch": "master",
+   "commit": "f2053071ea93137255b6dcf42e9b4c9e0965a44e",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-25T00:00:02Z_40144950902.log"
+  },
+  {
+   "name": "ogg",
+   "kind": "git",
+   "url": "https://github.com/xiph/ogg.git",
+   "branch": "main",
+   "commit": "06a5e0262cdc28aa4ae6797627a783b5010440f0",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "openal-soft",
+   "kind": "git",
+   "url": "https://github.com/kcat/openal-soft.git",
+   "branch": "master",
+   "commit": "20b56ce9f5a1cc6ed8c41547e960e37e9f47bdd2",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "openssl",
+   "kind": "git",
+   "url": "https://github.com/openssl/openssl.git",
+   "branch": "master",
+   "commit": "d8bf6cdd4849925c30e4f1911c7acb49cb34b702",
+   "how": "pinned",
+   "submodules": false,
+   "sparse": [
+    "/*",
+    "!test"
+   ]
+  },
+  {
+   "name": "opus",
+   "kind": "git",
+   "url": "https://github.com/xiph/opus.git",
+   "branch": "main",
+   "commit": "0145a6248c2171bb6c4e03fb54fe016b5123e37e",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-07T00:00:02Z_42315459116.log"
+  },
+  {
+   "name": "opus-dnn",
+   "kind": "archive",
+   "url": "https://media.xiph.org/opus/models/opus_data-8a07d57c4fce6fb30f23b3e0d264004e04f1d7b421f5392ef61543d021a439af.tar.gz",
+   "hash": "sha256:8a07d57c4fce6fb30f23b3e0d264004e04f1d7b421f5392ef61543d021a439af",
+   "how": "pinned"
+  },
+  {
+   "name": "rubberband",
+   "kind": "git",
+   "url": "https://github.com/breakfastquay/rubberband.git",
+   "branch": "default",
+   "commit": "e4296ac80b1170018a110bc326fd0d45a0eb27d6",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "shaderc",
+   "kind": "git",
+   "url": "https://github.com/google/shaderc.git",
+   "branch": "main",
+   "commit": "4f0683ab2419ecbb9e18c9edfd4ffd70c2ba8cc6",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-29T00:00:03Z_40791115986.log"
+  },
+  {
+   "name": "speex",
+   "kind": "git",
+   "url": "https://github.com/xiph/speex.git",
+   "branch": "main",
+   "commit": "09b569d1b437e5edccf3406a38714ad795e46d38",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-02T00:00:02Z_41364798085.log"
+  },
+  {
+   "name": "spirv-cross",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/SPIRV-Cross.git",
+   "branch": "main",
+   "commit": "57e4efcc84112abcd426dc5ec248b5339bee04f2",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-29T00:00:03Z_40791115986.log"
+  },
+  {
+   "name": "spirv-headers",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+   "branch": "main",
+   "commit": "6efe5ae6b7c6ad29da3f2cc3f164b9c3d72b78b1",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-05T00:00:02Z_41938005205.log"
+  },
+  {
+   "name": "spirv-tools",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/SPIRV-Tools.git",
+   "branch": "main",
+   "commit": "251c437ef506157c139f77f5525c02223bc78868",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "subrandr",
+   "kind": "git",
+   "url": "https://github.com/afishhh/subrandr.git",
+   "branch": "master",
+   "commit": "a41311bb5e382abcc47ef141e2ea1098d22a8d58",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-04T00:00:12Z_41743495736.log"
+  },
+  {
+   "name": "svtav1",
+   "kind": "git",
+   "url": "https://gitlab.com/AOMediaCodec/SVT-AV1.git",
+   "branch": "master",
+   "commit": "e3d63405f9ba8219913a7276c2c47d10e5d022fe",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-03T00:00:02Z_41549600510.log"
+  },
+  {
+   "name": "uavs3d",
+   "kind": "git",
+   "url": "https://github.com/uavs3/uavs3d.git",
+   "branch": "master",
+   "commit": "0e20d2c291853f196c68922a264bcd8471d75b68",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "uchardet",
+   "kind": "git",
+   "url": "https://gitlab.freedesktop.org/uchardet/uchardet.git",
+   "branch": "master",
+   "commit": "06029ec3340cdf6bf9a6a537dafb3f39eda0560e",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "vapoursynth",
+   "kind": "git",
+   "url": "https://github.com/vapoursynth/vapoursynth.git",
+   "branch": "master",
+   "commit": "e46204429041e95a881b61eedddd46c08f9a307c",
+   "how": "pinned",
+   "submodules": true,
+   "sparse": [
+    "/include",
+    "!include/cython"
+   ]
+  },
+  {
+   "name": "vorbis",
+   "kind": "git",
+   "url": "https://github.com/xiph/vorbis.git",
+   "branch": "main",
+   "commit": "1b75110b5a2754ba1931d82dd83cb822b266a21d",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "vulkan",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/Vulkan-Loader.git",
+   "branch": "main",
+   "commit": "41fb81bcf0e98a74100be22dbdcf1ca6063a3ec1",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "vulkan-header",
+   "kind": "git",
+   "url": "https://github.com/KhronosGroup/Vulkan-Headers.git",
+   "branch": "main",
+   "commit": "88487f687f3100ebe1d3559a8a34d971ee85b977",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-07T00:00:02Z_42315459116.log"
+  },
+  {
+   "name": "x264",
+   "kind": "git",
+   "url": "https://code.videolan.org/videolan/x264.git",
+   "branch": "master",
+   "commit": "0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee",
+   "how": "date",
+   "submodules": true,
+   "evidence": "last commit before 2026-08-28T00:00:02Z"
+  },
+  {
+   "name": "x265",
+   "kind": "git",
+   "url": "https://github.com/Multicorewareinc/x265.git",
+   "branch": "master",
+   "commit": "9bb47b765b438f136364848fd4592fc692a8cf77",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  },
+  {
+   "name": "x265-10bit-lib",
+   "kind": "same-as",
+   "of": "x265"
+  },
+  {
+   "name": "x265-8+10bit",
+   "kind": "same-as",
+   "of": "x265"
+  },
+  {
+   "name": "xxhash",
+   "kind": "git",
+   "url": "https://github.com/Cyan4973/xxHash.git",
+   "branch": "dev",
+   "commit": "2ec67caeb18ec15ae60c0853174331089acddfc0",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-10-30T00:00:02Z_40976824247.log"
+  },
+  {
+   "name": "xz",
+   "kind": "git",
+   "url": "https://github.com/tukaani-project/xz.git",
+   "branch": "master",
+   "commit": "3d078b52adbff566ccfc51067dfbf742ecf3ef86",
+   "how": "pinned",
+   "submodules": true
+  },
+  {
+   "name": "zlib",
+   "kind": "git",
+   "url": "https://github.com/zlib-ng/zlib-ng.git",
+   "branch": "develop",
+   "commit": "50e8935e9b85acbb394d8b33bae3b9ae5ea09535",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-10T00:00:03Z_42724875736.log"
+  },
+  {
+   "name": "zstd",
+   "kind": "git",
+   "url": "https://github.com/facebook/zstd.git",
+   "branch": "dev",
+   "commit": "4dde8bf8c4461ca8fbfb734992b09fac8da43139",
+   "how": "log",
+   "submodules": true,
+   "evidence": "2026-11-11T00:00:02Z_42927840447.log"
+  }
+ ]
+}
