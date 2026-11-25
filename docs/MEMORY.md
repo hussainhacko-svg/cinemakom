@@ -1,6 +1,6 @@
 # Memory: the investigation and fix plan
 
-> **Status (2026-11-25):** M0 done (the measuring tools). M1, the investigation, is next. Work through §5 in order and tick each box as it's done, with the date and the numbers. **Read it before changing caches, buffers, or how the player opens and closes.**
+> **Status (2026-11-25):** M0 done (the measuring tools). M1, the investigation, is under way: this PC's Linux runs and the allocator experiment are done (§5 M1, *Findings so far*); next are the two native growths with heaptrack, the buffer comparison, then the laptop, phone and TV. Work through §5 in order and tick each box as it's done, with the date and the numbers. **Read it before changing caches, buffers, or how the player opens and closes.**
 
 The goal: **memory comes back when a feature is done with it, and stays flat over a long session.** Closing the player returns the app to about what it used before the video. Ten videos in a row use no more than one. Browsing for an hour levels off. This matters most on the weakest devices we support: low-end phones and TVs with 1.5 to 2 GB of RAM, where Android kills the app in the background, or the TV stutters, long before a desktop notices.
 
@@ -20,7 +20,7 @@ Set the real numbers in M1 from what we measure; these are where to start.
 | T1 | **Closing the player gives memory back:** 30 s after closing, RSS is within **+60 MB** of before the video opened | The cycle test (§4.1) |
 | T2 | **No leak across videos:** after 10 open, play, close cycles, RSS after the 10th close is within **+20 MB** of after the 1st | The cycle test |
 | T3 | **Browsing levels off:** scrolling all of Home and 3 genre pages, then idling 10 minutes, rises less than **+10 MB** in the last 5 minutes | The browse test (§4.2) |
-| T4 | **4K playback stays bounded:** RSS over 20 minutes of 4K doesn't keep rising after the first 2 minutes | The long-play test (§4.3) |
+| T4 | **4K playback stays bounded:** over 20 minutes of 4K, RSS rises less than **+20 MB** in the last 5 minutes (each seek steps it up before then, by design) | The long-play test (§4.3) |
 | T5 | **Budgets per device:** while playing 4K, phone and TV stay under the numbers set in M1 (TV.md §9 measured 613 MB on the TCL) | The perf tests (`player_perf_test`, `tv_perf_test`) |
 
 ## 3. Suspects (what's known before measuring)
@@ -92,11 +92,22 @@ Each milestone ends with its numbers written here, and the plan corrected if a s
 
 ### M1: Investigation (every platform, every suspect)
 Linux (this PC, and the Omarchy laptop):
-- [ ] Cycle test: before, playing, after each close (T1, T2)
-- [ ] Is the after-close memory the allocator? `malloc_trim(0)` experiment (§4.4)
+- [x] Cycle test: before, playing, after each close (T1, T2). This PC *(2026-11-25)*; the Omarchy laptop to do
+- [x] Is the after-close memory the allocator? `malloc_trim(0)` experiment (§4.4): **mostly yes**, plus a small real leak *(2026-11-25)*
+- [ ] Find the two native growths with heaptrack (below): the ~7 MB a video, and the +100 MB while idle on Home
+- [ ] What isn't malloc's: the ~150–240 MB that trimming leaves above start (thread stacks, GL driver maps; `/proc/<pid>/smaps` by mapping)
 - [ ] How much of the 4K peak is the 192 MB buffer? Run at 64 MB and compare
-- [ ] Browse test (T3): does the idle climb level off at the image cache's cap?
-- [ ] Long-play test (T4)
+- [x] Browse test (T3): the image cache levels off at its cap, 100 MB; something else jumps at idle (below) *(2026-11-25)*
+- [x] Long-play test (T4): levels off *(2026-11-25)*
+
+*Findings so far (2026-11-25, this PC: EndeavourOS, NVIDIA, the test build, 4K Endgame).* Runs: `build/memory/endeavouros-desktop-*-run1.json` (10 cycles, browse, long) and `*-trim.json` (6 cycles and browse, with `MEMORY_TRIM=true`). The test's RSS starts about 300 MB above the real app's (§6), so compare rows, not the system monitor.
+
+1. **Closing doesn't give memory back (T1 and T2 fail).** Start 556 MB, 1,300–1,750 playing, 979 after the 1st close (+423), climbing to a plateau of ~1,155 from the 6th close to the 10th. File-backed memory goes back (516 playing, 378 closed, 337 at start: the +41 is libmpv and FFmpeg's code staying loaded). The Dart heap is ~53 MB after every close and no player stays alive: **nothing is kept on the Dart side.**
+2. **Most of it is glibc keeping freed memory (§3.1, confirmed).** glibc's own count (`mallinfo2`): native code holds 476 MB while playing and 63 MB after the close, but glibc keeps **450–800 MB of freed memory** for reuse. `malloc_trim(0)` gives back 240–300 MB of RSS in 2 s: after the first video, 939 → 642 MB, +78 over start. **This justifies the M2 `malloc_trim` fix.** Trimming doesn't return all of it: freed space split into small pieces between live allocations can't be handed back.
+3. **A small real native leak, ~7 MB a video.** Native memory in use after each close: 63, 66, 68, 78, 89, 99 MB (start 55). Not Dart. Suspects: mpv, media_kit's texture and GL objects (§3.1), FFmpeg's network or hardware decoding contexts.
+4. **Browsing: images level off at the cache's cap.** 100 MB, ~190 images, from the first genre page on: Flutter's default cap works, the climb in §1.1 isn't the image cache past its limit.
+5. **But on idle Home, native memory jumps +100 MB, at the same moment in both runs** (about 10½ min after the app started, 7 min into the idle, then +20–40 again 3 min later). glibc's in-use count rises 74 → 173 MB: real allocations, not kept memory, and trimming doesn't return them. The Dart heap and the image cache don't change. Idle Home isn't still: its hero carousel moves on every 10 s (`home_hero.dart`). Whether it's that, the GL driver, or something on a timer is the heaptrack question.
+6. **4K playback levels off (T4, in spirit).** 1,550 MB by 2 minutes, a step up after each seek (mpv keeps the seeked-from range in its cache), flat over the last 5 minutes (1,705 → 1,700). T4 now measures the last 5 minutes (§2): +20 MB, just over, and all of it the step after the minute-15 seek (1,685 → 1,705), then flat for 4½ minutes (1,705 → 1,700). The test now seeks at minutes 5, 10 and 14, so the last 5 minutes have no seek in them. The quality switch dropped to 919 for the moment the old player was gone, then back up within 90 s.
 
 Android phone (ExoPlayer):
 - [ ] Cycle test, with `dumpsys meminfo` (Java, native, graphics) per step

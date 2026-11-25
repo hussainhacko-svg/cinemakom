@@ -15,6 +15,7 @@ import 'dart:io';
 const t1GiveBack = 60;
 const t2Growth = 20;
 const t3IdleRise = 10;
+const t4PlayRise = 20;
 
 Future<void> main(List<String> args) async {
   final files = args.isNotEmpty
@@ -57,6 +58,10 @@ String report(Map<String, dynamic> run) {
     ('file', (s) => s['file_mb']),
     ('heap', (s) => s['heap_mb']),
     ('ext', (s) => s['external_mb']),
+    if (samples.any((s) => s['malloc_used_mb'] != null)) ...[
+      ('m.used', (s) => s['malloc_used_mb']),
+      ('m.free', (s) => s['malloc_free_mb']),
+    ],
     ('images', (s) => s['images_mb']),
     ('n', (s) => s['images']),
     if (android) ...[
@@ -88,7 +93,8 @@ String report(Map<String, dynamic> run) {
     ..writeln(
       'All sizes MB. rss = resident; anon/file = its unbacked and '
       'file-backed parts; heap/ext = Dart heap and the native memory its '
-      'objects hold; images = the decoded image cache.',
+      'objects hold; m.used/m.free = what glibc has handed out, and the '
+      'freed memory it keeps for reuse; images = the decoded image cache.',
     )
     ..write(_verdict(run['scenario'] as String?, samples));
   return out.toString();
@@ -154,12 +160,15 @@ String _verdict(String? scenario, List<Map<String, Object?>> samples) {
       final playing = samples
           .where((s) => '${s['label']}'.startsWith('playing'))
           .toList();
-      if (playing.length < 5) break;
-      // From 2 minutes in (the 4th sample) to the end.
-      final rise = _rss(playing.last)! - _rss(playing[3])!;
+      if (playing.length < 2) break;
+      // The last 5 minutes: 10 samples, 30 s apart. Earlier, each seek
+      // steps it up (mpv keeps the range it left in its cache).
+      final from = playing[playing.length > 10 ? playing.length - 11 : 0];
+      final rise = _rss(playing.last)! - _rss(from)!;
       line(
-        'T4 from 2 min to the end of playback: ${_signed(rise)} MB '
-        '(target: no steady rise)',
+        'T4 the last ${(playing.last['t_s'] as int) - (from['t_s'] as int)} '
+        's of playback: ${_signed(rise)} MB (target < +$t4PlayRise)',
+        pass: rise < t4PlayRise,
       );
   }
   return out.toString();

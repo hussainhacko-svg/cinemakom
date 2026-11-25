@@ -9,6 +9,11 @@
 //           IDLE_MINUTES idle. Does browsing level off (T3)?
 //   long    LONG_MINUTES of 4K with seeks and a quality switch (T4).
 //
+// On Linux every sample also has glibc's own count of the memory it has
+// handed out and the freed memory it keeps for reuse (`mallinfo2`), and
+// MEMORY_TRIM=true adds a "trimmed" sample after each close: the same,
+// after `malloc_trim(0)` gave the kept memory back (§4.4).
+//
 //   fvm flutter drive --profile -d linux \
 //     --driver=test_driver/memory_driver.dart \
 //     --target=integration_test/memory_test.dart \
@@ -19,6 +24,8 @@
 // build/memory/<device>-<ui>-<scenario>.json and prints the table
 // (tool/memory_report.dart).
 import 'dart:developer' as developer;
+import 'dart:ffi' as ffi;
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:cinemakom/app/app.dart';
@@ -58,6 +65,7 @@ const playSeconds = int.fromEnvironment('PLAY_SECONDS', defaultValue: 60);
 const longMinutes = int.fromEnvironment('LONG_MINUTES', defaultValue: 20);
 const idleMinutes = int.fromEnvironment('IDLE_MINUTES', defaultValue: 10);
 const quality = int.fromEnvironment('MEMORY_QUALITY', defaultValue: 2160);
+const trim = bool.fromEnvironment('MEMORY_TRIM');
 
 /// How long after closing the player a "closed" sample waits (T1).
 const afterClose = Duration(seconds: 30);
@@ -105,10 +113,21 @@ void main() {
         't_s': clock.elapsed.inSeconds,
         ...memory.toJson(),
         ...?dart,
+        ...?_Glibc.instance?.read(),
         if (!isAndroid) 'players': MediaKitEngine.livePlayers,
       };
       samples.add(row);
       debugPrint('memory ${row['t_s']}s $label: ${memory.describe()}');
+    }
+
+    /// With MEMORY_TRIM, after a "closed" sample: glibc gives back the
+    /// freed memory it keeps, and a "trimmed" sample shows what's left.
+    Future<void> trimmed(String label) async {
+      final glibc = _Glibc.instance;
+      if (!trim || glibc == null) return;
+      glibc.trim();
+      await wait(const Duration(seconds: 2));
+      await sample(label);
     }
 
     await tester.pumpWidget(
@@ -159,6 +178,7 @@ void main() {
           router.pop();
           await wait(afterClose);
           await sample('closed #$i', gc: true);
+          await trimmed('trimmed #$i');
         }
       case 'browse':
         final genres = (await container.read(genresProvider.future))
@@ -193,6 +213,7 @@ void main() {
           await wait(const Duration(seconds: 30));
           await sample('idle ${half * 30} s', gc: half == idleMinutes * 2);
         }
+        await trimmed('trimmed');
       case 'long':
         await openPlayer();
         final controller = container.read(
@@ -201,7 +222,8 @@ void main() {
         for (var half = 1; half <= longMinutes * 2; half++) {
           await wait(const Duration(seconds: 30));
           final minute = half / 2;
-          if (minute == 5 || minute == 10 || minute == 15) {
+          // None in the last 5 minutes, which T4 measures.
+          if (minute == 5 || minute == 10 || minute == 14) {
             await controller.seekBy(const Duration(minutes: 5));
           }
           if (minute == 8) {
@@ -220,6 +242,7 @@ void main() {
         router.pop();
         await wait(afterClose);
         await sample('closed', gc: true);
+        await trimmed('trimmed');
       default:
         fail('unknown MEMORY_SCENARIO "$scenario" (cycle, browse, long)');
     }
@@ -368,4 +391,70 @@ class _DartHeap {
   }
 
   void dispose() => _service.dispose();
+}
+
+/// glibc's allocator (Linux), through FFI: `null` elsewhere (Android has
+/// its own allocator, Windows no glibc).
+class _Glibc {
+  _Glibc._(this._info, this._trim);
+
+  static final _Glibc? instance = () {
+    if (!Platform.isLinux) return null;
+    try {
+      final lib = ffi.DynamicLibrary.process();
+      return _Glibc._(
+        lib.lookupFunction<_MallInfo2 Function(), _MallInfo2 Function()>(
+          'mallinfo2',
+        ),
+        lib.lookupFunction<ffi.Int Function(ffi.Size), int Function(int)>(
+          'malloc_trim',
+        ),
+      );
+    } on Object catch (e) {
+      debugPrint('memory: no glibc allocator numbers ($e)');
+      return null;
+    }
+  }();
+
+  final _MallInfo2 Function() _info;
+  final int Function(int) _trim;
+
+  /// In MB, over every arena: what the app's native code holds now
+  /// (`malloc_used`), and the freed memory glibc keeps for reuse instead of
+  /// giving it back (`malloc_free`). Freed memory counts in RSS only where
+  /// its pages were touched, so this is the most trimming can return.
+  Map<String, Object?> read() {
+    final i = _info();
+    int mb(int bytes) => (bytes / (1 << 20)).round();
+    return {
+      'malloc_used_mb': mb(i.uordblks + i.hblkhd),
+      'malloc_free_mb': mb(i.fordblks),
+    };
+  }
+
+  void trim() => _trim(0);
+}
+
+/// `struct mallinfo2` (glibc 2.33+): every field a `size_t`.
+final class _MallInfo2 extends ffi.Struct {
+  @ffi.Size()
+  external int arena;
+  @ffi.Size()
+  external int ordblks;
+  @ffi.Size()
+  external int smblks;
+  @ffi.Size()
+  external int hblks;
+  @ffi.Size()
+  external int hblkhd;
+  @ffi.Size()
+  external int usmblks;
+  @ffi.Size()
+  external int fsmblks;
+  @ffi.Size()
+  external int uordblks;
+  @ffi.Size()
+  external int fordblks;
+  @ffi.Size()
+  external int keepcost;
 }
